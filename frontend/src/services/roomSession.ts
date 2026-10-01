@@ -1,42 +1,46 @@
 import { playerStore } from '../stores/playerStore'
 import { applyRoomState, roomStore } from '../stores/roomStore'
+import { CommandError, type RoomCommand } from '../rooms/roomLogic'
 import { ClockSync } from '../sync/ClockSync'
 import { SyncConfig, isSyncDebug } from '../sync/SyncConfig'
 import { SyncEngine } from '../sync/SyncEngine'
 import type { RoomState } from '../types/room'
-import type { ClockPongPayload, RoomEventPayload, ServerMessage } from '../types/websocket'
-import { storage } from '../utils/storage'
-import { wsUrl } from './api'
-import { WebSocketService } from './websocket/WebSocketService'
+import { extractVideoId } from '../utils/youtubeUrlParser'
+import { FirebaseRoomBackend } from './firebase/FirebaseRoomBackend'
+import { fetchVideoMeta, thumbnailUrl } from './youtube/metadata'
 import { describeYouTubeError, type LocalPlayerState, type PlayerAdapter } from './youtube/PlayerAdapter'
 
 /**
  * Liga as peças de uma sessão de sala:
- *   WebSocketService ⇄ stores ⇄ SyncEngine ⇄ player
+ *   Firebase (FirebaseRoomBackend) ⇄ stores ⇄ SyncEngine ⇄ player
  * Os componentes React chamam apenas as ações expostas aqui.
  */
 export class RoomSession {
-  readonly ws: WebSocketService
+  readonly backend: FirebaseRoomBackend
   readonly clock: ClockSync
   readonly engine: SyncEngine
-  private unsubs: (() => void)[] = []
   private resyncTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(
     readonly roomId: string,
-    token: string,
+    roomKey: string,
     private readonly name: string,
     private readonly participantId: string,
   ) {
-    this.ws = new WebSocketService(
-      () => wsUrl(roomId, token),
-      () => this.onOpen(),
-    )
-    this.clock = new ClockSync((t1) => this.ws.send('CLOCK_PING', { t1 }))
+    this.clock = new ClockSync((t1) => void this.backend.clockPing(t1))
+    this.backend = new FirebaseRoomBackend(roomId, roomKey, participantId, name, this.clock, {
+      onState: (room) => this.onRoomState(room),
+      onStatus: (s) => {
+        roomStore.set({ connection: s })
+        if (s === 'reconnecting') this.clock.stop()
+        if (s === 'not_found') roomStore.set({ fatalError: 'A sala não existe mais.' })
+      },
+      onConnected: () => this.onConnected(),
+    })
     this.engine = new SyncEngine({
       clock: this.clock,
-      onTrackEnded: (itemId) => this.ws.send('TRACK_ENDED', { itemId }),
-      onTrackMeta: (itemId, title, duration) => this.ws.send('TRACK_META', { itemId, title, duration }),
+      onTrackEnded: (itemId) => this.fire({ type: 'TRACK_ENDED', itemId }),
+      onTrackMeta: (itemId, title, duration) => this.fire({ type: 'TRACK_META', itemId, title, duration }),
       onStatus: (status) => {
         playerStore.set({ sync: status.ui })
         if (isSyncDebug()) playerStore.set({ metrics: status })
@@ -47,36 +51,16 @@ export class RoomSession {
 
   start(): void {
     roomStore.set({ participantId: this.participantId, fatalError: null })
-    this.unsubs.push(
-      this.ws.onStatus((s) => {
-        roomStore.set({ connection: s })
-        if (s === 'reconnecting') this.clock.stop()
-        if (s === 'unauthorized') {
-          storage.clearRoomToken(this.roomId)
-          roomStore.set({ fatalError: 'Digite a senha da sala para entrar.' })
-        }
-        if (s === 'not_found') roomStore.set({ fatalError: 'A sala não existe mais.' })
-      }),
-      this.ws.on('CLOCK_PONG', (m: ServerMessage<ClockPongPayload>) =>
-        this.clock.handlePong(m.payload.t1, m.payload.t2, m.payload.t3),
-      ),
-      this.ws.on('STATE_SYNC', (m: ServerMessage<RoomEventPayload>) => this.onRoomEvent(m.payload.room, true)),
-      this.ws.on('*', (m: ServerMessage<any>) => {
-        if (m.type !== 'STATE_SYNC' && m.payload?.room) this.onRoomEvent(m.payload.room as RoomState, false)
-      }),
-    )
     this.engine.start()
-    this.ws.connect()
+    this.backend.start().catch((err: Error) => roomStore.set({ fatalError: err.message, connection: 'closed' }))
     if (isSyncDebug()) (window as unknown as Record<string, unknown>).__echoroom = this
   }
 
   stop(): void {
-    this.unsubs.forEach((u) => u())
-    this.unsubs = []
     if (this.resyncTimer) clearTimeout(this.resyncTimer)
     this.engine.stop()
     this.clock.stop()
-    this.ws.disconnect()
+    this.backend.stop()
   }
 
   // ---- player (vindo do componente YouTubePlayer) -------------------------
@@ -104,29 +88,52 @@ export class RoomSession {
 
   // ---- ações do usuário ----------------------------------------------------
 
-  play = () => this.ws.request('PLAYER_PLAY_REQUEST')
-  pause = () => this.ws.request('PLAYER_PAUSE_REQUEST')
-  seek = (position: number) => this.ws.request('PLAYER_SEEK_REQUEST', { position })
+  play = () => this.backend.command({ type: 'PLAY' })
+  pause = () => this.backend.command({ type: 'PAUSE' })
+  seek = (position: number) => this.backend.command({ type: 'SEEK', position })
   restart = () => this.seek(0)
-  skip = () => this.ws.request('TRACK_SKIP', { currentItemId: roomStore.get().room?.currentTrack?.id ?? null })
-  addTrack = (url: string) => this.ws.request('TRACK_ADD', { url })
-  removeTrack = (itemId: string) => this.ws.request('TRACK_REMOVE', { itemId })
-  moveToTop = (itemId: string) => this.ws.request('TRACK_MOVE', { itemId, toIndex: 0 })
+  skip = () =>
+    this.backend.command({ type: 'TRACK_SKIP', currentItemId: roomStore.get().room?.currentTrack?.id ?? null })
+  removeTrack = (itemId: string) => this.backend.command({ type: 'TRACK_REMOVE', itemId })
+  moveToTop = (itemId: string) => this.backend.command({ type: 'TRACK_MOVE', itemId, toIndex: 0 })
+
+  addTrack = async (url: string) => {
+    const videoId = extractVideoId(url)
+    if (!videoId) throw new CommandError('Link do YouTube inválido. Use youtube.com/watch?v=…, youtu.be/… ou /shorts/….')
+    const meta = await fetchVideoMeta(videoId)
+    return this.backend.command({
+      type: 'TRACK_ADD',
+      item: {
+        id: Math.random().toString(36).slice(2, 14),
+        videoId,
+        title: meta.title,
+        author: meta.author,
+        thumbnail: thumbnailUrl(videoId),
+        addedBy: this.name,
+        titleResolved: meta.resolved,
+      },
+    })
+  }
 
   // ---- internos ---------------------------------------------------------------
 
-  private onOpen(): void {
-    this.ws.send('ROOM_JOIN', { participantId: this.participantId, name: this.name })
+  private fire(cmd: RoomCommand): void {
+    this.backend.command(cmd).catch(() => {
+      /* comandos automáticos: falhas são reenviadas pelo próprio engine */
+    })
+  }
+
+  private onConnected(): void {
     this.clock.start() // burst imediato + intervalo
-    // Depois que o burst de clock sync terminar, recalcula posição sem histerese.
+    // Depois do burst de clock sync, recalcula a posição sem histerese.
     if (this.resyncTimer) clearTimeout(this.resyncTimer)
     this.resyncTimer = setTimeout(
       () => this.engine.resync(),
-      SyncConfig.clockBurstCount * SyncConfig.clockBurstSpacingMs + 150,
+      SyncConfig.clockBurstCount * SyncConfig.clockBurstSpacingMs + 400,
     )
   }
 
-  private onRoomEvent(room: RoomState, full: boolean): void {
-    if (applyRoomState(room, full)) this.engine.applyState(room)
+  private onRoomState(room: RoomState): void {
+    if (applyRoomState(room)) this.engine.applyState(room)
   }
 }

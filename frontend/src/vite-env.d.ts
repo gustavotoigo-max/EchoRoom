@@ -1,7 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_BACKEND_URL?: string
+  /** Objeto de configuração web do Firebase (texto). */
+  readonly VITE_FIREBASE_CONFIG?: string
 }
 
 interface ImportMeta {

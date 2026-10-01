@@ -435,6 +435,36 @@ input[readonly] {
   border-left: 1px solid var(--line-soft);
 }
 
+/* Aviso de erro geral da sala */
+.room-banner {
+  padding: 10px 28px;
+  background: var(--surface);
+  border-left: 3px solid var(--red);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Tela de configuração pendente */
+.setup {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 72px 24px;
+  display: grid;
+  gap: 16px;
+}
+.setup h1 {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.setup p {
+  color: var(--text-muted);
+}
+.setup code {
+  color: var(--green-hi);
+}
+
 /* Player */
 .player-frame {
   position: relative;

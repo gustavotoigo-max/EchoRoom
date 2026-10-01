@@ -1,0 +1,45 @@
+/**
+ * Configuração pública do Firebase (não é segredo: a proteção vem das
+ * regras do banco). Vem da variável de build VITE_FIREBASE_CONFIG, que o
+ * GitHub Actions preenche a partir da variável do repositório FIREBASE_CONFIG.
+ *
+ * Aceita o objeto exatamente como o console do Firebase mostra:
+ *   const firebaseConfig = { apiKey: "...", authDomain: "...", ... };
+ * (com ou sem "const firebaseConfig =", aspas nas chaves ou ponto e vírgula).
+ */
+
+export interface FirebaseWebConfig {
+  apiKey: string
+  authDomain?: string
+  databaseURL: string
+  projectId: string
+  storageBucket?: string
+  messagingSenderId?: string
+  appId: string
+  measurementId?: string
+}
+
+export function parseFirebaseConfig(raw: string | undefined | null): FirebaseWebConfig | null {
+  if (!raw || !raw.trim()) return null
+  let text = raw.trim()
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start < 0 || end < start) return null
+  text = text.slice(start, end + 1)
+  // Converte objeto JavaScript em JSON: aspas nas chaves, aspas simples, vírgula final.
+  const json = text
+    .replace(/^\s*\/\/.*$/gm, '') // comentários em linha própria
+    .replace(/'([^']*)'/g, '"$1"')
+    .replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":')
+    .replace(/,\s*}/g, '}')
+  try {
+    const cfg = JSON.parse(json) as FirebaseWebConfig
+    if (!cfg.apiKey || !cfg.projectId || !cfg.appId) return null
+    if (!cfg.databaseURL) cfg.databaseURL = `https://${cfg.projectId}-default-rtdb.firebaseio.com`
+    return cfg
+  } catch {
+    return null
+  }
+}
+
+export const firebaseConfig = parseFirebaseConfig(import.meta.env?.VITE_FIREBASE_CONFIG as string | undefined)

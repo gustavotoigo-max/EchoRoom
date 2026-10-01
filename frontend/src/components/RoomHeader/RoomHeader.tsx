@@ -2,7 +2,7 @@ import { useStore } from '../../stores/createStore'
 import { playerStore } from '../../stores/playerStore'
 import { roomStore } from '../../stores/roomStore'
 import type { SyncUiState } from '../../sync/SyncEngine'
-import type { ConnectionStatus } from '../../types/websocket'
+import type { ConnectionStatus } from '../../types/room'
 import { roomLink } from '../../utils/format'
 import { Brand } from '../ui/Brand'
 import { CopyButton } from '../ui/CopyButton'
@@ -16,8 +16,6 @@ function describe(conn: ConnectionStatus, sync: SyncUiState): { label: string; t
       return { label: 'Conectando…', tone: 'work' }
     case 'reconnecting':
       return { label: 'Reconectando…', tone: 'warn' }
-    case 'unauthorized':
-      return { label: 'Senha necessária', tone: 'bad' }
     case 'not_found':
       return { label: 'Sala não encontrada', tone: 'bad' }
     case 'closed':

@@ -76,7 +76,15 @@ function QueueRow({ item, index }: { item: QueueItem; index: number }) {
   return (
     <li className="q-item" ref={ref}>
       <span className="q-pos">{index + 1}</span>
-      <img className="q-thumb" src={item.thumbnail} alt="" loading="lazy" width={64} height={36} />
+      <img
+        className="q-thumb"
+        src={item.thumbnail}
+        alt=""
+        loading="lazy"
+        width={64}
+        height={36}
+        onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
+      />
       <div className="q-text">
         <span className="q-title" title={item.title}>
           {item.title}

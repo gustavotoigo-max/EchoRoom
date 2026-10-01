@@ -7,8 +7,15 @@ export function formatTime(seconds: number | null | undefined): string {
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`
 }
 
+/** Base do site (ex.: "/EchoRoom/" no GitHub Pages, "/" localmente). */
+export const BASE_PATH = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/')
+
+export function roomPath(roomId: string): string {
+  return `${BASE_PATH}room/${roomId}`
+}
+
 export function roomLink(roomId: string): string {
-  return `${window.location.origin}/room/${roomId}`
+  return `${window.location.origin}${roomPath(roomId)}`
 }
 
 /** Aceita "ABX72", "abx72" ou um link completo .../room/ABX72 */

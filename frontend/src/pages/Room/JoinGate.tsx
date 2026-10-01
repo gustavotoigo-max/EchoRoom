@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from 'react'
-import { ApiError, api } from '../../services/api'
+import { joinRoom } from '../../services/firebase/roomsApi'
 import { storage } from '../../utils/storage'
 
 interface Props {
   roomId: string
   needsPassword: boolean
   notice?: string | null
-  onJoined: (token: string, name: string) => void
+  onJoined: (roomKey: string, name: string) => void
 }
 
 /**
@@ -26,19 +26,19 @@ export function JoinGate({ roomId, needsPassword, notice, onJoined }: Props) {
     setBusy(true)
     setError(null)
     try {
-      let token = storage.getRoomToken(roomId)
-      if (needsPassword || !token) {
+      let key = storage.getRoomKey(roomId)
+      if (needsPassword || !key) {
         if (!password) {
           setBusy(false)
           return setError('Digite a senha da sala.')
         }
-        token = (await api.joinRoom(roomId, password)).token
-        storage.setRoomToken(roomId, token)
+        key = (await joinRoom(roomId, password)).roomKey
+        storage.setRoomKey(roomId, key)
       }
       storage.setName(trimmed)
-      onJoined(token, trimmed)
+      onJoined(key, trimmed)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Não foi possível entrar na sala.')
+      setError((err as Error).message || 'Não foi possível entrar na sala.')
       setBusy(false)
     }
   }

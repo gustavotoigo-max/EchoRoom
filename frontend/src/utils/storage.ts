@@ -1,8 +1,8 @@
-/** Persistência local mínima (nome, id do participante, tokens de sala). */
+/** Persistência local mínima (nome, id do participante, chaves de sala). */
 
 const NAME_KEY = 'echoroom.name'
 const PID_KEY = 'echoroom.participant'
-const tokenKey = (roomId: string) => `echoroom.token.${roomId.toUpperCase()}`
+const roomKeyKey = (roomId: string) => `echoroom.key.${roomId.toUpperCase()}`
 
 function read(key: string): string | null {
   try {
@@ -37,7 +37,8 @@ export const storage = {
     return id
   },
 
-  getRoomToken: (roomId: string) => read(tokenKey(roomId)),
-  setRoomToken: (roomId: string, token: string) => write(tokenKey(roomId), token),
-  clearRoomToken: (roomId: string) => write(tokenKey(roomId), null),
+  /** Chave derivada da senha: evita pedir a senha de novo neste navegador. */
+  getRoomKey: (roomId: string) => read(roomKeyKey(roomId)),
+  setRoomKey: (roomId: string, key: string) => write(roomKeyKey(roomId), key),
+  clearRoomKey: (roomId: string) => write(roomKeyKey(roomId), null),
 }

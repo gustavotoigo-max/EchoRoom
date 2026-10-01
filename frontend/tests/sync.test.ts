@@ -130,7 +130,6 @@ function room(partial: Partial<RoomState>): RoomState {
     currentVideoId: 'dQw4w9WgXcQ',
     playbackState: 'paused',
     position: 0,
-    serverTimestamp: 0,
     startedAt: null,
     executeAt: null,
     stateVersion: 1,

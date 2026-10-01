@@ -1,22 +1,26 @@
 /**
  * Parâmetros de sincronização — ÚNICO lugar onde limites e intervalos vivem.
  * Valores iniciais; calibrar em testes reais.
- *
- * Observação: o atraso de execução dos comandos (commandLeadTime) é decidido
- * pelo servidor (backend/app/config.py), pois é ele quem calcula executeAt.
  */
 export const SyncConfig = {
+  // Comandos agendados: executeAt = agora (relógio do servidor) + atraso.
+  // Precisa cobrir a ida até o Firebase e a volta para os outros clientes.
+  commandLeadTimeMs: 600,
+  trackChangeLeadTimeMs: 1500,
+  trackEndToleranceSec: 3,
+  maxQueueSize: 200,
+
   // Verificação local de drift
   localCheckIntervalMs: 500,
 
   // Clock sync
-  clockSyncIntervalMs: 5000,
+  clockSyncIntervalMs: 10_000,
   clockSampleWindow: 10,
   clockSampleMaxAgeMs: 60_000,
   /** Quantas amostras de menor RTT entram na mediana do offset. */
   clockBestSamples: 3,
-  clockBurstCount: 5,
-  clockBurstSpacingMs: 120,
+  clockBurstCount: 4,
+  clockBurstSpacingMs: 250,
 
   // Faixas de drift
   ignoreDriftMs: 150,
@@ -42,10 +46,8 @@ export const SyncConfig = {
   unstableRttMs: 400,
   unstableJitterMs: 150,
 
-  // Reconexão WebSocket
-  reconnectBaseMs: 500,
-  reconnectMaxMs: 5000,
-  requestTimeoutMs: 8000,
+  // Comandos
+  requestTimeoutMs: 10_000,
 
   /** Reenvio de TRACK_ENDED se o servidor ainda não avançou. */
   trackEndedRetryMs: 3000,

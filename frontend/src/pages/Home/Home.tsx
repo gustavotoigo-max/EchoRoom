@@ -2,11 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { Brand } from '../../components/ui/Brand'
 import { CopyButton } from '../../components/ui/CopyButton'
 import { navigate } from '../../router'
-import { api } from '../../services/api'
+import { createRoom, MIN_PASSWORD } from '../../services/firebase/roomsApi'
 import { parseRoomInput, roomLink } from '../../utils/format'
 import { storage } from '../../utils/storage'
-
-const MIN_PASSWORD = 4
 
 export function Home() {
   const [name, setName] = useState(storage.getName())
@@ -25,10 +23,10 @@ export function Home() {
     setCreating(true)
     setCreateError(null)
     try {
-      const res = await api.createRoom(password)
+      const res = await createRoom(password)
       storage.setName(name)
-      storage.setRoomToken(res.room_id, res.token)
-      setCreated(res.room_id)
+      storage.setRoomKey(res.roomId, res.roomKey)
+      setCreated(res.roomId)
     } catch (err) {
       setCreateError((err as Error).message)
     } finally {
@@ -125,7 +123,7 @@ export function Home() {
                     setCode(e.target.value)
                     setJoinError(null)
                   }}
-                  placeholder="ABX72 ou https://…/room/ABX72"
+                  placeholder="ABX72 ou link da sala"
                   autoCapitalize="characters"
                 />
               </label>

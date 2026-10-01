@@ -1,0 +1,42 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "roomIndex": {
+      "$roomId": {
+        ".read": "auth != null",
+        ".write": "auth != null && !data.exists()",
+        ".validate": "$roomId.matches(/^[A-Z2-9]{5}$/) && newData.hasChildren(['createdAt'])"
+      }
+    },
+
+    "rooms": {
+      "$roomKey": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".validate": "$roomKey.matches(/^[0-9a-f]{64}$/)",
+
+        "meta": {
+          ".validate": "newData.hasChildren(['roomId', 'createdAt'])"
+        },
+        "state": {
+          ".validate": "newData.hasChildren(['roomId', 'playbackState', 'stateVersion']) && newData.child('stateVersion').isNumber()"
+        },
+        "participants": {
+          "$pid": {
+            ".validate": "$pid.matches(/^[A-Za-z0-9]{6,64}$/)"
+          }
+        },
+        "clock": {
+          "$pid": {
+            ".validate": "newData.isNumber()"
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

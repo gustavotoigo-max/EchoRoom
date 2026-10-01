@@ -6,7 +6,8 @@ import { PlayerPanel } from '../../components/Player/PlayerPanel'
 import { Queue } from '../../components/Queue/Queue'
 import { RoomHeader } from '../../components/RoomHeader/RoomHeader'
 import { Brand } from '../../components/ui/Brand'
-import { api, ApiError } from '../../services/api'
+import { appPath } from '../../router'
+import { roomExists } from '../../services/firebase/roomsApi'
 import { RoomSession } from '../../services/roomSession'
 import { RoomSessionContext } from '../../services/RoomSessionContext'
 import { useStore } from '../../stores/createStore'
@@ -14,7 +15,11 @@ import { resetRoomStore, roomStore } from '../../stores/roomStore'
 import { storage } from '../../utils/storage'
 import { JoinGate } from './JoinGate'
 
-type Phase = { kind: 'checking' } | { kind: 'missing'; message: string } | { kind: 'gate' } | { kind: 'joined'; token: string; name: string }
+type Phase =
+  | { kind: 'checking' }
+  | { kind: 'missing'; message: string }
+  | { kind: 'gate' }
+  | { kind: 'joined'; roomKey: string; name: string }
 
 export function Room({ roomId }: { roomId: string }) {
   const [phase, setPhase] = useState<Phase>({ kind: 'checking' })
@@ -22,28 +27,28 @@ export function Room({ roomId }: { roomId: string }) {
 
   useEffect(() => {
     let alive = true
-    api
-      .getRoom(roomId)
-      .then(() => alive && setPhase({ kind: 'gate' }))
-      .catch((err) => {
+    roomExists(roomId)
+      .then((exists) => {
         if (!alive) return
-        const msg = err instanceof ApiError && err.status === 404 ? 'A sala não existe mais.' : (err as Error).message
-        setPhase({ kind: 'missing', message: msg })
+        setPhase(exists ? { kind: 'gate' } : { kind: 'missing', message: 'A sala não existe mais.' })
       })
+      .catch((err: Error) => alive && setPhase({ kind: 'missing', message: err.message }))
     return () => {
       alive = false
     }
   }, [roomId])
 
-  // Token inválido durante a sessão: volta para a tela de senha.
+  // Sala apagada (ou chave salva inválida) durante a sessão.
   useEffect(() => {
     if (phase.kind !== 'joined' || !fatal) return
-    if (fatal === 'A sala não existe mais.') setPhase({ kind: 'missing', message: fatal })
-    else setPhase({ kind: 'gate' })
-  }, [fatal, phase.kind])
+    if (fatal === 'A sala não existe mais.') {
+      storage.clearRoomKey(roomId)
+      setPhase({ kind: 'missing', message: fatal })
+    }
+  }, [fatal, phase.kind, roomId])
 
   if (phase.kind === 'joined') {
-    return <RoomView roomId={roomId} token={phase.token} name={phase.name} />
+    return <RoomView roomId={roomId} roomKey={phase.roomKey} name={phase.name} />
   }
 
   return (
@@ -57,7 +62,7 @@ export function Room({ roomId }: { roomId: string }) {
           <div className="panel gate">
             <h2>{phase.message}</h2>
             <p className="hint">Confira o link com quem criou a sala ou crie uma nova.</p>
-            <a className="btn btn-primary" href="/">
+            <a className="btn btn-primary" href={appPath('/')}>
               Criar uma sala
             </a>
           </div>
@@ -65,11 +70,11 @@ export function Room({ roomId }: { roomId: string }) {
         {phase.kind === 'gate' && (
           <JoinGate
             roomId={roomId}
-            needsPassword={!storage.getRoomToken(roomId)}
+            needsPassword={!storage.getRoomKey(roomId)}
             notice={fatal}
-            onJoined={(token, name) => {
+            onJoined={(roomKey, name) => {
               roomStore.set({ fatalError: null })
-              setPhase({ kind: 'joined', token, name })
+              setPhase({ kind: 'joined', roomKey, name })
             }}
           />
         )}
@@ -78,10 +83,10 @@ export function Room({ roomId }: { roomId: string }) {
   )
 }
 
-function RoomView({ roomId, token, name }: { roomId: string; token: string; name: string }) {
+function RoomView({ roomId, roomKey, name }: { roomId: string; roomKey: string; name: string }) {
   const session = useMemo(
-    () => new RoomSession(roomId, token, name, storage.getParticipantId()),
-    [roomId, token, name],
+    () => new RoomSession(roomId, roomKey, name, storage.getParticipantId()),
+    [roomId, roomKey, name],
   )
 
   useEffect(() => {
@@ -98,6 +103,7 @@ function RoomView({ roomId, token, name }: { roomId: string; token: string; name
         <RoomHeader roomId={roomId} />
         <main className="room-grid">
           <div className="room-main">
+            <FatalBanner />
             <PlayerPanel />
             <Controls />
             <AddTrack />
@@ -109,5 +115,15 @@ function RoomView({ roomId, token, name }: { roomId: string; token: string; name
         </main>
       </div>
     </RoomSessionContext.Provider>
+  )
+}
+
+function FatalBanner() {
+  const fatal = useStore(roomStore, (s) => s.fatalError)
+  if (!fatal) return null
+  return (
+    <div className="room-banner" role="alert">
+      {fatal}
+    </div>
   )
 }

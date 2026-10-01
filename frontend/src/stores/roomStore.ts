@@ -1,5 +1,5 @@
 import type { RoomState } from '../types/room'
-import type { ConnectionStatus } from '../types/websocket'
+import type { ConnectionStatus } from '../types/room'
 import { createStore } from './createStore'
 
 export interface RoomStoreState {
