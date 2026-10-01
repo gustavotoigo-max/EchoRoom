@@ -11,6 +11,8 @@ export interface PlayerStoreState {
   /** Volume local 0–100 e mudo (não sincronizados com a sala). */
   volume: number
   muted: boolean
+  /** O navegador bloqueou o som até um clique na página. */
+  needsGesture: boolean
 }
 
 export const playerStore = createStore<PlayerStoreState>({
@@ -20,4 +22,5 @@ export const playerStore = createStore<PlayerStoreState>({
   playerReady: false,
   volume: typeof window !== 'undefined' ? storage.getVolume() : 80,
   muted: typeof window !== 'undefined' ? storage.getMuted() : false,
+  needsGesture: false,
 })

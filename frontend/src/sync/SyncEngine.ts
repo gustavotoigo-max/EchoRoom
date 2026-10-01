@@ -35,6 +35,8 @@ export interface SyncEngineDeps {
   onPlayerError?: (code: number) => void
   /** True se o usuário deixou o som mudo (o engine não desmuta por conta própria). */
   isUserMuted?: () => boolean
+  /** O navegador bloqueou o autoplay: a interface pede um clique. */
+  onNeedsGesture?: (needed: boolean) => void
   now?: NowFn
   cfg?: typeof SyncConfig
   /** Para testes: substitui setTimeout/setInterval. */
@@ -77,6 +79,8 @@ export class SyncEngine {
   private endedSentAt = 0
   private metaSentFor = new Set<string>()
   private lastCorrection: CorrectionType = 'none'
+  private notPlayingSince: number | null = null
+  private needsGesture = false
   private ui: SyncUiState = 'waiting'
   private drift = 0
   private visibilityHandler = () => this.onVisibilityChange()
@@ -304,6 +308,11 @@ export class SyncEngine {
       return
     }
 
+    if (state.playbackState !== 'playing') {
+      this.notPlayingSince = null
+      this.setNeedsGesture(false)
+    }
+
     if (state.playbackState === 'paused') {
       if (local === 'playing' || local === 'buffering') player.pause()
       if (local === 'cued' || local === 'unstarted') {
@@ -351,11 +360,16 @@ export class SyncEngine {
         this.correction.noteSeek(nowMs)
       }
       player.play()
+      // play() repetido sem efeito = autoplay bloqueado pelo navegador.
+      this.notPlayingSince ??= nowMs
+      if (nowMs - this.notPlayingSince > this.cfg.autoplayBlockedAfterMs) this.setNeedsGesture(true)
       this.lastCorrection = 'seek'
       this.setUi('syncing')
       return
     }
 
+    this.notPlayingSince = null
+    this.setNeedsGesture(false)
     this.drift = (player.getCurrentTime() - expected) * 1000
     const forced = force || this.forceNext || this.wasBuffering
     this.forceNext = false
@@ -393,6 +407,23 @@ export class SyncEngine {
         correctionType: decision.type,
       })
     }
+  }
+
+  /** Chamado após um clique do usuário (libera o autoplay). */
+  unlockAudio(): void {
+    this.notPlayingSince = null
+    this.setNeedsGesture(false)
+    if (this.player && this.state?.playbackState === 'playing') {
+      this.player.seek(this.getExpectedPosition())
+      this.player.play()
+    }
+    this.forceNext = true
+  }
+
+  private setNeedsGesture(v: boolean): void {
+    if (this.needsGesture === v) return
+    this.needsGesture = v
+    this.deps.onNeedsGesture?.(v)
   }
 
   private isUnstable(): boolean {

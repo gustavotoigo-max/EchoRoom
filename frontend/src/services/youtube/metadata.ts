@@ -13,6 +13,32 @@ export function thumbnailUrl(videoId: string): string {
   return `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
 }
 
+/** Busca títulos de vários vídeos com poucas requisições simultâneas. */
+export async function fetchManyVideoMeta(
+  videoIds: string[],
+  onProgress?: (done: number, total: number) => void,
+  concurrency = 6,
+): Promise<VideoMeta[]> {
+  const out: VideoMeta[] = new Array(videoIds.length)
+  let next = 0
+  let done = 0
+  let resolved = 0
+  async function worker() {
+    while (next < videoIds.length) {
+      const i = next++
+      // Se as primeiras buscas falharam todas, o serviço está fora: não insiste.
+      const giveUp = done >= concurrency && resolved === 0
+      out[i] = giveUp
+        ? { title: `youtu.be/${videoIds[i]}`, author: '', resolved: false }
+        : await fetchVideoMeta(videoIds[i], 4000)
+      if (out[i].resolved) resolved++
+      onProgress?.(++done, videoIds.length)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, videoIds.length) }, worker))
+  return out
+}
+
 export async function fetchVideoMeta(videoId: string, timeoutMs = 3000): Promise<VideoMeta> {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)

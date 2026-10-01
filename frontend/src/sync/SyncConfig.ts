@@ -49,6 +49,9 @@ export const SyncConfig = {
   // Comandos
   requestTimeoutMs: 10_000,
 
+  /** Tempo tentando dar play sem sucesso até pedir um clique (autoplay bloqueado). */
+  autoplayBlockedAfterMs: 2500,
+
   /** Reenvio de TRACK_ENDED se o servidor ainda não avançou. */
   trackEndedRetryMs: 3000,
 } as const

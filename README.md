@@ -24,6 +24,20 @@ Pages a cada push na `main`. Ele precisa de:
 
 Endereço: `https://<usuário>.github.io/EchoRoom/`
 
+## Recursos
+
+- Links de vídeo, shorts e **playlists** (`/playlist?list=…`). Um vídeo aberto
+  dentro de uma playlist entra sozinho, com a opção de adicionar a playlist
+  inteira. As playlists são lidas pelo próprio player do YouTube (sem chave de
+  API); entram até o limite da fila (200).
+- Vídeos indisponíveis (removidos, privados ou sem incorporação) são pulados
+  automaticamente.
+- Quem entra numa sala com música tocando recebe um aviso e começa do ponto atual.
+- Se o navegador bloquear o som (autoplay), aparece "Clique para ouvir junto".
+- **Extensão para Chrome** (`chrome-extension/`): botão flutuante no YouTube que
+  manda a música para a sua última sala. O site publica o zip em
+  `/EchoRoom/echoroom-chrome.zip`. Instruções em `chrome-extension/README.md`.
+
 ## Rodando localmente
 
 ```powershell

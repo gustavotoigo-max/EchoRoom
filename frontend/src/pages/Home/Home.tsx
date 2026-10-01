@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Brand } from '../../components/ui/Brand'
 import { CopyButton } from '../../components/ui/CopyButton'
-import { navigate } from '../../router'
+import { appPath, navigate } from '../../router'
+import { clearPendingAdd, pendingStore } from '../../services/externalAdd'
+import { useStore } from '../../stores/createStore'
 import { createRoom, MIN_PASSWORD } from '../../services/firebase/roomsApi'
 import { parseRoomInput, roomLink } from '../../utils/format'
 import { storage } from '../../utils/storage'
@@ -15,6 +17,7 @@ export function Home() {
 
   const [code, setCode] = useState('')
   const [joinError, setJoinError] = useState<string | null>(null)
+  const pending = useStore(pendingStore, (s) => s.pending)
 
   async function create(e: FormEvent) {
     e.preventDefault()
@@ -48,6 +51,18 @@ export function Home() {
         <Brand />
       </header>
 
+      {pending && (
+        <div className="pending-banner" role="status">
+          Pronta para tocar: {pending.title ? `"${pending.title}"` : 'música enviada pela extensão'}
+          <small>
+            Crie uma sala ou entre em uma — ela entra na fila automaticamente.{' '}
+            <button type="button" className="link-btn" onClick={clearPendingAdd}>
+              Descartar
+            </button>
+          </small>
+        </div>
+      )}
+
       <main className="home-main">
         <section className="home-intro">
           <h1>Ouçam juntos, no mesmo segundo.</h1>
@@ -61,6 +76,13 @@ export function Home() {
             <span style={{ ['--w' as string]: '62%' }} />
             <i />
           </div>
+          <p className="home-extension">
+            Ouvindo no YouTube?{' '}
+            <a href={appPath('echoroom-chrome.zip')} download>
+              Baixe a extensão para Chrome
+            </a>{' '}
+            e mande a música para a sua sala com um clique.
+          </p>
         </section>
 
         <section className="home-panels">

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseFirebaseConfig } from '../src/config/firebase'
-import { applyCommand, CommandError, emptyRoom, normalizeRoom, toFirebase } from '../src/rooms/roomLogic'
+import { applyCommand, CommandError, emptyRoom, normalizeRoom, queueCapacity, toFirebase } from '../src/rooms/roomLogic'
+import { parseYouTubeLink } from '../src/utils/youtubeUrlParser'
 import { SyncConfig } from '../src/sync/SyncConfig'
 import type { QueueItem, RoomDoc } from '../src/types/room'
 
@@ -110,6 +111,24 @@ describe('roomLogic', () => {
     expect(applyCommand(r, { type: 'TRACK_META', itemId: id, title: 'Outro', duration: 99 }, 2)).toBe(null)
   })
 
+  it('playlist: primeira música toca e o resto vai para a fila', () => {
+    const items = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc'].map((v) => item(v))
+    const r = must(emptyRoom('ABCDE'), { type: 'TRACK_ADD_MANY', items }, 10)
+    expect(r.currentTrack!.videoId).toBe('aaaaaaaaaaa')
+    expect(r.queue.length).toBe(2)
+    expect(r.playbackState).toBe('playing')
+    expect(r.stateVersion).toBe(1)
+  })
+
+  it('playlist respeita o limite da fila', () => {
+    let r = must(emptyRoom('ABCDE'), { type: 'TRACK_ADD', item: item() }, 0)
+    const cap = queueCapacity(r)
+    const many = Array.from({ length: cap + 5 }, () => item('zzzzzzzzzzz'))
+    r = must(r, { type: 'TRACK_ADD_MANY', items: many }, 0)
+    expect(r.queue.length).toBe(SyncConfig.maxQueueSize)
+    expect(queueCapacity(r)).toBe(0)
+  })
+
   it('normaliza o formato que o Firebase devolve', () => {
     let r = emptyRoom('ABCDE')
     for (const v of ['aaaaaaaaaaa', 'bbbbbbbbbbb']) r = must(r, { type: 'TRACK_ADD', item: item(v) }, 0)
@@ -120,6 +139,21 @@ describe('roomLogic', () => {
     expect(normalizeRoom(stored)).toEqual(r)
     expect(normalizeRoom({ roomId: 'ABCDE', playbackState: 'stopped', stateVersion: 0, position: 0 })).toEqual(emptyRoom('ABCDE'))
     expect(normalizeRoom({ roomId: 'X', queue: { 0: item('q'), 1: item('r') } })!.queue.length).toBe(2)
+  })
+})
+
+describe('parseYouTubeLink', () => {
+  it('reconhece playlist, vídeo dentro de playlist e vídeo simples', () => {
+    const list = 'PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG'
+    expect(parseYouTubeLink(`https://www.youtube.com/playlist?list=${list}`)).toEqual({ kind: 'playlist', playlistId: list })
+    expect(parseYouTubeLink(`https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=${list}&index=3`)).toEqual({
+      kind: 'video',
+      videoId: 'dQw4w9WgXcQ',
+      playlistId: list,
+    })
+    expect(parseYouTubeLink('https://youtu.be/dQw4w9WgXcQ')).toEqual({ kind: 'video', videoId: 'dQw4w9WgXcQ', playlistId: null })
+    expect(parseYouTubeLink(`music.youtube.com/playlist?list=${list}`).kind).toBe('playlist')
+    expect(parseYouTubeLink('https://vimeo.com/123?list=PLabcdefghijk').kind).toBe('invalid')
   })
 })
 

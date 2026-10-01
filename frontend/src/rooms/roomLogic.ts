@@ -21,6 +21,7 @@ export type RoomCommand =
   | { type: 'PAUSE' }
   | { type: 'SEEK'; position: number }
   | { type: 'TRACK_ADD'; item: QueueItem }
+  | { type: 'TRACK_ADD_MANY'; items: QueueItem[] }
   | { type: 'TRACK_REMOVE'; itemId: string }
   | { type: 'TRACK_MOVE'; itemId: string; toIndex: number }
   | { type: 'TRACK_SKIP'; currentItemId: string | null }
@@ -150,6 +151,18 @@ function run(doc: RoomDoc, cmd: RoomCommand, now: number, lead: number): boolean
       return true
     }
 
+    case 'TRACK_ADD_MANY': {
+      // Playlist: entra o que couber na fila, na ordem.
+      const items = cmd.items.slice(0, queueCapacity(doc))
+      if (!items.length) throw new CommandError('A fila atingiu o limite de músicas.')
+      if (!doc.currentTrack) {
+        doc.currentTrack = items.shift()!
+        startTrack(doc, now)
+      }
+      doc.queue.push(...items)
+      return true
+    }
+
     case 'TRACK_REMOVE': {
       const i = doc.queue.findIndex((q) => q.id === cmd.itemId)
       if (i < 0) return false
@@ -203,6 +216,11 @@ function run(doc: RoomDoc, cmd: RoomCommand, now: number, lead: number): boolean
       return changed
     }
   }
+}
+
+/** Quantas músicas ainda cabem (a atual não conta para o limite da fila). */
+export function queueCapacity(doc: Pick<RoomDoc, 'queue' | 'currentTrack'>): number {
+  return Math.max(0, SyncConfig.maxQueueSize - doc.queue.length) + (doc.currentTrack ? 0 : 1)
 }
 
 /** Remove `undefined` (o Firebase recusa) mantendo o resto. */

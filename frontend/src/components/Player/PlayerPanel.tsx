@@ -4,6 +4,7 @@ import type { LocalPlayerState, PlayerAdapter } from '../../services/youtube/Pla
 import { useStore } from '../../stores/createStore'
 import { playerStore } from '../../stores/playerStore'
 import { roomStore } from '../../stores/roomStore'
+import { PlayIcon } from '../ui/Icons'
 import { YouTubePlayer } from './YouTubePlayer'
 
 export function PlayerPanel() {
@@ -11,6 +12,7 @@ export function PlayerPanel() {
   const hasTrack = useStore(roomStore, (s) => !!s.room?.currentTrack)
   const loaded = useStore(roomStore, (s) => s.room !== null)
   const error = useStore(playerStore, (s) => s.playerError)
+  const needsGesture = useStore(playerStore, (s) => s.needsGesture)
 
   const onReady = useCallback((p: PlayerAdapter) => session.attachPlayer(p), [session])
   const onState = useCallback((s: LocalPlayerState) => session.handlePlayerState(s), [session])
@@ -35,9 +37,18 @@ export function PlayerPanel() {
           )}
         </div>
       )}
+      {needsGesture && hasTrack && !error && (
+        <button type="button" className="player-unlock" onClick={session.unlockAudio}>
+          <i aria-hidden="true">
+            <PlayIcon width={28} height={28} />
+          </i>
+          <span>Clique para ouvir junto</span>
+          <small>O navegador só libera o som depois de um clique na página.</small>
+        </button>
+      )}
       {error && hasTrack && (
         <div className="player-error" role="alert">
-          {error} Use “Próxima” para pular.
+          {error}
         </div>
       )}
     </div>

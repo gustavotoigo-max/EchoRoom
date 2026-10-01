@@ -48,6 +48,8 @@ jobs:
           # Links diretos como /EchoRoom/room/ABX72 caem no 404 do Pages: servimos o app nele também.
           cp dist/index.html dist/404.html
           touch dist/.nojekyll
+          # Extensão do Chrome para download no próprio site.
+          (cd ../chrome-extension && zip -qr ../frontend/dist/echoroom-chrome.zip .)
 
       - uses: actions/configure-pages@v5
 

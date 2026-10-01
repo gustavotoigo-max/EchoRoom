@@ -6,7 +6,9 @@ import { PlayerPanel } from '../../components/Player/PlayerPanel'
 import { Queue } from '../../components/Queue/Queue'
 import { RoomHeader } from '../../components/RoomHeader/RoomHeader'
 import { Brand } from '../../components/ui/Brand'
+import { Toasts } from '../../components/ui/Toasts'
 import { appPath } from '../../router'
+import { takeAutoJoin } from '../../services/externalAdd'
 import { roomExists } from '../../services/firebase/roomsApi'
 import { RoomSession } from '../../services/roomSession'
 import { RoomSessionContext } from '../../services/RoomSessionContext'
@@ -30,7 +32,11 @@ export function Room({ roomId }: { roomId: string }) {
     roomExists(roomId)
       .then((exists) => {
         if (!alive) return
-        setPhase(exists ? { kind: 'gate' } : { kind: 'missing', message: 'A sala não existe mais.' })
+        if (!exists) return setPhase({ kind: 'missing', message: 'A sala não existe mais.' })
+        // Vindo da extensão com nome e senha já salvos: entra direto.
+        const key = storage.getRoomKey(roomId)
+        if (key && takeAutoJoin(roomId)) return setPhase({ kind: 'joined', roomKey: key, name: storage.getName().trim() })
+        setPhase({ kind: 'gate' })
       })
       .catch((err: Error) => alive && setPhase({ kind: 'missing', message: err.message }))
     return () => {
@@ -113,6 +119,7 @@ function RoomView({ roomId, roomKey, name }: { roomId: string; roomKey: string; 
             <Queue />
           </aside>
         </main>
+        <Toasts />
       </div>
     </RoomSessionContext.Provider>
   )
