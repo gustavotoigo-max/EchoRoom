@@ -22,9 +22,22 @@ export interface FirebaseWebConfig {
 export function parseFirebaseConfig(raw: string | undefined | null): FirebaseWebConfig | null {
   if (!raw || !raw.trim()) return null
   let text = raw.trim()
-  const start = text.indexOf('{')
-  const end = text.lastIndexOf('}')
-  if (start < 0 || end < start) return null
+  // O trecho do console costuma vir com `import { initializeApp } ...` e
+  // `initializeApp(firebaseConfig)`. Isola só o objeto que contém apiKey.
+  const keyAt = text.search(/["']?apiKey["']?\s*:/)
+  if (keyAt < 0) return null
+  const start = text.lastIndexOf('{', keyAt)
+  if (start < 0) return null
+  let depth = 0
+  let end = -1
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === '{') depth++
+    else if (text[i] === '}' && --depth === 0) {
+      end = i
+      break
+    }
+  }
+  if (end < 0) return null
   text = text.slice(start, end + 1)
   // Converte objeto JavaScript em JSON: aspas nas chaves, aspas simples, vírgula final.
   const json = text

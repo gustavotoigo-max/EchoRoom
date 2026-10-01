@@ -138,6 +138,30 @@ describe('parseFirebaseConfig', () => {
     expect(cfg.projectId).toBe('echoroom-1')
     expect(cfg.databaseURL).toBe('https://echoroom-1-default-rtdb.firebaseio.com')
   })
+  it('aceita o código completo com import e initializeApp', () => {
+    const raw = `// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyX",
+  authDomain: "echoroom-a622c.firebaseapp.com",
+  databaseURL: "https://echoroom-a622c-default-rtdb.firebaseio.com",
+  projectId: "echoroom-a622c",
+  storageBucket: "echoroom-a622c.firebasestorage.app",
+  messagingSenderId: "312335679044",
+  appId: "1:312335679044:web:b5ee107fa52879fcf04611"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);`
+    const cfg = parseFirebaseConfig(raw)!
+    expect(cfg.projectId).toBe('echoroom-a622c')
+    expect(cfg.databaseURL).toBe('https://echoroom-a622c-default-rtdb.firebaseio.com')
+    expect(cfg.appId).toBe('1:312335679044:web:b5ee107fa52879fcf04611')
+  })
   it('aceita JSON e completa databaseURL ausente', () => {
     const cfg = parseFirebaseConfig('{"apiKey":"k","projectId":"p1","appId":"a"}')!
     expect(cfg.databaseURL).toBe('https://p1-default-rtdb.firebaseio.com')
