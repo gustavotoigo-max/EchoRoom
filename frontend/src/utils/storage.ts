@@ -1,6 +1,8 @@
 /** Persistência local mínima (nome, id do participante, chaves de sala). */
 
 const NAME_KEY = 'echoroom.name'
+const VOLUME_KEY = 'echoroom.volume'
+const MUTED_KEY = 'echoroom.muted'
 const PID_KEY = 'echoroom.participant'
 const roomKeyKey = (roomId: string) => `echoroom.key.${roomId.toUpperCase()}`
 
@@ -36,6 +38,14 @@ export const storage = {
     }
     return id
   },
+
+  getVolume(): number {
+    const v = Number(read(VOLUME_KEY))
+    return read(VOLUME_KEY) !== null && Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 80
+  },
+  setVolume: (v: number) => write(VOLUME_KEY, String(Math.round(v))),
+  getMuted: () => read(MUTED_KEY) === '1',
+  setMuted: (m: boolean) => write(MUTED_KEY, m ? '1' : '0'),
 
   /** Chave derivada da senha: evita pedir a senha de novo neste navegador. */
   getRoomKey: (roomId: string) => read(roomKeyKey(roomId)),

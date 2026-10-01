@@ -4,6 +4,7 @@ import { useStore } from '../../stores/createStore'
 import { roomStore } from '../../stores/roomStore'
 import { NextIcon, PauseIcon, PlayIcon, RestartIcon } from '../ui/Icons'
 import { ProgressBar } from './ProgressBar'
+import { VolumeControl } from './VolumeControl'
 
 export function Controls() {
   const session = useRoomSession()
@@ -89,6 +90,7 @@ export function Controls() {
         >
           <NextIcon />
         </button>
+        <VolumeControl />
       </div>
 
       <ProgressBar duration={track?.duration ?? null} trackId={track?.id ?? null} disabled={disabled} />

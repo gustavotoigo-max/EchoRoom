@@ -39,6 +39,19 @@ export const PlusIcon = (p: P) => (
     <path d="M10.75 4h2.5v6.75H20v2.5h-6.75V20h-2.5v-6.75H4v-2.5h6.75z" fill="currentColor" />
   </svg>
 )
+export const VolumeIcon = ({ level = 2, ...p }: P & { level?: 0 | 1 | 2 }) => (
+  <svg {...base} {...p}>
+    <path d="M3 9.5h4l5-4.5v14l-5-4.5H3z" fill="currentColor" />
+    {level >= 1 && <path d="M15 9.2a4 4 0 0 1 0 5.6" fill="none" stroke="currentColor" strokeWidth="2" />}
+    {level >= 2 && <path d="M17.6 6.6a7.6 7.6 0 0 1 0 10.8" fill="none" stroke="currentColor" strokeWidth="2" />}
+  </svg>
+)
+export const MutedIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M3 9.5h4l5-4.5v14l-5-4.5H3z" fill="currentColor" />
+    <path d="M15.5 9.5l5 5M20.5 9.5l-5 5" fill="none" stroke="currentColor" strokeWidth="2" />
+  </svg>
+)
 export const CheckIcon = (p: P) => (
   <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2.5">
     <path d="M5 12.5l4.5 4.5L19 7.5" />

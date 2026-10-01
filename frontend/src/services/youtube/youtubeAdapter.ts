@@ -25,6 +25,7 @@ export function createYouTubeAdapter(player: YT.Player): PlayerAdapter {
     mute: () => player.mute(),
     unMute: () => player.unMute(),
     isMuted: () => safe(() => player.isMuted(), false),
+    setVolume: (volume) => player.setVolume(Math.max(0, Math.min(100, Math.round(volume)))),
     getTitle: () =>
       safe(() => (player as unknown as { getVideoData(): { title?: string } }).getVideoData()?.title || null, null),
   }

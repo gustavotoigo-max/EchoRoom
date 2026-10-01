@@ -5,6 +5,7 @@ import { ClockSync } from '../sync/ClockSync'
 import { SyncConfig, isSyncDebug } from '../sync/SyncConfig'
 import { SyncEngine } from '../sync/SyncEngine'
 import type { RoomState } from '../types/room'
+import { storage } from '../utils/storage'
 import { extractVideoId } from '../utils/youtubeUrlParser'
 import { FirebaseRoomBackend } from './firebase/FirebaseRoomBackend'
 import { fetchVideoMeta, thumbnailUrl } from './youtube/metadata'
@@ -20,6 +21,7 @@ export class RoomSession {
   readonly clock: ClockSync
   readonly engine: SyncEngine
   private resyncTimer: ReturnType<typeof setTimeout> | null = null
+  private player: PlayerAdapter | null = null
 
   constructor(
     readonly roomId: string,
@@ -46,6 +48,7 @@ export class RoomSession {
         if (isSyncDebug()) playerStore.set({ metrics: status })
       },
       onPlayerError: (code) => playerStore.set({ playerError: describeYouTubeError(code) }),
+      isUserMuted: () => playerStore.get().muted,
     })
   }
 
@@ -66,10 +69,13 @@ export class RoomSession {
   // ---- player (vindo do componente YouTubePlayer) -------------------------
 
   attachPlayer(p: PlayerAdapter): void {
+    this.player = p
     playerStore.set({ playerReady: true })
+    this.applyVolume()
     this.engine.attachPlayer(p)
   }
   detachPlayer(): void {
+    this.player = null
     playerStore.set({ playerReady: false })
     this.engine.detachPlayer()
   }
@@ -84,6 +90,43 @@ export class RoomSession {
   /** Posição exibida na barra (timeline oficial da sala). */
   getDisplayPosition(): number {
     return roomStore.get().room?.currentTrack ? this.engine.getExpectedPosition() : 0
+  }
+
+  // ---- volume local (não vai para a sala) ----------------------------------
+
+  setVolume = (volume: number) => {
+    const v = Math.max(0, Math.min(100, Math.round(volume)))
+    // Mexer no volume tira do mudo; arrastar até 0 equivale a mudo.
+    playerStore.set({ volume: v, muted: v === 0 })
+    storage.setVolume(v)
+    storage.setMuted(v === 0)
+    this.applyVolume()
+  }
+
+  toggleMute = () => {
+    const { muted, volume } = playerStore.get()
+    const next = !muted
+    // Desmutar com volume 0 volta para um volume audível.
+    if (!next && volume === 0) {
+      playerStore.set({ volume: 50 })
+      storage.setVolume(50)
+    }
+    playerStore.set({ muted: next })
+    storage.setMuted(next)
+    this.applyVolume()
+  }
+
+  private applyVolume(): void {
+    const p = this.player
+    if (!p) return
+    const { volume, muted } = playerStore.get()
+    try {
+      p.setVolume(volume)
+      if (muted) p.mute()
+      else p.unMute()
+    } catch {
+      /* player ainda carregando */
+    }
   }
 
   // ---- ações do usuário ----------------------------------------------------

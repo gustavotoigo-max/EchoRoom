@@ -1,4 +1,5 @@
 import type { SyncStatus, SyncUiState } from '../sync/SyncEngine'
+import { storage } from '../utils/storage'
 import { createStore } from './createStore'
 
 export interface PlayerStoreState {
@@ -7,6 +8,9 @@ export interface PlayerStoreState {
   metrics: SyncStatus | null
   playerError: string | null
   playerReady: boolean
+  /** Volume local 0–100 e mudo (não sincronizados com a sala). */
+  volume: number
+  muted: boolean
 }
 
 export const playerStore = createStore<PlayerStoreState>({
@@ -14,4 +18,6 @@ export const playerStore = createStore<PlayerStoreState>({
   metrics: null,
   playerError: null,
   playerReady: false,
+  volume: typeof window !== 'undefined' ? storage.getVolume() : 80,
+  muted: typeof window !== 'undefined' ? storage.getMuted() : false,
 })

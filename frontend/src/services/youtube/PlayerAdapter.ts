@@ -23,6 +23,8 @@ export interface PlayerAdapter {
   mute(): void
   unMute(): void
   isMuted(): boolean
+  /** Volume local de 0 a 100 (só deste navegador). */
+  setVolume(volume: number): void
   getTitle(): string | null
 }
 

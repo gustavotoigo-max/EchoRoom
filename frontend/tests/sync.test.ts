@@ -118,6 +118,7 @@ class FakePlayer implements PlayerAdapter {
   isMuted() {
     return this.muted
   }
+  setVolume() {}
   getTitle() {
     return 'Seven Nation Army'
   }

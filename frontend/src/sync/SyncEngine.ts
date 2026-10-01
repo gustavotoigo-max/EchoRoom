@@ -33,6 +33,8 @@ export interface SyncEngineDeps {
   onTrackMeta: (itemId: string, title: string | null, duration: number | null) => void
   onStatus: (status: SyncStatus) => void
   onPlayerError?: (code: number) => void
+  /** True se o usuário deixou o som mudo (o engine não desmuta por conta própria). */
+  isUserMuted?: () => boolean
   now?: NowFn
   cfg?: typeof SyncConfig
   /** Para testes: substitui setTimeout/setInterval. */
@@ -424,7 +426,7 @@ export class SyncEngine {
   }
 
   private restoreMute(): void {
-    if (this.mutedByEngine && this.player) this.player.unMute()
+    if (this.mutedByEngine && this.player && !this.deps.isUserMuted?.()) this.player.unMute()
     this.mutedByEngine = false
   }
 
