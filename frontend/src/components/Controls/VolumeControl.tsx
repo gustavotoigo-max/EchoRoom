@@ -25,18 +25,22 @@ export function VolumeControl() {
       >
         {muted || shown === 0 ? <MutedIcon width={18} height={18} /> : <VolumeIcon level={level as 1 | 2} width={18} height={18} />}
       </button>
-      <input
-        type="range"
-        className="volume-range"
-        min={0}
-        max={100}
-        step={1}
-        value={shown}
-        aria-label="Volume (só para você)"
-        aria-valuetext={`${shown}%`}
-        style={{ ['--pct' as string]: `${shown}%` }}
-        onChange={(e) => session.setVolume(Number(e.target.value))}
-      />
+      <div className="volume-slider" style={{ ['--pct' as string]: `${shown}%`, ['--frac' as string]: shown / 100 }}>
+        <span className="volume-value" aria-hidden="true">
+          {shown}%
+        </span>
+        <input
+          type="range"
+          className="volume-range"
+          min={0}
+          max={100}
+          step={1}
+          value={shown}
+          aria-label="Volume (só para você)"
+          aria-valuetext={`${shown}%`}
+          onChange={(e) => session.setVolume(Number(e.target.value))}
+        />
+      </div>
     </div>
   )
 }
