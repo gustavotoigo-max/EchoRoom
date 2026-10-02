@@ -4,11 +4,20 @@ Mostra um botão flutuante **"Tocar no EchoRoom"** nas páginas do YouTube
 (vídeos, shorts e playlists). Ao clicar:
 
 1. copia o link da música,
-2. pausa o vídeo daquela aba (para não tocar em dobro),
-3. manda a música para o EchoRoom:
-   - se já existe uma aba do EchoRoom aberta, a música entra na sala dela;
-   - senão, abre o site, que entra sozinho na **última sala usada** neste
-     navegador (se nome e senha já estiverem salvos) e adiciona a música.
+2. pausa o vídeo daquela aba e segura a pausa por alguns segundos (para não
+   tocar em dobro se o YouTube tentar continuar sozinho),
+3. **sempre abre o EchoRoom na frente** e manda a música:
+   - se já existe uma aba do EchoRoom, muda para ela e a música entra na sala
+     (se a aba não responder, ela é recarregada já com a música);
+   - senão, abre o site numa aba nova ao lado do YouTube, que entra sozinho na
+     **última sala usada** neste navegador (se nome e senha já estiverem
+     salvos) e adiciona a música.
+
+## Atualizar
+
+Baixe o zip de novo no site, substitua os arquivos da pasta e clique no botão
+de recarregar (↻) da extensão em `chrome://extensions`. Depois recarregue as
+abas do YouTube que estavam abertas.
 
 ## Instalar
 

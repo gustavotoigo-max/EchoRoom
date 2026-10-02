@@ -16,35 +16,45 @@ async function focusTab(tab) {
 }
 
 /**
- * Envia a música para o EchoRoom:
+ * Envia a música para o EchoRoom e SEMPRE deixa o site visível:
  * 1. Se já existe uma aba do EchoRoom (de preferência numa sala), entrega a
- *    música nela — sem abrir outra aba e sem som duplicado.
- * 2. Senão, abre o site com ?add=…; o site entra na última sala usada.
+ *    música nela e muda para ela. Se a aba não responder (aberta antes da
+ *    extensão, suspensa pelo Chrome, etc.), recarrega a aba com ?add=.
+ * 2. Senão, abre o site numa aba nova ao lado da aba do YouTube; ele entra
+ *    na última sala usada e adiciona a música.
  */
-async function sendToEchoRoom({ url, title }) {
+async function sendToEchoRoom({ url, title }, sender) {
   const tabs = await chrome.tabs.query({ url: SITE + '*' })
-  const tab = tabs.find((t) => /\/room\//.test(t.url || '')) || tabs[0]
+  const tab = tabs.find((t) => /\/room\//.test(t.url || '') && !t.discarded) || tabs.find((t) => /\/room\//.test(t.url || '')) || tabs[0]
+
   if (tab) {
-    try {
-      const res = await chrome.tabs.sendMessage(tab.id, { type: 'ECHOROOM_ADD', url, title })
-      if (res && res.ok) {
-        await focusTab(tab)
-        return { ok: true, mode: 'tab' }
+    let delivered = false
+    if (!tab.discarded && tab.status !== 'unloaded') {
+      try {
+        const res = await chrome.tabs.sendMessage(tab.id, { type: 'ECHOROOM_ADD', url, title })
+        delivered = !!(res && res.ok)
+      } catch {
+        delivered = false
       }
-    } catch {
-      // Aba aberta antes da extensão ser instalada: não tem o script. Recarrega com ?add=.
     }
-    await chrome.tabs.update(tab.id, { url: siteUrlWithAdd(url, title), active: true })
-    await chrome.windows.update(tab.windowId, { focused: true })
-    return { ok: true, mode: 'reload' }
+    if (!delivered) await chrome.tabs.update(tab.id, { url: siteUrlWithAdd(url, title) })
+    await focusTab(tab)
+    return { ok: true, mode: delivered ? 'tab' : 'reload' }
   }
-  await chrome.tabs.create({ url: siteUrlWithAdd(url, title) })
+
+  const opener = sender && sender.tab
+  const created = await chrome.tabs.create({
+    url: siteUrlWithAdd(url, title),
+    active: true,
+    ...(opener ? { windowId: opener.windowId, index: opener.index + 1 } : {}),
+  })
+  await chrome.windows.update(created.windowId, { focused: true })
   return { ok: true, mode: 'new' }
 }
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === 'ECHOROOM_SEND' && typeof msg.url === 'string') {
-    sendToEchoRoom(msg).then(sendResponse, (err) => sendResponse({ ok: false, error: String(err) }))
+    sendToEchoRoom(msg, sender).then(sendResponse, (err) => sendResponse({ ok: false, error: String(err) }))
     return true // resposta assíncrona
   }
   return false

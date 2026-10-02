@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "EchoRoom — tocar na sala",
   "short_name": "EchoRoom",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Botão flutuante no YouTube que manda a música (ou playlist) para a sua sala do EchoRoom.",
   "icons": {
     "16": "icons/icon16.png",

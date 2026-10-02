@@ -117,14 +117,8 @@
     } catch {
       /* sem permissão de área de transferência: segue */
     }
-    // Evita ouvir em dobro: pausa o vídeo desta aba.
-    document.querySelectorAll('video').forEach((v) => {
-      try {
-        v.pause()
-      } catch {
-        /* ignora */
-      }
-    })
+    // Evita ouvir em dobro: pausa o vídeo desta aba (e segura a pausa).
+    pauseHere()
     try {
       const res = await chrome.runtime.sendMessage({ type: 'ECHOROOM_SEND', url: t.url, title: t.title })
       if (res && res.ok) setLabel('Enviado para a sala ✓', 'ok')
@@ -135,6 +129,37 @@
     busy = false
     resetTimer = setTimeout(refresh, 2500)
   })
+
+  /**
+   * Pausa o YouTube desta aba. Por alguns segundos, se o player tentar voltar
+   * a tocar sozinho (troca de foco, autoplay, próxima da fila), pausa de novo.
+   */
+  let holdUntil = 0
+  function pauseVideos() {
+    document.querySelectorAll('video').forEach((v) => {
+      try {
+        if (!v.paused) v.pause()
+      } catch {
+        /* ignora */
+      }
+    })
+  }
+  function pauseHere() {
+    holdUntil = Date.now() + 8000
+    pauseVideos()
+  }
+  document.addEventListener(
+    'play',
+    (e) => {
+      if (Date.now() < holdUntil && e.target instanceof HTMLVideoElement) e.target.pause()
+    },
+    true,
+  )
+  // O usuário pode dar play de novo de propósito: libera a pausa ao clicar no player.
+  document.addEventListener('pointerdown', (e) => {
+    if (e.target instanceof Element && e.target.closest('#movie_player, ytmusic-player, video')) holdUntil = 0
+  }, true)
+  document.addEventListener('keydown', () => { holdUntil = 0 }, true)
 
   closeBtn.addEventListener('click', () => {
     hidden = true
