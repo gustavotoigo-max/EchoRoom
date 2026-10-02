@@ -32,6 +32,9 @@ Endereço: `https://<usuário>.github.io/EchoRoom/`
   API); entram até o limite da fila (200).
 - Vídeos indisponíveis (removidos, privados ou sem incorporação) são pulados
   automaticamente.
+- **Sugestões**: músicas e playlists adicionadas em qualquer sala ficam salvas
+  (`/library` no Firebase) e aparecem na sala ordenadas por mais tocadas ou
+  recentes, com busca e adição em um clique.
 - Quem entra numa sala com música tocando recebe um aviso e começa do ponto atual.
 - Se o navegador bloquear o som (autoplay), aparece "Clique para ouvir junto".
 - **Extensão para Chrome** (`chrome-extension/`): botão flutuante no YouTube que

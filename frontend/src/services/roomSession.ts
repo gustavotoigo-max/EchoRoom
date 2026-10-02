@@ -11,7 +11,8 @@ import { storage } from '../utils/storage'
 import { parseYouTubeLink } from '../utils/youtubeUrlParser'
 import { consumePendingAdd, setActiveSession } from './externalAdd'
 import { FirebaseRoomBackend } from './firebase/FirebaseRoomBackend'
-import { fetchManyVideoMeta, fetchVideoMeta, thumbnailUrl } from './youtube/metadata'
+import { fixTrackTitle, recordPlaylist, recordTrack } from './firebase/library'
+import { fetchManyVideoMeta, fetchPlaylistTitle, fetchVideoMeta, thumbnailUrl } from './youtube/metadata'
 import { loadPlaylistVideoIds } from './youtube/playlist'
 import { describeYouTubeError, type LocalPlayerState, type PlayerAdapter } from './youtube/PlayerAdapter'
 
@@ -48,7 +49,11 @@ export class RoomSession {
     this.engine = new SyncEngine({
       clock: this.clock,
       onTrackEnded: (itemId) => this.fire({ type: 'TRACK_ENDED', itemId }),
-      onTrackMeta: (itemId, title, duration) => this.fire({ type: 'TRACK_META', itemId, title, duration }),
+      onTrackMeta: (itemId, title, duration) => {
+        this.fire({ type: 'TRACK_META', itemId, title, duration })
+        const videoId = roomStore.get().room?.currentTrack?.videoId
+        if (title && videoId) void fixTrackTitle(videoId, title)
+      },
       onStatus: (status) => {
         playerStore.set({ sync: status.ui })
         if (isSyncDebug()) playerStore.set({ metrics: status })
@@ -166,7 +171,7 @@ export class RoomSession {
    */
   addTrack = async (
     url: string,
-    opts: { title?: string; wholePlaylist?: boolean; onProgress?: (text: string) => void } = {},
+    opts: { title?: string; playlistTitle?: string; wholePlaylist?: boolean; onProgress?: (text: string) => void } = {},
   ): Promise<{ added: number; skipped: number; title: string }> => {
     const link = parseYouTubeLink(url)
     if (link.kind === 'invalid') {
@@ -175,7 +180,7 @@ export class RoomSession {
     if (link.kind === 'playlist' || (opts.wholePlaylist && link.playlistId)) {
       const playlistId = link.kind === 'playlist' ? link.playlistId : link.playlistId!
       const startAt = link.kind === 'video' ? link.videoId : null
-      return this.addPlaylist(playlistId, startAt, opts.onProgress)
+      return this.addPlaylist(playlistId, startAt, opts.onProgress, link.kind === 'playlist' ? opts.title ?? opts.playlistTitle : opts.playlistTitle)
     }
     const meta = await fetchVideoMeta(link.videoId)
     const title = meta.resolved ? meta.title : opts.title?.trim() || meta.title
@@ -183,6 +188,7 @@ export class RoomSession {
       type: 'TRACK_ADD',
       item: this.makeItem(link.videoId, { ...meta, title, resolved: meta.resolved || !!opts.title }),
     })
+    void recordTrack(link.videoId, title, meta.author, this.name)
     return { added: 1, skipped: 0, title }
   }
 
@@ -190,9 +196,13 @@ export class RoomSession {
     playlistId: string,
     startAtVideoId: string | null,
     onProgress?: (text: string) => void,
+    knownTitle?: string,
   ): Promise<{ added: number; skipped: number; title: string }> {
     onProgress?.('Lendo a playlist…')
+    const titlePromise = knownTitle ? Promise.resolve(knownTitle) : fetchPlaylistTitle(playlistId)
     let ids = await loadPlaylistVideoIds(playlistId)
+    const fullSize = ids.length
+    const firstVideoId = ids[0]
     if (startAtVideoId) {
       const i = ids.indexOf(startAtVideoId)
       if (i > 0) ids = ids.slice(i)
@@ -208,7 +218,9 @@ export class RoomSession {
       type: 'TRACK_ADD_MANY',
       items: ids.map((id, i) => this.makeItem(id, metas[i])),
     })
-    return { added: ids.length, skipped: total - ids.length, title: 'playlist' }
+    const name = (await titlePromise) || `Playlist de ${metas[0]?.resolved ? metas[0].title : `${fullSize} músicas`}`
+    void recordPlaylist(playlistId, name, fullSize, firstVideoId, this.name)
+    return { added: ids.length, skipped: total - ids.length, title: name }
   }
 
   private makeItem(videoId: string, meta: { title: string; author: string; resolved: boolean }): QueueItem {

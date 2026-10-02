@@ -11,6 +11,24 @@
       }
     },
 
+    "library": {
+      ".read": "auth != null",
+      "tracks": {
+        ".indexOn": ["lastAt"],
+        "$videoId": {
+          ".write": "auth != null",
+          ".validate": "$videoId.matches(/^[A-Za-z0-9_-]{11}$/) && newData.hasChildren(['title', 'count', 'lastAt']) && newData.child('count').isNumber()"
+        }
+      },
+      "playlists": {
+        ".indexOn": ["lastAt"],
+        "$listId": {
+          ".write": "auth != null",
+          ".validate": "$listId.matches(/^[A-Za-z0-9_-]{10,64}$/) && newData.hasChildren(['title', 'count', 'lastAt']) && newData.child('count').isNumber()"
+        }
+      }
+    },
+
     "rooms": {
       "$roomKey": {
         ".read": "auth != null",

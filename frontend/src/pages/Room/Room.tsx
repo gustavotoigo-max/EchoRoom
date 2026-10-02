@@ -5,6 +5,7 @@ import { Participants } from '../../components/Participants/Participants'
 import { PlayerPanel } from '../../components/Player/PlayerPanel'
 import { Queue } from '../../components/Queue/Queue'
 import { RoomHeader } from '../../components/RoomHeader/RoomHeader'
+import { Suggestions } from '../../components/Suggestions/Suggestions'
 import { Brand } from '../../components/ui/Brand'
 import { Toasts } from '../../components/ui/Toasts'
 import { appPath } from '../../router'
@@ -113,6 +114,7 @@ function RoomView({ roomId, roomKey, name }: { roomId: string; roomKey: string; 
             <PlayerPanel />
             <Controls />
             <AddTrack />
+            <Suggestions />
           </div>
           <aside className="room-side">
             <Participants />

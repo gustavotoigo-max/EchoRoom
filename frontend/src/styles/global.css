@@ -741,6 +741,185 @@ input[readonly] {
   cursor: pointer;
 }
 
+/* Sugestões (biblioteca do grupo) */
+.suggestions {
+  padding: 8px 28px 32px;
+}
+.sugg-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 14px 0 12px;
+  border-top: 1px solid var(--line-soft);
+}
+.sugg-head h3 {
+  font-size: 15px;
+  font-weight: 800;
+  margin-right: 4px;
+}
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+}
+.seg button {
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: 600 13px/1 var(--font);
+  cursor: pointer;
+}
+.seg button + button {
+  border-left: 1px solid var(--line);
+}
+.seg button:hover {
+  color: var(--text);
+}
+.seg button.on {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.seg button span {
+  margin-left: 4px;
+  color: var(--text-faint);
+}
+.seg-quiet button.on {
+  background: transparent;
+  color: var(--green-hi);
+}
+.sugg-search {
+  flex: 1;
+  min-width: 180px;
+  height: 34px !important;
+}
+.sugg-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+}
+.sugg-item {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto 24px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 8px;
+  background: var(--surface);
+}
+.sugg-item:hover {
+  background: var(--surface-2);
+}
+.sugg-thumb {
+  position: relative;
+  width: 64px;
+  height: 36px;
+  background: var(--bg-deep);
+}
+.sugg-thumb img {
+  display: block;
+  width: 64px;
+  height: 36px;
+  object-fit: cover;
+}
+/* Playlist: miniatura com faixa lateral e quantidade de músicas */
+.sugg-thumb.is-playlist::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 26px;
+  background: rgba(11, 21, 28, 0.82);
+}
+.sugg-thumb b {
+  position: absolute;
+  z-index: 1;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 26px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  color: var(--text);
+}
+.sugg-text {
+  display: grid;
+  min-width: 0;
+}
+.sugg-title,
+.sugg-sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sugg-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.sugg-sub {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.sugg-add {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 13px;
+  gap: 6px;
+}
+.sugg-add:disabled {
+  opacity: 0.6;
+}
+.sugg-remove {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 16px;
+  cursor: pointer;
+}
+.sugg-remove:hover {
+  color: var(--red);
+}
+.sugg-empty {
+  padding: 4px 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  max-width: 60ch;
+}
+.sugg-more {
+  margin-top: 10px;
+  height: 34px;
+  font-size: 13px;
+}
+@media (max-width: 1200px) {
+  .sugg-list {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 900px) {
+  .suggestions {
+    padding: 8px 16px 24px;
+  }
+}
+@media (max-width: 480px) {
+  .sugg-search {
+    flex-basis: 100%;
+  }
+  .sugg-item {
+    grid-template-columns: 56px minmax(0, 1fr) auto 22px;
+    gap: 8px;
+  }
+  .sugg-thumb,
+  .sugg-thumb img {
+    width: 56px;
+    height: 32px;
+  }
+}
+
 /* Coluna lateral */
 .side-block {
   display: flex;

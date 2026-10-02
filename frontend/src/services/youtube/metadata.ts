@@ -56,3 +56,18 @@ export async function fetchVideoMeta(videoId: string, timeoutMs = 3000): Promise
   }
   return { title: `youtu.be/${videoId}`, author: '', resolved: false }
 }
+
+/** Nome de uma playlist (oEmbed via noembed). Null se não conseguir. */
+export async function fetchPlaylistTitle(listId: string, timeoutMs = 4000): Promise<string | null> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const url = `https://noembed.com/embed?url=${encodeURIComponent(`https://www.youtube.com/playlist?list=${listId}`)}`
+    const data = (await (await fetch(url, { signal: ctrl.signal })).json()) as { title?: string; error?: string }
+    return data.title && !data.error ? data.title.slice(0, 200) : null
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
