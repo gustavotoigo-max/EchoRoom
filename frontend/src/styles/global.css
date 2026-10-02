@@ -965,8 +965,76 @@ input[readonly] {
   }
 }
 
+/* Esconder vídeo (mini player) */
+.player-area {
+  flex: none;
+}
+.video-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  background: rgba(11, 21, 28, 0.86);
+  color: var(--text);
+  font: 600 13px/1 var(--font);
+  cursor: pointer;
+}
+.video-toggle:hover {
+  background: var(--surface-3);
+}
+.player-area.is-compact {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 28px;
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--line-soft);
+}
+.player-area.is-compact .player-frame {
+  width: 356px;
+  height: 200px;
+  min-height: 200px;
+  max-height: none;
+  aspect-ratio: auto;
+  flex: none;
+}
+.player-area.is-compact .player-unlock small,
+.player-area.is-compact .player-empty span {
+  display: none;
+}
+.player-area.is-compact .player-unlock {
+  font-size: 14px;
+}
+.player-area.is-compact .player-unlock i {
+  width: 48px;
+  height: 48px;
+}
+.player-compact-info {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  max-width: 40ch;
+}
+.player-compact-info strong {
+  font-size: 15px;
+}
+.player-compact-info p {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.player-compact-info .btn {
+  margin-top: 4px;
+}
+
 /* Autoplay bloqueado pelo navegador */
 .player-unlock {
+  z-index: 2;
   position: absolute;
   inset: 0;
   display: grid;
@@ -1025,6 +1093,110 @@ input[readonly] {
   font-size: 14px;
 }
 
+/* Guia da extensão (página inicial) */
+.ext-guide {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px 72px;
+}
+.ext-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding-top: 40px;
+  border-top: 1px solid var(--line-soft);
+}
+.ext-head h2 {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+.ext-head p {
+  margin-top: 8px;
+  max-width: 62ch;
+  color: var(--text-muted);
+}
+.ext-head strong {
+  color: var(--text);
+}
+.ext-steps {
+  list-style: none;
+  counter-reset: step;
+  margin: 28px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+}
+.ext-steps li {
+  counter-increment: step;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 20px;
+  background: var(--surface);
+}
+.ext-steps li::before {
+  content: counter(step);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--green);
+}
+.ext-steps strong {
+  font-size: 15px;
+}
+.ext-steps span {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.ext-steps em {
+  font-style: normal;
+  color: var(--text);
+  font-weight: 600;
+}
+.ext-steps code,
+.ext-note code {
+  color: var(--green-hi);
+  font-size: 13px;
+}
+.ext-copy {
+  display: flex !important;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ext-copy .btn {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.ext-note {
+  margin-top: 16px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+@media (max-width: 1080px) {
+  .ext-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .ext-guide {
+    padding: 0 16px 48px;
+  }
+  .ext-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ext-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Placeholders com o mesmo tamanho final */
 .skeleton {
   background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2));
@@ -1066,7 +1238,8 @@ input[readonly] {
   .room {
     height: auto;
     min-height: 100%;
-    grid-template-rows: auto auto;
+    grid-template-rows: auto 1fr;
+    align-content: start;
   }
   .room-grid {
     grid-template-columns: 1fr;
@@ -1114,5 +1287,37 @@ input[readonly] {
   }
   .volume-slider {
     width: 200px;
+  }
+}
+
+.ext-copy .btn span {
+  color: inherit;
+  font-size: inherit;
+}
+
+@media (max-width: 900px) {
+  .player-area.is-compact {
+    padding: 16px;
+    gap: 16px;
+  }
+}
+@media (max-width: 560px) {
+  .player-area.is-compact {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .player-area.is-compact .player-frame {
+    width: 100%;
+  }
+  .player-compact-info {
+    max-width: none;
+  }
+  .video-toggle span {
+    display: none;
+  }
+  .video-toggle {
+    width: 34px;
+    padding: 0;
+    justify-content: center;
   }
 }

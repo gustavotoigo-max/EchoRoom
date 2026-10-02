@@ -13,6 +13,8 @@ export interface PlayerStoreState {
   muted: boolean
   /** O navegador bloqueou o som até um clique na página. */
   needsGesture: boolean
+  /** Vídeo reduzido a um mini player (preferência deste navegador). */
+  videoHidden: boolean
 }
 
 export const playerStore = createStore<PlayerStoreState>({
@@ -23,4 +25,5 @@ export const playerStore = createStore<PlayerStoreState>({
   volume: typeof window !== 'undefined' ? storage.getVolume() : 80,
   muted: typeof window !== 'undefined' ? storage.getMuted() : false,
   needsGesture: false,
+  videoHidden: typeof window !== 'undefined' ? storage.getVideoHidden() : false,
 })

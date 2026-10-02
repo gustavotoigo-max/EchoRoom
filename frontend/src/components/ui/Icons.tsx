@@ -52,6 +52,16 @@ export const MutedIcon = (p: P) => (
     <path d="M15.5 9.5l5 5M20.5 9.5l-5 5" fill="none" stroke="currentColor" strokeWidth="2" />
   </svg>
 )
+export const ShrinkIcon = (p: P) => (
+  <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7" />
+  </svg>
+)
+export const ExpandIcon = (p: P) => (
+  <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+  </svg>
+)
 export const CheckIcon = (p: P) => (
   <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2.5">
     <path d="M5 12.5l4.5 4.5L19 7.5" />

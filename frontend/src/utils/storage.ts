@@ -4,6 +4,7 @@ const NAME_KEY = 'echoroom.name'
 const VOLUME_KEY = 'echoroom.volume'
 const MUTED_KEY = 'echoroom.muted'
 const LAST_ROOM_KEY = 'echoroom.lastRoom'
+const VIDEO_HIDDEN_KEY = 'echoroom.videoHidden'
 const PID_KEY = 'echoroom.participant'
 const roomKeyKey = (roomId: string) => `echoroom.key.${roomId.toUpperCase()}`
 
@@ -47,6 +48,10 @@ export const storage = {
   setVolume: (v: number) => write(VOLUME_KEY, String(Math.round(v))),
   getMuted: () => read(MUTED_KEY) === '1',
   setMuted: (m: boolean) => write(MUTED_KEY, m ? '1' : '0'),
+
+  /** Vídeo reduzido (mini player) para economizar processamento. */
+  getVideoHidden: () => read(VIDEO_HIDDEN_KEY) === '1',
+  setVideoHidden: (v: boolean) => write(VIDEO_HIDDEN_KEY, v ? '1' : '0'),
 
   /** Última sala em que o usuário entrou (usada pela extensão). */
   getLastRoom: () => read(LAST_ROOM_KEY),

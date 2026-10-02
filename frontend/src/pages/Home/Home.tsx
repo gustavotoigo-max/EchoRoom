@@ -77,11 +77,8 @@ export function Home() {
             <i />
           </div>
           <p className="home-extension">
-            Ouvindo no YouTube?{' '}
-            <a href={appPath('echoroom-chrome.zip')} download>
-              Baixe a extensão para Chrome
-            </a>{' '}
-            e mande a música para a sua sala com um clique.
+            Ouvindo no YouTube? <a href="#extensao">Instale a extensão para Chrome</a> e mande a música para a sua sala
+            com um clique.
           </p>
         </section>
 
@@ -157,6 +154,73 @@ export function Home() {
           </form>
         </section>
       </main>
+
+      <ExtensionGuide />
     </div>
+  )
+}
+
+/** Passo a passo de instalação da extensão (não está na Chrome Web Store). */
+function ExtensionGuide() {
+  return (
+    <section className="ext-guide" id="extensao" aria-labelledby="ext-title">
+      <div className="ext-head">
+        <div>
+          <h2 id="ext-title">Extensão para Chrome</h2>
+          <p>
+            Coloca um botão <strong>Tocar no EchoRoom</strong> nos vídeos e playlists do YouTube. Um clique pausa o
+            YouTube, abre o EchoRoom e já coloca a música na última sala em que você entrou.
+          </p>
+        </div>
+        <a className="btn btn-primary" href={appPath('echoroom-chrome.zip')} download>
+          Baixar extensão (.zip)
+        </a>
+      </div>
+
+      <ol className="ext-steps">
+        <li>
+          <strong>Baixe e descompacte</strong>
+          <span>
+            Clique em “Baixar extensão”. No arquivo baixado, clique com o botão direito → <em>Extrair tudo</em>. Guarde
+            a pasta num lugar fixo: o Chrome usa ela enquanto a extensão estiver instalada.
+          </span>
+        </li>
+        <li>
+          <strong>Abra as extensões do Chrome</strong>
+          <span>
+            Cole na barra de endereços e aperte Enter:
+            <span className="ext-copy">
+              <code>chrome://extensions</code>
+              <CopyButton text="chrome://extensions" label="Copiar" doneLabel="Copiado" />
+            </span>
+          </span>
+        </li>
+        <li>
+          <strong>Ligue o modo do desenvolvedor</strong>
+          <span>
+            A chave <em>Modo do desenvolvedor</em> fica no canto superior direito da página de extensões.
+          </span>
+        </li>
+        <li>
+          <strong>Carregue a pasta</strong>
+          <span>
+            Clique em <em>Carregar sem compactação</em> e escolha a pasta que você descompactou (a que contém o arquivo{' '}
+            <code>manifest.json</code>).
+          </span>
+        </li>
+        <li>
+          <strong>Use no YouTube</strong>
+          <span>
+            Abra um vídeo ou playlist: o botão aparece no canto direito da tela. Dá para arrastar pela alça ⋮⋮ ou
+            esconder pelo ×. Entre numa sala do EchoRoom pelo menos uma vez para a extensão saber para onde mandar.
+          </span>
+        </li>
+      </ol>
+
+      <p className="ext-note">
+        Para atualizar: baixe o zip de novo, substitua os arquivos da pasta e clique em ↻ no card da extensão em{' '}
+        <code>chrome://extensions</code>. Funciona também no Edge, Brave e Opera (página de extensões de cada um).
+      </p>
+    </section>
   )
 }
