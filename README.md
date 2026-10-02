@@ -39,8 +39,13 @@ Endereço: `https://<usuário>.github.io/EchoRoom/`
   criando a variável `DISCORD_CLIENT_ID` no GitHub (Settings → Secrets and
   variables → Actions → Variables). O avatar aparece na lista de participantes.
   Quem não quiser entra como convidado.
-- Temas: desativados por enquanto (interface em reformulação); o mecanismo
-  está em `frontend/src/theme/`.
+- **Páginas:** `/` apresentação, `/comecar` criar ou entrar numa sala,
+  `/room/CODIGO` a sala.
+- **Visual "Frequência":** estrutura no estilo do Discord (fila à esquerda,
+  membros à direita, painel do usuário) com identidade própria (gradiente
+  violeta → azul → ciano). O símbolo é provisório: fica em `BrandMark`
+  (`frontend/src/components/ui/Icons.tsx`) e em `frontend/public/favicon.svg`.
+- Temas: desativados por enquanto; o mecanismo está em `frontend/src/theme/`.
 - Quem entra numa sala com música tocando recebe um aviso e começa do ponto atual.
 - Se o navegador bloquear o som (autoplay), aparece "Clique para ouvir junto".
 - **Extensão para Chrome** (`chrome-extension/`): botão flutuante no YouTube que

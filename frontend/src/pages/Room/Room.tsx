@@ -9,7 +9,7 @@ import { Suggestions } from '../../components/Suggestions/Suggestions'
 import { Brand } from '../../components/ui/Brand'
 import { Toasts } from '../../components/ui/Toasts'
 import { UserPanel } from '../../components/UserPanel/UserPanel'
-import { appPath } from '../../router'
+import { appPath, START_PATH } from '../../router'
 import { authStore } from '../../services/discordAuth'
 import { takeAutoJoin } from '../../services/externalAdd'
 import { roomExists } from '../../services/firebase/roomsApi'
@@ -74,7 +74,7 @@ export function Room({ roomId }: { roomId: string }) {
           <div className="panel gate">
             <h2>{phase.message}</h2>
             <p className="hint">Confira o link com quem criou a sala ou crie uma nova.</p>
-            <a className="btn btn-primary" href={appPath('/')}>
+            <a className="btn btn-primary" href={appPath(START_PATH)}>
               Criar uma sala
             </a>
           </div>

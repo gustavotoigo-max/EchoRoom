@@ -1853,6 +1853,7 @@ input[readonly] {
     padding: 0 16px;
   }
   .room {
+    overflow-x: clip;
     height: auto;
     min-height: 100%;
     grid-template-rows: auto 1fr;

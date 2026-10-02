@@ -1,4 +1,4 @@
-import { appPath, navigate } from '../router'
+import { appPath, navigate, START_PATH } from '../router'
 import { createStore } from '../stores/createStore'
 import { storage } from '../utils/storage'
 import { authStore } from './discordAuth'
@@ -91,7 +91,7 @@ export function handleExternalAdd(add: PendingAdd, replace = false): void {
     }
     navigate(`/room/${last}`, replace)
   } else {
-    navigate('/', replace)
+    navigate(START_PATH, replace)
   }
 }
 

@@ -1,0 +1,556 @@
+/* Página de apresentação: topo amplo com brilho, prévia da sala e três seções curtas. */
+
+.landing {
+  min-height: 100%;
+  background: var(--bg-deep);
+  overflow-x: hidden;
+}
+.lp-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(10, 11, 17, 0.78);
+  backdrop-filter: blur(12px);
+}
+.lp-topbar .topnav {
+  margin-left: auto;
+  margin-right: 8px;
+}
+.lp-open {
+  height: 36px;
+}
+.lp-open .avatar {
+  width: 22px;
+  height: 22px;
+}
+.btn-lg {
+  height: 50px;
+  padding: 0 26px;
+  font-size: 15px;
+}
+
+/* ---- topo ---------------------------------------------------------------- */
+
+.lp-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 96px 24px 0;
+}
+.lp-glow {
+  position: absolute;
+  z-index: 0;
+  top: -120px;
+  left: 50%;
+  width: 1200px;
+  height: 900px;
+  transform: translateX(-50%);
+  background:
+    radial-gradient(closest-side at 35% 45%, rgba(139, 92, 255, 0.42), transparent),
+    radial-gradient(closest-side at 65% 50%, rgba(76, 141, 255, 0.3), transparent),
+    radial-gradient(closest-side at 50% 80%, rgba(47, 224, 196, 0.18), transparent);
+  filter: blur(40px);
+  pointer-events: none;
+}
+.lp-hero > *:not(.lp-glow) {
+  position: relative;
+  z-index: 1;
+}
+.lp-hero .eyebrow {
+  margin-bottom: 28px;
+}
+.lp-hero h1 {
+  font-size: clamp(42px, 7vw, 88px);
+  line-height: 1;
+  letter-spacing: -0.045em;
+  font-weight: 700;
+}
+.lp-hero h1 em {
+  font-style: normal;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.lp-lead {
+  max-width: 58ch;
+  margin-top: 28px;
+  color: var(--text-muted);
+  font-size: 18px;
+}
+.lp-cta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 36px;
+}
+.lp-note {
+  display: block;
+  margin-top: 18px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+.lp-note svg {
+  vertical-align: -3px;
+  margin-right: 6px;
+  color: var(--discord);
+}
+
+/* ---- prévia da sala ------------------------------------------------------- */
+
+.mock {
+  width: 100%;
+  max-width: 1080px;
+  margin-top: 72px;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  box-shadow:
+    0 40px 120px rgba(124, 92, 255, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.03);
+  font-size: 13px;
+  user-select: none;
+}
+.mock-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 46px;
+  padding: 0 14px;
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--line-soft);
+}
+.mock-room {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+}
+.mock-room i {
+  width: 14px;
+  height: 12px;
+  background: repeating-linear-gradient(90deg, var(--text-faint) 0 2px, transparent 2px 4px);
+}
+.mock-room b {
+  color: var(--text);
+  letter-spacing: 0.1em;
+}
+.mock-status {
+  margin-left: auto;
+  padding: 4px 10px;
+  color: var(--live);
+  background: var(--surface);
+  font-weight: 600;
+}
+.mock-invite {
+  padding: 5px 12px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.mock-grid {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 190px;
+  min-height: 380px;
+}
+.mock-left,
+.mock-right {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 14px 10px;
+  background: var(--bg-deep);
+}
+.mock-left {
+  border-right: 1px solid var(--line-soft);
+}
+.mock-right {
+  border-left: 1px solid var(--line-soft);
+}
+.mock small {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.mock-q {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+}
+.mock-q:first-of-type {
+  background: var(--surface);
+}
+.mock-q > span {
+  height: 28px;
+}
+.mock-q div,
+.mock-p {
+  min-width: 0;
+}
+.mock-q b,
+.mock-q em {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mock-q em {
+  font-style: normal;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.mock-main {
+  display: flex;
+  flex-direction: column;
+}
+.mock-video {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+  background:
+    radial-gradient(60% 80% at 30% 30%, rgba(139, 92, 255, 0.55), transparent),
+    radial-gradient(60% 80% at 75% 70%, rgba(47, 224, 196, 0.35), transparent),
+    #0b0c18;
+  overflow: hidden;
+}
+/* Ondas concêntricas: o "eco" */
+.mock-art {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 0 0 22px rgba(255, 255, 255, 0.06),
+    0 0 0 44px rgba(255, 255, 255, 0.04),
+    0 0 0 66px rgba(255, 255, 255, 0.025);
+  animation: breathe 3.2s ease-in-out infinite;
+}
+@keyframes breathe {
+  50% {
+    transform: scale(1.06);
+  }
+}
+.mock-np {
+  display: grid;
+  gap: 6px;
+  padding: 14px 18px 18px;
+  background: var(--surface);
+}
+.mock-np small {
+  padding: 0;
+  color: var(--live);
+}
+.mock-np b {
+  font-family: var(--font-display);
+  font-size: 18px;
+}
+.mock-progress {
+  height: 4px;
+  margin-top: 6px;
+  background: var(--surface-3);
+}
+.mock-progress span {
+  display: block;
+  height: 100%;
+  width: 38%;
+  background: var(--grad);
+  animation: progress 18s linear infinite;
+}
+@keyframes progress {
+  from {
+    width: 18%;
+  }
+  to {
+    width: 88%;
+  }
+}
+.mock-p {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+}
+.mock-p > span:first-child {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.mock-p b {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- seções ------------------------------------------------------------- */
+
+.lp-section {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 120px 24px 0;
+}
+.lp-head {
+  max-width: 640px;
+  margin-bottom: 40px;
+}
+.lp-kicker {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--accent-hi);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.lp-head h2 {
+  font-size: clamp(30px, 4vw, 44px);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+.lp-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+}
+.lp-steps li {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 32px 28px;
+  background: var(--surface);
+}
+.lp-steps b {
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: 1;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  justify-self: start;
+}
+.lp-steps strong {
+  font-size: 18px;
+}
+.lp-steps span {
+  color: var(--text-muted);
+}
+
+.lp-features {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px;
+}
+.lp-feature {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 28px;
+  background: var(--surface);
+  transition: background-color 0.15s;
+}
+.lp-feature:hover {
+  background: var(--surface-2);
+}
+.lp-feature h3 {
+  font-size: 17px;
+  font-weight: 700;
+}
+.lp-feature p {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.lp-feature a {
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.lp-feature-wide {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 40px;
+  padding: 40px;
+  background:
+    radial-gradient(80% 120% at 100% 50%, rgba(124, 92, 255, 0.14), transparent),
+    var(--surface);
+}
+.lp-feature-wide h3 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  letter-spacing: -0.02em;
+}
+.lp-feature-wide p {
+  margin-top: 10px;
+  font-size: 16px;
+  max-width: 48ch;
+}
+/* Três linhas do tempo e um cursor em comum */
+.lp-sync {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  padding: 8px 0;
+}
+.lp-sync span {
+  height: 8px;
+  background: var(--surface-3);
+  position: relative;
+}
+.lp-sync span::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 64%;
+  background: var(--c);
+  animation: fill 1.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.lp-sync i {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  left: 64%;
+  width: 2px;
+  background: #fff;
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.6);
+}
+
+/* ---- chamada final e rodapé --------------------------------------------- */
+
+.lp-final {
+  position: relative;
+  max-width: 1120px;
+  margin: 120px auto 0;
+  padding: 80px 24px;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  text-align: center;
+  background:
+    radial-gradient(60% 120% at 50% 0%, rgba(124, 92, 255, 0.3), transparent),
+    var(--surface);
+  border-top: 2px solid transparent;
+  border-image: var(--grad) 1;
+}
+.lp-final h2 {
+  font-size: clamp(34px, 5vw, 56px);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-weight: 700;
+}
+.lp-final p {
+  color: var(--text-muted);
+  font-size: 17px;
+  margin-bottom: 12px;
+}
+.lp-footer {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 40px 24px 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+/* ---- responsivo ----------------------------------------------------------- */
+
+@media (max-width: 1080px) {
+  .lp-features {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mock-grid {
+    grid-template-columns: minmax(0, 1fr) 180px;
+  }
+  .mock-left {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .lp-hero {
+    padding: 64px 16px 0;
+  }
+  .lp-lead {
+    font-size: 16px;
+  }
+  .lp-cta .btn {
+    flex: 1 1 200px;
+  }
+  .mock {
+    margin-top: 48px;
+  }
+  .mock-grid {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+  .mock-right {
+    display: none;
+  }
+  .mock-video {
+    min-height: 180px;
+  }
+  .mock-art {
+    width: 110px;
+    height: 110px;
+  }
+  .mock-status {
+    display: none;
+  }
+  .mock-invite {
+    margin-left: auto;
+  }
+  .lp-section {
+    padding: 80px 16px 0;
+  }
+  .lp-steps,
+  .lp-features {
+    grid-template-columns: 1fr;
+  }
+  .lp-feature-wide {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 28px;
+  }
+  .lp-final {
+    margin: 80px 16px 0;
+    padding: 56px 20px;
+  }
+  .lp-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 32px 16px 48px;
+  }
+}
+@media (max-width: 640px) {
+  .lp-open span {
+    font-size: 13px;
+  }
+  .lp-open {
+    padding: 0 12px;
+  }
+}

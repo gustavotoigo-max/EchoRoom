@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Brand } from '../../components/ui/Brand'
 import { Equalizer } from '../../components/ui/Equalizer'
 import { CopyButton } from '../../components/ui/CopyButton'
@@ -20,6 +20,11 @@ export function Home() {
   const [code, setCode] = useState('')
   const [joinError, setJoinError] = useState<string | null>(null)
   const pending = useStore(pendingStore, (s) => s.pending)
+
+  // Vindo de "Como instalar" na página de apresentação.
+  useEffect(() => {
+    if (window.location.hash === '#extensao') document.getElementById('extensao')?.scrollIntoView()
+  }, [])
 
   async function create(e: FormEvent) {
     e.preventDefault()

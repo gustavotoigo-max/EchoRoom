@@ -1,14 +1,16 @@
 import { Brand } from './components/ui/Brand'
 import { firebaseConfig } from './config/firebase'
 import { Home } from './pages/Home/Home'
+import { Landing } from './pages/Landing/Landing'
 import { Room } from './pages/Room/Room'
-import { matchRoom, usePathname } from './router'
+import { isStartPath, matchRoom, usePathname } from './router'
 
 export function App() {
   const path = usePathname()
   if (!firebaseConfig) return <SetupNeeded />
   const roomId = matchRoom(path)
-  return roomId ? <Room key={roomId} roomId={roomId} /> : <Home />
+  if (roomId) return <Room key={roomId} roomId={roomId} />
+  return isStartPath(path) ? <Home /> : <Landing />
 }
 
 /** Mostrado quando o site foi publicado sem a configuração do Firebase. */
