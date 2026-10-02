@@ -6,10 +6,11 @@ import type { ConnectionStatus } from '../../types/room'
 import { roomLink } from '../../utils/format'
 import { Brand } from '../ui/Brand'
 import { CopyButton } from '../ui/CopyButton'
+import { WaveIcon } from '../ui/Icons'
 
 type Tone = 'ok' | 'work' | 'warn' | 'bad' | 'idle'
 
-function describe(conn: ConnectionStatus, sync: SyncUiState): { label: string; tone: Tone } {
+export function describeStatus(conn: ConnectionStatus, sync: SyncUiState): { label: string; tone: Tone } {
   switch (conn) {
     case 'idle':
     case 'connecting':
@@ -40,7 +41,7 @@ function describe(conn: ConnectionStatus, sync: SyncUiState): { label: string; t
 export function StatusIndicator() {
   const conn = useStore(roomStore, (s) => s.connection)
   const sync = useStore(playerStore, (s) => s.sync)
-  const { label, tone } = describe(conn, sync)
+  const { label, tone } = describeStatus(conn, sync)
   return (
     <div className={`status status-${tone}`} role="status" aria-live="polite">
       <i aria-hidden="true" />
@@ -52,14 +53,20 @@ export function StatusIndicator() {
 export function RoomHeader({ roomId }: { roomId: string }) {
   return (
     <header className="topbar room-topbar">
-      <Brand />
-      <div className="topbar-room">
-        <StatusIndicator />
-        <div className="room-id">
+      <div className="topbar-brand">
+        <Brand />
+      </div>
+      <div className="channel">
+        <div className="channel-name">
+          <WaveIcon width={20} height={20} />
           <span className="room-id-label">Sala</span>
           <span className="mono-code">{roomId}</span>
         </div>
-        <CopyButton text={roomLink(roomId)} variant="primary" />
+        <span className="channel-topic">ouvindo juntos, no mesmo segundo</span>
+        <div className="topbar-room">
+          <StatusIndicator />
+          <CopyButton text={roomLink(roomId)} variant="primary" label="Convidar" doneLabel="Link copiado" />
+        </div>
       </div>
     </header>
   )

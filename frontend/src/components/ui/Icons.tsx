@@ -85,10 +85,35 @@ export const CheckIcon = (p: P) => (
   </svg>
 )
 
-/** Marca: dois quadrados deslocados — o som e o seu eco, no mesmo tempo. */
-export const BrandMark = ({ size = 22 }: { size?: number }) => (
+/** Sair da sala. */
+export const LeaveIcon = (p: P) => (
+  <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10" />
+  </svg>
+)
+/** Ondas de som (cabeçalho da sala, no lugar do "#" do Discord). */
+export const WaveIcon = (p: P) => (
+  <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2.2">
+    <path d="M4 10v4M8 6v12M12 9v6M16 4v16M20 10v4" />
+  </svg>
+)
+
+/**
+ * Marca: um ponto (a música) e duas ondas (o eco nos outros navegadores),
+ * sobre o gradiente da identidade.
+ */
+export const BrandMark = ({ size = 24 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-    <rect x="5" y="9" width="14" height="14" fill="none" stroke="var(--blue-deep)" strokeWidth="2.5" />
-    <rect x="11" y="9" width="14" height="14" fill="var(--green)" />
+    <defs>
+      <linearGradient id="er-brand" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stopColor="#8b5cff" />
+        <stop offset="0.55" stopColor="#4c8dff" />
+        <stop offset="1" stopColor="#2fe0c4" />
+      </linearGradient>
+    </defs>
+    <rect width="32" height="32" fill="url(#er-brand)" />
+    <circle cx="9" cy="16" r="3.2" fill="#fff" />
+    <path d="M14 10a7 7 0 0 1 0 12" fill="none" stroke="#fff" strokeWidth="2.6" />
+    <path d="M18.5 6a12 12 0 0 1 0 20" fill="none" stroke="#fff" strokeOpacity="0.55" strokeWidth="2.6" />
   </svg>
 )

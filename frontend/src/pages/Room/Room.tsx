@@ -8,6 +8,7 @@ import { RoomHeader } from '../../components/RoomHeader/RoomHeader'
 import { Suggestions } from '../../components/Suggestions/Suggestions'
 import { Brand } from '../../components/ui/Brand'
 import { Toasts } from '../../components/ui/Toasts'
+import { UserPanel } from '../../components/UserPanel/UserPanel'
 import { appPath } from '../../router'
 import { authStore } from '../../services/discordAuth'
 import { takeAutoJoin } from '../../services/externalAdd'
@@ -114,6 +115,10 @@ function RoomView({ roomId, roomKey, name }: { roomId: string; roomKey: string; 
       <div className="room">
         <RoomHeader roomId={roomId} />
         <main className="room-grid">
+          <aside className="room-left" aria-label="Fila e você">
+            <Queue />
+            <UserPanel />
+          </aside>
           <div className="room-main">
             <FatalBanner />
             <PlayerPanel />
@@ -121,9 +126,8 @@ function RoomView({ roomId, roomKey, name }: { roomId: string; roomKey: string; 
             <AddTrack />
             <Suggestions />
           </div>
-          <aside className="room-side">
+          <aside className="room-right" aria-label="Participantes">
             <Participants />
-            <Queue />
           </aside>
         </main>
         <Toasts />

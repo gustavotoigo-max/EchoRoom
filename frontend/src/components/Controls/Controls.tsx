@@ -3,6 +3,7 @@ import { useRoomSession } from '../../services/RoomSessionContext'
 import { useStore } from '../../stores/createStore'
 import { roomStore } from '../../stores/roomStore'
 import { NextIcon, PauseIcon, PlayIcon, RestartIcon } from '../ui/Icons'
+import { Equalizer } from '../ui/Equalizer'
 import { ProgressBar } from './ProgressBar'
 import { VolumeControl } from './VolumeControl'
 
@@ -37,6 +38,10 @@ export function Controls() {
       <div className="np-meta">
         {loaded ? (
           <>
+            <span className="np-eyebrow">
+              <Equalizer on={playback === 'playing'} />
+              {track ? (playback === 'playing' ? 'Tocando agora para a sala' : 'Pausado para a sala') : 'Sala em silêncio'}
+            </span>
             <h2 className="np-title" title={track?.title}>
               {track ? track.title : 'Nenhuma música tocando'}
             </h2>

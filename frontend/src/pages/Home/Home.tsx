@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Brand } from '../../components/ui/Brand'
+import { Equalizer } from '../../components/ui/Equalizer'
 import { CopyButton } from '../../components/ui/CopyButton'
 import { currentIdentity, IdentityField } from '../../components/ui/IdentityField'
 import { appPath, navigate } from '../../router'
@@ -50,6 +51,9 @@ export function Home() {
     <div className="home">
       <header className="topbar">
         <Brand />
+        <nav className="topnav">
+          <a href="#extensao">Extensão para Chrome</a>
+        </nav>
       </header>
 
       {pending && (
@@ -66,17 +70,18 @@ export function Home() {
 
       <main className="home-main">
         <section className="home-intro">
-          <h1>Ouçam juntos, no mesmo segundo.</h1>
+          <span className="eyebrow">
+            <Equalizer on />
+            Para ouvir com a sua galera do Discord
+          </span>
+          <h1>
+            Ouçam juntos, <em>no mesmo segundo.</em>
+          </h1>
           <p>
             Crie uma sala, mande o link no Discord e cada pessoa toca o YouTube no próprio navegador — com play,
             pausa e fila compartilhados.
           </p>
-          <div className="echo-lines" aria-hidden="true">
-            <span style={{ ['--w' as string]: '62%' }} />
-            <span style={{ ['--w' as string]: '62%' }} />
-            <span style={{ ['--w' as string]: '62%' }} />
-            <i />
-          </div>
+          <EchoVisual />
           <p className="home-extension">
             Ouvindo no YouTube? <a href="#extensao">Instale a extensão para Chrome</a> e mande a música para a sua sala
             com um clique.
@@ -148,6 +153,26 @@ export function Home() {
       </main>
 
       <ExtensionGuide />
+    </div>
+  )
+}
+
+/** Três pessoas, uma música: as faixas andam juntas e o cursor passa por todas no mesmo ponto. */
+function EchoVisual() {
+  const people = [
+    { l: 'G', c: '#8b5cff' },
+    { l: 'J', c: '#4c8dff' },
+    { l: 'P', c: '#2fe0c4' },
+  ]
+  return (
+    <div className="echo-lines" aria-hidden="true">
+      {people.map((p) => (
+        <div className="echo-row" key={p.l}>
+          <b style={{ background: p.c }}>{p.l}</b>
+          <span />
+        </div>
+      ))}
+      <i />
     </div>
   )
 }
