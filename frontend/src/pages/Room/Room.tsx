@@ -7,9 +7,9 @@ import { Queue } from '../../components/Queue/Queue'
 import { RoomHeader } from '../../components/RoomHeader/RoomHeader'
 import { Suggestions } from '../../components/Suggestions/Suggestions'
 import { Brand } from '../../components/ui/Brand'
-import { ThemePicker } from '../../components/ui/ThemePicker'
 import { Toasts } from '../../components/ui/Toasts'
 import { appPath } from '../../router'
+import { authStore } from '../../services/discordAuth'
 import { takeAutoJoin } from '../../services/externalAdd'
 import { roomExists } from '../../services/firebase/roomsApi'
 import { RoomSession } from '../../services/roomSession'
@@ -37,7 +37,10 @@ export function Room({ roomId }: { roomId: string }) {
         if (!exists) return setPhase({ kind: 'missing', message: 'A sala não existe mais.' })
         // Vindo da extensão com nome e senha já salvos: entra direto.
         const key = storage.getRoomKey(roomId)
-        if (key && takeAutoJoin(roomId)) return setPhase({ kind: 'joined', roomKey: key, name: storage.getName().trim() })
+        if (key && takeAutoJoin(roomId)) {
+          const name = authStore.get().profile?.name || storage.getName().trim()
+          return setPhase({ kind: 'joined', roomKey: key, name })
+        }
         setPhase({ kind: 'gate' })
       })
       .catch((err: Error) => alive && setPhase({ kind: 'missing', message: err.message }))
@@ -63,7 +66,6 @@ export function Room({ roomId }: { roomId: string }) {
     <div className="home">
       <header className="topbar">
         <Brand />
-        <ThemePicker />
       </header>
       <main className="gate-main">
         {phase.kind === 'checking' && <div className="panel gate skeleton-panel" aria-busy="true" />}
@@ -94,7 +96,8 @@ export function Room({ roomId }: { roomId: string }) {
 
 function RoomView({ roomId, roomKey, name }: { roomId: string; roomKey: string; name: string }) {
   const session = useMemo(
-    () => new RoomSession(roomId, roomKey, name, storage.getParticipantId()),
+    () =>
+      new RoomSession(roomId, roomKey, name, storage.getParticipantId(), authStore.get().profile?.avatarUrl ?? null),
     [roomId, roomKey, name],
   )
 

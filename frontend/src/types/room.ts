@@ -18,6 +18,8 @@ export interface Participant {
   id: string
   name: string
   connected: boolean
+  /** Avatar do Discord, quando a pessoa entrou com Discord. */
+  avatar?: string | null
 }
 
 /**

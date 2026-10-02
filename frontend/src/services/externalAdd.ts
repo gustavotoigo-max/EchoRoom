@@ -1,6 +1,7 @@
 import { appPath, navigate } from '../router'
 import { createStore } from '../stores/createStore'
 import { storage } from '../utils/storage'
+import { authStore } from './discordAuth'
 
 /**
  * Músicas que chegam de fora da página:
@@ -71,7 +72,7 @@ export function takeAutoJoin(roomId: string): boolean {
   } catch {
     return false
   }
-  return !!storage.getRoomKey(roomId) && !!storage.getName().trim()
+  return !!storage.getRoomKey(roomId) && !!(authStore.get().profile || storage.getName().trim())
 }
 
 export function handleExternalAdd(add: PendingAdd, replace = false): void {
@@ -82,7 +83,7 @@ export function handleExternalAdd(add: PendingAdd, replace = false): void {
   }
   writePending(add)
   const last = storage.getLastRoom()
-  if (last && storage.getRoomKey(last) && storage.getName().trim()) {
+  if (last && storage.getRoomKey(last) && (authStore.get().profile || storage.getName().trim())) {
     try {
       sessionStorage.setItem(AUTOJOIN_KEY, last)
     } catch {

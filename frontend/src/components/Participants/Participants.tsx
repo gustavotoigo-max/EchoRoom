@@ -21,7 +21,14 @@ export function Participants() {
             ))
           : participants.map((p) => (
               <li key={p.id} className={p.connected ? '' : 'is-away'}>
-                <i className="presence" aria-hidden="true" />
+                <span className="p-avatar" aria-hidden="true">
+                  {p.avatar ? (
+                    <img src={p.avatar} alt="" width={28} height={28} loading="lazy" />
+                  ) : (
+                    <b>{p.name.trim().charAt(0).toUpperCase() || '?'}</b>
+                  )}
+                  <i className="presence" />
+                </span>
                 <span className="p-name">{p.name}</span>
                 {p.id === me && <span className="p-tag">você</span>}
                 {!p.connected && <span className="p-tag">reconectando</span>}

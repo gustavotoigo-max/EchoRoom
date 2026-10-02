@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Brand } from '../../components/ui/Brand'
 import { CopyButton } from '../../components/ui/CopyButton'
-import { ThemePicker } from '../../components/ui/ThemePicker'
+import { currentIdentity, IdentityField } from '../../components/ui/IdentityField'
 import { appPath, navigate } from '../../router'
 import { clearPendingAdd, pendingStore } from '../../services/externalAdd'
 import { useStore } from '../../stores/createStore'
@@ -22,7 +22,7 @@ export function Home() {
 
   async function create(e: FormEvent) {
     e.preventDefault()
-    if (!name.trim()) return setCreateError('Digite seu nome.')
+    if (!currentIdentity(name).name) return setCreateError('Entre com Discord ou digite um nome.')
     if (password.length < MIN_PASSWORD) return setCreateError(`A senha precisa ter pelo menos ${MIN_PASSWORD} caracteres.`)
     setCreating(true)
     setCreateError(null)
@@ -50,7 +50,6 @@ export function Home() {
     <div className="home">
       <header className="topbar">
         <Brand />
-        <ThemePicker />
       </header>
 
       {pending && (
@@ -106,16 +105,7 @@ export function Home() {
           ) : (
             <form className="panel" onSubmit={create} noValidate>
               <h2>Criar sala</h2>
-              <label className="field">
-                <span>Seu nome</span>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  maxLength={32}
-                  autoComplete="nickname"
-                  placeholder="Como os outros vão te ver"
-                />
-              </label>
+              <IdentityField guestName={name} onGuestName={setName} />
               <label className="field">
                 <span>Senha da sala</span>
                 <input

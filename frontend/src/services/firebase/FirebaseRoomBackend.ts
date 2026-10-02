@@ -17,11 +17,17 @@ import { SyncConfig } from '../../sync/SyncConfig'
 import type { ConnectionStatus, Participant, RoomDoc, RoomState } from '../../types/room'
 import { describeDbError, ensureSignedIn, getDb } from './app'
 
+/** Só aceita avatares do CDN do Discord. */
+function safeAvatar(url: unknown): string | null {
+  return typeof url === 'string' && /^https:\/\/cdn\.discordapp\.com\//.test(url) ? url : null
+}
+
 /** Participantes desconectados somem da lista depois deste tempo. */
 const AWAY_VISIBLE_MS = 2 * 60_000
 
 interface ParticipantRecord {
   name?: string
+  avatar?: string | null
   lastSeen?: number
   conns?: Record<string, boolean>
 }
@@ -51,6 +57,7 @@ export class FirebaseRoomBackend {
     private readonly roomKey: string,
     private readonly participantId: string,
     private readonly name: string,
+    private readonly avatar: string | null,
     private readonly clock: ClockSync,
     private readonly handlers: {
       onState: (room: RoomState) => void
@@ -77,7 +84,7 @@ export class FirebaseRoomBackend {
           this.everConnected = true
           onDisconnect(myConnRef).remove()
           onDisconnect(ref(db, `${base}/participants/${this.participantId}/lastSeen`)).set(serverTimestamp())
-          void update(meRef, { name: this.name, lastSeen: serverTimestamp() })
+          void update(meRef, { name: this.name, avatar: this.avatar, lastSeen: serverTimestamp() })
           void set(myConnRef, true)
           this.setStatus('connected')
           this.handlers.onConnected()
@@ -200,12 +207,12 @@ export class FirebaseRoomBackend {
     for (const [id, p] of Object.entries(this.participantRecords)) {
       const connected = !!p.conns && Object.keys(p.conns).length > 0
       if (!connected && (!p.lastSeen || now - p.lastSeen > AWAY_VISIBLE_MS)) continue
-      list.push({ id, name: p.name || 'Convidado', connected })
+      list.push({ id, name: p.name || 'Convidado', connected, avatar: safeAvatar(p.avatar) })
     }
     list.sort((a, b) => Number(b.connected) - Number(a.connected) || a.name.localeCompare(b.name))
     const same =
       list.length === this.participants.length &&
-      list.every((p, i) => p.id === this.participants[i].id && p.connected === this.participants[i].connected && p.name === this.participants[i].name)
+      list.every((p, i) => p.id === this.participants[i].id && p.connected === this.participants[i].connected && p.name === this.participants[i].name && p.avatar === this.participants[i].avatar)
     if (same) return
     this.participants = list
     const room = roomStore.get().room

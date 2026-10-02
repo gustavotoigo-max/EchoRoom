@@ -35,8 +35,12 @@ Endereço: `https://<usuário>.github.io/EchoRoom/`
 - **Sugestões**: músicas e playlists adicionadas em qualquer sala ficam salvas
   (`/library` no Firebase) e aparecem na sala ordenadas por mais tocadas ou
   recentes, com busca e adição em um clique.
-- **Temas** (botão "Tema" no topo): EchoRoom, Estilo Spotify e Claro. A
-  escolha fica salva no navegador. Variáveis e ajustes em `frontend/src/styles/themes.css`.
+- **Login com Discord** (opcional, escopo `identify`: só nome e avatar). Ative
+  criando a variável `DISCORD_CLIENT_ID` no GitHub (Settings → Secrets and
+  variables → Actions → Variables). O avatar aparece na lista de participantes.
+  Quem não quiser entra como convidado.
+- Temas: desativados por enquanto (interface em reformulação); o mecanismo
+  está em `frontend/src/theme/`.
 - Quem entra numa sala com música tocando recebe um aviso e começa do ponto atual.
 - Se o navegador bloquear o som (autoplay), aparece "Clique para ouvir junto".
 - **Extensão para Chrome** (`chrome-extension/`): botão flutuante no YouTube que

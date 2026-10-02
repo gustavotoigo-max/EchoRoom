@@ -35,9 +35,10 @@ export class RoomSession {
     roomKey: string,
     private readonly name: string,
     private readonly participantId: string,
+    avatar: string | null = null,
   ) {
     this.clock = new ClockSync((t1) => void this.backend.clockPing(t1))
-    this.backend = new FirebaseRoomBackend(roomId, roomKey, participantId, name, this.clock, {
+    this.backend = new FirebaseRoomBackend(roomId, roomKey, participantId, name, avatar, this.clock, {
       onState: (room) => this.onRoomState(room),
       onStatus: (s) => {
         roomStore.set({ connection: s })

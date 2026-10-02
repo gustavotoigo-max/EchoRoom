@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { currentIdentity, IdentityField } from '../../components/ui/IdentityField'
 import { joinRoom } from '../../services/firebase/roomsApi'
 import { storage } from '../../utils/storage'
 
@@ -21,8 +22,8 @@ export function JoinGate({ roomId, needsPassword, notice, onJoined }: Props) {
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    const trimmed = name.trim()
-    if (!trimmed) return setError('Digite seu nome.')
+    const trimmed = currentIdentity(name).name
+    if (!trimmed) return setError('Entre com Discord ou digite um nome.')
     setBusy(true)
     setError(null)
     try {
@@ -35,7 +36,7 @@ export function JoinGate({ roomId, needsPassword, notice, onJoined }: Props) {
         key = (await joinRoom(roomId, password)).roomKey
         storage.setRoomKey(roomId, key)
       }
-      storage.setName(trimmed)
+      if (name.trim()) storage.setName(name)
       onJoined(key, trimmed)
     } catch (err) {
       setError((err as Error).message || 'Não foi possível entrar na sala.')
@@ -48,16 +49,7 @@ export function JoinGate({ roomId, needsPassword, notice, onJoined }: Props) {
       <h2>
         Sala <span className="mono-code">{roomId}</span>
       </h2>
-      <label className="field">
-        <span>Seu nome</span>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          maxLength={32}
-          autoFocus={!name}
-          autoComplete="nickname"
-        />
-      </label>
+      <IdentityField guestName={name} onGuestName={setName} autoFocus={!name} />
       {needsPassword && (
         <label className="field">
           <span>Senha da sala</span>
