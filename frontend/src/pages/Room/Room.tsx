@@ -7,6 +7,7 @@ import { Queue } from '../../components/Queue/Queue'
 import { RoomHeader } from '../../components/RoomHeader/RoomHeader'
 import { Suggestions } from '../../components/Suggestions/Suggestions'
 import { Brand } from '../../components/ui/Brand'
+import { ThemePicker } from '../../components/ui/ThemePicker'
 import { Toasts } from '../../components/ui/Toasts'
 import { appPath } from '../../router'
 import { takeAutoJoin } from '../../services/externalAdd'
@@ -62,6 +63,7 @@ export function Room({ roomId }: { roomId: string }) {
     <div className="home">
       <header className="topbar">
         <Brand />
+        <ThemePicker />
       </header>
       <main className="gate-main">
         {phase.kind === 'checking' && <div className="panel gate skeleton-panel" aria-busy="true" />}

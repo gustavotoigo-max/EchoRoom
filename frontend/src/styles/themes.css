@@ -1,0 +1,531 @@
+/* =========================================================================
+   Seletor de tema (vale para todos os temas)
+   ========================================================================= */
+
+.theme-picker {
+  position: relative;
+}
+.theme-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-muted);
+  font: 600 13px/1 var(--font);
+  cursor: pointer;
+}
+.theme-btn:hover,
+.theme-btn[aria-expanded='true'] {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.theme-menu {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 240px;
+  display: grid;
+  padding: 6px;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+.theme-menu button {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: 600 14px/1 var(--font);
+  text-align: left;
+  cursor: pointer;
+}
+.theme-menu button:hover {
+  background: var(--surface-2);
+}
+.theme-menu button.on {
+  color: var(--green-hi);
+}
+.theme-swatch {
+  display: inline-flex;
+  border: 1px solid var(--line);
+}
+.theme-swatch i {
+  width: 12px;
+  height: 20px;
+}
+.theme-note {
+  padding: 8px 10px 4px;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+@media (max-width: 560px) {
+  .theme-btn-label {
+    display: none;
+  }
+  .theme-btn {
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+}
+
+/* =========================================================================
+   Tema claro
+   ========================================================================= */
+
+:root[data-theme='light'] {
+  --bg: #f4f7f6;
+  --bg-deep: #e8eeec;
+  --surface: #ffffff;
+  --surface-2: #eef3f1;
+  --surface-3: #e2eae7;
+  --line: #cfdcd8;
+  --line-soft: #dfe8e5;
+
+  --text: #14232b;
+  --text-muted: #4c6670;
+  --text-faint: #7d949b;
+
+  --green: #1f9e74;
+  --green-hi: #178a64;
+  --green-ink: #ffffff;
+  --green-tint: rgba(31, 158, 116, 0.12);
+  --blue: #2b77ad;
+  --blue-deep: #2c6e8f;
+  --blue-tint: rgba(43, 119, 173, 0.1);
+  --amber: #a8700a;
+  --red: #c8473e;
+
+  color-scheme: light;
+}
+[data-theme='light'] .theme-menu {
+  box-shadow: 0 12px 32px rgba(20, 35, 43, 0.15);
+}
+[data-theme='light'] .toast {
+  box-shadow: 0 8px 24px rgba(20, 35, 43, 0.12);
+}
+[data-theme='light'] .player-empty {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 39px, rgba(43, 119, 173, 0.06) 39px 40px),
+    var(--bg-deep);
+}
+
+/* =========================================================================
+   Estilo Spotify
+   Preto e cinzas, verde característico, botões em pílula, play redondo
+   branco, cards arredondados, barras que ficam verdes ao passar o mouse.
+   ========================================================================= */
+
+:root[data-theme='spotify'] {
+  --bg: #121212;
+  --bg-deep: #000000;
+  --surface: #181818;
+  --surface-2: #282828;
+  --surface-3: #2a2a2a;
+  --line: #3e3e3e;
+  --line-soft: #242424;
+
+  --text: #ffffff;
+  --text-muted: #b3b3b3;
+  --text-faint: #7a7a7a;
+
+  --green: #1ed760;
+  --green-hi: #3be477;
+  --green-ink: #000000;
+  --green-tint: rgba(30, 215, 96, 0.12);
+  --blue: #1ed760;
+  --blue-deep: #1db954;
+  --blue-tint: rgba(255, 255, 255, 0.08);
+  --amber: #ffa42b;
+  --red: #f3727f;
+
+  --font: 'Figtree', 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Fundo com o leve degradê do topo */
+[data-theme='spotify'] body {
+  background: var(--bg);
+}
+[data-theme='spotify'] .topbar {
+  background: #000000;
+  border-bottom: 0;
+}
+[data-theme='spotify'] .room-grid {
+  gap: 8px;
+  padding: 8px;
+  background: #000000;
+}
+[data-theme='spotify'] .room-main,
+[data-theme='spotify'] .room-side {
+  border-radius: 8px;
+  background: linear-gradient(180deg, #1f1f1f 0, var(--bg) 320px);
+  border-left: 0;
+}
+[data-theme='spotify'] .room-main {
+  overflow-x: hidden;
+}
+
+/* Botões: pílulas, negrito, leve crescimento no hover */
+[data-theme='spotify'] .btn {
+  border-radius: 500px;
+  font-weight: 700;
+  padding: 0 20px;
+  transition:
+    transform 0.08s ease,
+    background-color 0.12s,
+    border-color 0.12s;
+}
+[data-theme='spotify'] .btn:hover:not(:disabled) {
+  transform: scale(1.04);
+}
+[data-theme='spotify'] .btn:active:not(:disabled) {
+  transform: scale(1);
+}
+[data-theme='spotify'] .btn-primary {
+  background: var(--green);
+  color: #000000;
+}
+[data-theme='spotify'] .btn-primary:hover:not(:disabled) {
+  background: var(--green-hi);
+}
+[data-theme='spotify'] .btn-secondary {
+  background: transparent;
+  border-color: #7c7c7c;
+  color: #ffffff;
+}
+[data-theme='spotify'] .btn-secondary:hover:not(:disabled) {
+  background: transparent;
+  border-color: #ffffff;
+}
+[data-theme='spotify'] .btn.is-done {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+/* Ícones sem caixa: cinza que fica branco */
+[data-theme='spotify'] .icon-btn {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 50%;
+}
+[data-theme='spotify'] .icon-btn:hover:not(:disabled) {
+  background: transparent;
+  color: #ffffff;
+}
+[data-theme='spotify'] .play-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #000000;
+}
+[data-theme='spotify'] .play-btn:hover:not(:disabled) {
+  background: #ffffff;
+  color: #000000;
+  transform: scale(1.06);
+}
+[data-theme='spotify'] .play-btn.is-pending {
+  background: #b3b3b3;
+  color: #000000;
+}
+[data-theme='spotify'] .volume-btn[aria-pressed='true'] {
+  color: var(--text-muted);
+}
+
+/* Campos */
+[data-theme='spotify'] input:not([type='range']) {
+  background: #242424;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+[data-theme='spotify'] input:not([type='range']):hover {
+  border-color: #3e3e3e;
+}
+[data-theme='spotify'] input:not([type='range']):focus {
+  border-color: #ffffff;
+}
+[data-theme='spotify'] .sugg-search {
+  border-radius: 500px !important;
+  padding-left: 18px;
+}
+
+/* Painéis e cartões arredondados, sem bordas */
+[data-theme='spotify'] .panel {
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface);
+}
+[data-theme='spotify'] .panel-quiet {
+  background: transparent;
+  border: 1px solid var(--line-soft);
+}
+[data-theme='spotify'] .now-playing,
+[data-theme='spotify'] .player-area.is-compact {
+  background: transparent;
+  border-bottom: 0;
+}
+[data-theme='spotify'] .player-frame {
+  border-radius: 8px;
+  overflow: hidden;
+}
+[data-theme='spotify'] .player-area:not(.is-compact) {
+  padding: 16px 16px 0;
+}
+[data-theme='spotify'] .side-block {
+  background: transparent;
+}
+[data-theme='spotify'] .participants {
+  border-bottom: 1px solid var(--line-soft);
+}
+[data-theme='spotify'] .q-item,
+[data-theme='spotify'] .sugg-item {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+}
+[data-theme='spotify'] .q-item:hover,
+[data-theme='spotify'] .sugg-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+[data-theme='spotify'] .q-thumb,
+[data-theme='spotify'] .sugg-thumb,
+[data-theme='spotify'] .sugg-thumb img {
+  border-radius: 4px;
+}
+[data-theme='spotify'] .sugg-list {
+  gap: 4px;
+}
+[data-theme='spotify'] .sugg-head {
+  border-top: 0;
+}
+[data-theme='spotify'] .sugg-head h3,
+[data-theme='spotify'] .side-head h3 {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+
+/* Abas em pílula, como os filtros */
+[data-theme='spotify'] .seg {
+  border: 0;
+  gap: 8px;
+}
+[data-theme='spotify'] .seg button {
+  height: 32px;
+  padding: 0 14px;
+  border: 0 !important;
+  border-radius: 500px;
+  background: #2a2a2a;
+  color: #ffffff;
+}
+[data-theme='spotify'] .seg button:hover {
+  background: #333333;
+}
+[data-theme='spotify'] .seg button.on {
+  background: #ffffff;
+  color: #000000;
+}
+[data-theme='spotify'] .seg button.on span {
+  color: #3e3e3e;
+}
+
+/* Barras de progresso e volume: brancas, verdes no hover */
+[data-theme='spotify'] .progress-range::-webkit-slider-runnable-track,
+[data-theme='spotify'] .volume-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #ffffff var(--pct), #4d4d4d var(--pct));
+}
+[data-theme='spotify'] .progress-range::-moz-range-track,
+[data-theme='spotify'] .volume-range::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #ffffff var(--pct), #4d4d4d var(--pct));
+}
+[data-theme='spotify'] .progress-range:hover::-webkit-slider-runnable-track,
+[data-theme='spotify'] .volume-slider:hover .volume-range::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, var(--green) var(--pct), #4d4d4d var(--pct));
+}
+[data-theme='spotify'] .progress-range:hover::-moz-range-track,
+[data-theme='spotify'] .volume-slider:hover .volume-range::-moz-range-track {
+  background: linear-gradient(to right, var(--green) var(--pct), #4d4d4d var(--pct));
+}
+[data-theme='spotify'] .progress-range::-webkit-slider-thumb,
+[data-theme='spotify'] .volume-range::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: #ffffff;
+  opacity: 0;
+}
+[data-theme='spotify'] .progress-range::-moz-range-thumb,
+[data-theme='spotify'] .volume-range::-moz-range-thumb {
+  border-radius: 50%;
+  background: #ffffff;
+  opacity: 0;
+}
+[data-theme='spotify'] .progress-range:hover::-webkit-slider-thumb,
+[data-theme='spotify'] .progress-range:focus-visible::-webkit-slider-thumb,
+[data-theme='spotify'] .volume-range:hover::-webkit-slider-thumb,
+[data-theme='spotify'] .volume-range:focus-visible::-webkit-slider-thumb {
+  opacity: 1;
+}
+[data-theme='spotify'] .progress-range:hover::-moz-range-thumb,
+[data-theme='spotify'] .volume-range:hover::-moz-range-thumb {
+  opacity: 1;
+}
+[data-theme='spotify'] .time {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Etiquetas, menus e avisos arredondados */
+[data-theme='spotify'] .status {
+  border: 0;
+  border-radius: 500px;
+  background: #1f1f1f;
+}
+[data-theme='spotify'] .status i {
+  border-radius: 50%;
+}
+[data-theme='spotify'] .presence {
+  border-radius: 50%;
+}
+[data-theme='spotify'] .menu,
+[data-theme='spotify'] .theme-menu {
+  border: 0;
+  border-radius: 6px;
+  background: #282828;
+  box-shadow: 0 16px 24px rgba(0, 0, 0, 0.3), 0 6px 8px rgba(0, 0, 0, 0.2);
+}
+[data-theme='spotify'] .menu button,
+[data-theme='spotify'] .theme-menu button {
+  border-radius: 4px;
+}
+[data-theme='spotify'] .menu button:hover,
+[data-theme='spotify'] .theme-menu button:hover {
+  background: #3e3e3e;
+}
+[data-theme='spotify'] .theme-btn {
+  border: 0;
+  border-radius: 500px;
+  background: #1f1f1f;
+  color: #ffffff;
+}
+[data-theme='spotify'] .theme-btn:hover,
+[data-theme='spotify'] .theme-btn[aria-expanded='true'] {
+  background: #2a2a2a;
+  transform: scale(1.04);
+}
+[data-theme='spotify'] .theme-swatch {
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+[data-theme='spotify'] .toast {
+  border: 0;
+  border-radius: 8px;
+  background: #2e77d0;
+  color: #ffffff;
+}
+[data-theme='spotify'] .toast-ok {
+  background: #1ed760;
+  color: #000000;
+}
+[data-theme='spotify'] .toast-error {
+  background: #e22134;
+}
+[data-theme='spotify'] .toast-close {
+  color: inherit;
+  opacity: 0.8;
+}
+[data-theme='spotify'] .video-toggle {
+  border: 0;
+  border-radius: 500px;
+  background: rgba(0, 0, 0, 0.7);
+}
+[data-theme='spotify'] .player-unlock i {
+  border-radius: 50%;
+}
+[data-theme='spotify'] .player-error {
+  border-top: 0;
+  background: #e22134;
+}
+[data-theme='spotify'] .room-banner {
+  border-left: 0;
+  border-radius: 6px;
+  margin: 16px 16px 0;
+  background: #e22134;
+}
+[data-theme='spotify'] .pending-banner {
+  border-left: 0;
+  border-radius: 8px;
+  background: #2e77d0;
+}
+[data-theme='spotify'] .pending-banner small,
+[data-theme='spotify'] .pending-banner .link-btn {
+  color: #ffffff;
+}
+
+/* Página inicial */
+[data-theme='spotify'] .home-intro h1 {
+  letter-spacing: -0.04em;
+}
+[data-theme='spotify'] .echo-lines span {
+  border-radius: 3px;
+}
+[data-theme='spotify'] .echo-lines span::after {
+  background: #ffffff;
+}
+[data-theme='spotify'] .echo-lines span:nth-child(1)::after {
+  background: var(--green);
+}
+[data-theme='spotify'] .echo-lines span:nth-child(3)::after {
+  background: #7a7a7a;
+}
+[data-theme='spotify'] .ext-head {
+  border-top: 0;
+}
+[data-theme='spotify'] .ext-steps {
+  gap: 8px;
+}
+[data-theme='spotify'] .ext-steps li {
+  border-radius: 8px;
+}
+[data-theme='spotify'] .created .room-code {
+  color: var(--green);
+}
+[data-theme='spotify'] a {
+  color: #ffffff;
+}
+[data-theme='spotify'] .home-extension a,
+[data-theme='spotify'] .add-feedback .link-btn {
+  color: var(--green);
+}
+[data-theme='spotify'] .skeleton {
+  border-radius: 4px;
+}
+[data-theme='spotify'] :focus-visible {
+  outline-color: #ffffff;
+}
+
+@media (max-width: 900px) {
+  [data-theme='spotify'] .room-grid {
+    padding: 0;
+    gap: 0;
+  }
+  [data-theme='spotify'] .room-main,
+  [data-theme='spotify'] .room-side {
+    border-radius: 0;
+  }
+}

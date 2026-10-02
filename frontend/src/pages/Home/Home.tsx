@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Brand } from '../../components/ui/Brand'
 import { CopyButton } from '../../components/ui/CopyButton'
+import { ThemePicker } from '../../components/ui/ThemePicker'
 import { appPath, navigate } from '../../router'
 import { clearPendingAdd, pendingStore } from '../../services/externalAdd'
 import { useStore } from '../../stores/createStore'
@@ -49,6 +50,7 @@ export function Home() {
     <div className="home">
       <header className="topbar">
         <Brand />
+        <ThemePicker />
       </header>
 
       {pending && (

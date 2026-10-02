@@ -6,6 +6,7 @@ import type { ConnectionStatus } from '../../types/room'
 import { roomLink } from '../../utils/format'
 import { Brand } from '../ui/Brand'
 import { CopyButton } from '../ui/CopyButton'
+import { ThemePicker } from '../ui/ThemePicker'
 
 type Tone = 'ok' | 'work' | 'warn' | 'bad' | 'idle'
 
@@ -60,6 +61,7 @@ export function RoomHeader({ roomId }: { roomId: string }) {
           <span className="mono-code">{roomId}</span>
         </div>
         <CopyButton text={roomLink(roomId)} variant="primary" />
+        <ThemePicker />
       </div>
     </header>
   )
