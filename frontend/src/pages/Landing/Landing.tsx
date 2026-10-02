@@ -1,3 +1,4 @@
+import { UserChip } from '../../components/Invites/UserChip'
 import { Brand } from '../../components/ui/Brand'
 import { Equalizer } from '../../components/ui/Equalizer'
 import { DiscordIcon, PlayIcon } from '../../components/ui/Icons'
@@ -24,6 +25,7 @@ export function Landing() {
           <a href="#recursos">Recursos</a>
           <a href={appPath(`${START_PATH}#extensao`)}>Extensão</a>
         </nav>
+        <UserChip compact />
         <a className="btn btn-primary lp-open" href={appPath(START_PATH)} onClick={start}>
           {profile ? <img className="avatar" src={profile.avatarUrl} alt="" width={22} height={22} /> : null}
           <span>Abrir o EchoRoom</span>

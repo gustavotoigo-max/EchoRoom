@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useRoomSession } from '../../services/RoomSessionContext'
+import { useStore } from '../../stores/createStore'
+import { roomStore, selectIsOwner } from '../../stores/roomStore'
 import { parseYouTubeLink } from '../../utils/youtubeUrlParser'
 import { PlusIcon } from '../ui/Icons'
 
@@ -16,6 +18,7 @@ export function AddTrack() {
   const session = useRoomSession()
   const [value, setValue] = useState('')
   const [feedback, setFeedback] = useState<Feedback>(null)
+  const locked = useStore(roomStore, (s) => s.settings.adding === 'owner' && !selectIsOwner(s))
   const timer = useRef<ReturnType<typeof setTimeout>>()
   useEffect(() => () => clearTimeout(timer.current), [])
 
@@ -71,11 +74,12 @@ export function AddTrack() {
             setValue(e.target.value)
             if (feedback?.kind === 'error') setFeedback(null)
           }}
-          placeholder="Cole um link de vídeo ou playlist do YouTube"
+          placeholder={locked ? 'Nesta sala, só o dono adiciona músicas' : 'Cole um link de vídeo ou playlist do YouTube'}
+          disabled={locked}
           autoComplete="off"
           spellCheck={false}
         />
-        <button type="submit" className="btn btn-primary" disabled={feedback?.kind === 'busy' || !value.trim()}>
+        <button type="submit" className="btn btn-primary" disabled={locked || feedback?.kind === 'busy' || !value.trim()}>
           <PlusIcon width={16} height={16} />
           <span>Adicionar</span>
         </button>

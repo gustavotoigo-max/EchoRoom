@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useRoomSession } from '../../services/RoomSessionContext'
 import { useStore } from '../../stores/createStore'
-import { roomStore } from '../../stores/roomStore'
+import { roomStore, selectIsOwner, validVotes, votesNeeded } from '../../stores/roomStore'
 import { NextIcon, PauseIcon, PlayIcon, RestartIcon } from '../ui/Icons'
 import { Equalizer } from '../ui/Equalizer'
 import { ProgressBar } from './ProgressBar'
@@ -13,6 +13,11 @@ export function Controls() {
   const playback = useStore(roomStore, (s) => s.room?.playbackState ?? 'stopped')
   const loaded = useStore(roomStore, (s) => s.room !== null)
   const connected = useStore(roomStore, (s) => s.connection === 'connected')
+  const isOwner = useStore(roomStore, selectIsOwner)
+  const settings = useStore(roomStore, (s) => s.settings)
+  const voteCount = useStore(roomStore, (s) => validVotes(s).length)
+  const voted = useStore(roomStore, (s) => validVotes(s).includes(s.participantId))
+  const needed = useStore(roomStore, votesNeeded)
 
   // Feedback imediato: o botão mostra a intenção até o servidor confirmar.
   const [intent, setIntent] = useState<'play' | 'pause' | null>(null)
@@ -21,6 +26,9 @@ export function Controls() {
 
   const isPlaying = intent ? intent === 'play' : playback === 'playing'
   const disabled = !track || !connected
+  const locked = settings.controls === 'owner' && !isOwner
+  const voting = settings.voteSkip && !isOwner
+  const lockTitle = 'Nesta sala, só o dono controla a reprodução'
 
   async function run(action: () => Promise<unknown>, nextIntent: 'play' | 'pause' | null = null) {
     setError(null)
@@ -68,9 +76,9 @@ export function Controls() {
         <button
           type="button"
           className="icon-btn"
-          title="Voltar ao início"
+          title={locked ? lockTitle : 'Voltar ao início'}
           aria-label="Voltar ao início da música"
-          disabled={disabled}
+          disabled={disabled || locked}
           onClick={() => run(session.restart)}
         >
           <RestartIcon />
@@ -79,26 +87,43 @@ export function Controls() {
           type="button"
           className={`icon-btn play-btn ${intent ? 'is-pending' : ''}`}
           aria-label={isPlaying ? 'Pausar' : 'Tocar'}
-          title={isPlaying ? 'Pausar' : 'Tocar'}
-          disabled={disabled}
+          title={locked ? lockTitle : isPlaying ? 'Pausar' : 'Tocar'}
+          disabled={disabled || locked}
           onClick={() => (isPlaying ? run(session.pause, 'pause') : run(session.play, 'play'))}
         >
           {isPlaying ? <PauseIcon width={24} height={24} /> : <PlayIcon width={24} height={24} />}
         </button>
-        <button
-          type="button"
-          className="icon-btn"
-          title="Próxima"
-          aria-label="Próxima música"
-          disabled={disabled}
-          onClick={() => run(session.skip)}
-        >
-          <NextIcon />
-        </button>
+        {voting ? (
+          <button
+            type="button"
+            className={`icon-btn vote-btn ${voted ? 'is-voted' : ''}`}
+            title={voted ? 'Tirar meu voto para pular' : 'Votar para pular'}
+            aria-label={`${voted ? 'Tirar voto' : 'Votar para pular'}: ${voteCount} de ${needed}`}
+            aria-pressed={voted}
+            disabled={disabled}
+            onClick={() => run(session.toggleVoteSkip)}
+          >
+            <NextIcon />
+            <b>
+              {voteCount}/{needed}
+            </b>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="icon-btn"
+            title={locked ? 'Nesta sala, só o dono pula músicas' : 'Próxima'}
+            aria-label="Próxima música"
+            disabled={disabled || locked}
+            onClick={() => run(session.skip)}
+          >
+            <NextIcon />
+          </button>
+        )}
         <VolumeControl />
       </div>
 
-      <ProgressBar duration={track?.duration ?? null} trackId={track?.id ?? null} disabled={disabled} />
+      <ProgressBar duration={track?.duration ?? null} trackId={track?.id ?? null} disabled={disabled || locked} />
       {error && <p className="form-error">{error}</p>}
     </section>
   )

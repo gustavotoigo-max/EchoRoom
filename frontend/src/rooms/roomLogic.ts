@@ -12,7 +12,7 @@
 
 import { SyncConfig } from '../sync/SyncConfig'
 import { getExpectedPosition } from '../sync/Timeline'
-import type { QueueItem, RoomDoc } from '../types/room'
+import type { CommandActor, QueueItem, RoomDoc } from '../types/room'
 
 export class CommandError extends Error {}
 
@@ -24,7 +24,7 @@ export type RoomCommand =
   | { type: 'TRACK_ADD_MANY'; items: QueueItem[] }
   | { type: 'TRACK_REMOVE'; itemId: string }
   | { type: 'TRACK_MOVE'; itemId: string; toIndex: number }
-  | { type: 'TRACK_SKIP'; currentItemId: string | null }
+  | { type: 'TRACK_SKIP'; currentItemId: string | null; reason?: 'user' | 'vote' | 'error' }
   | { type: 'TRACK_ENDED'; itemId: string }
   | { type: 'TRACK_META'; itemId: string; title: string | null; duration: number | null }
 
@@ -91,13 +91,66 @@ function advance(doc: RoomDoc, now: number): void {
  * Aplica um comando. Retorna o novo documento, ou null se nada mudou.
  * Lança CommandError com mensagem pronta para o usuário.
  */
-export function applyCommand(current: RoomDoc, cmd: RoomCommand, now: number): RoomDoc | null {
+export function applyCommand(current: RoomDoc, cmd: RoomCommand, now: number, actor?: CommandActor): RoomDoc | null {
   const doc: RoomDoc = structuredClone(current)
+  const c = { ...cmd } as RoomCommand // a transação pode repetir: não altera o comando original
+  if (actor) checkPermission(doc, c, actor)
   const lead = sec(SyncConfig.commandLeadTimeMs)
-  const changed = run(doc, cmd, now, lead)
+  const changed = run(doc, c, now, lead)
   if (!changed) return null
   doc.stateVersion = current.stateVersion + 1
   return doc
+}
+
+/**
+ * Permissões conforme as configurações da sala. O dono pode tudo.
+ * Comandos automáticos (fim da música, título real, vídeo indisponível,
+ * votação concluída) valem para todos.
+ */
+function checkPermission(doc: RoomDoc, cmd: RoomCommand, actor: CommandActor): void {
+  if (actor.isOwner) return
+  const { settings } = actor
+  const controlsLocked = settings.controls === 'owner'
+  switch (cmd.type) {
+    case 'PLAY':
+    case 'PAUSE':
+    case 'SEEK':
+      if (controlsLocked) throw new CommandError('Nesta sala, só o dono controla a reprodução.')
+      return
+    case 'TRACK_MOVE':
+      if (controlsLocked) throw new CommandError('Nesta sala, só o dono reorganiza a fila.')
+      return
+    case 'TRACK_SKIP':
+      if (cmd.reason === 'vote' || cmd.reason === 'error') return
+      if (settings.voteSkip) throw new CommandError('Nesta sala, pular é por votação.')
+      if (controlsLocked) throw new CommandError('Nesta sala, só o dono pula músicas.')
+      return
+    case 'TRACK_ADD':
+    case 'TRACK_ADD_MANY': {
+      if (settings.adding === 'owner') throw new CommandError('Nesta sala, só o dono adiciona músicas.')
+      if (settings.maxPerUser > 0) {
+        const mine = doc.queue.filter((q) => q.addedByUid === actor.uid).length
+        const room = settings.maxPerUser - mine
+        if (room <= 0) {
+          throw new CommandError(
+            `Você já tem ${mine} ${mine === 1 ? 'música' : 'músicas'} na fila (limite da sala: ${settings.maxPerUser}).`,
+          )
+        }
+        // Playlist: entra só o que cabe no limite da pessoa.
+        if (cmd.type === 'TRACK_ADD_MANY') cmd.items = cmd.items.slice(0, room + (doc.currentTrack ? 0 : 1))
+      }
+      return
+    }
+    case 'TRACK_REMOVE': {
+      const item = doc.queue.find((q) => q.id === cmd.itemId)
+      if (item && item.addedByUid !== actor.uid) {
+        throw new CommandError('Só o dono da sala ou quem adicionou pode remover esta música.')
+      }
+      return
+    }
+    default:
+      return
+  }
 }
 
 function run(doc: RoomDoc, cmd: RoomCommand, now: number, lead: number): boolean {

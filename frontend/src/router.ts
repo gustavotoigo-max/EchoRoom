@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-/** Roteador mínimo sem dependências: / (apresentação), /comecar (criar ou entrar) e /room/CODIGO. */
+/** Roteador mínimo sem dependências: / (apresentação), /comecar, /perfil e /room/CODIGO. */
 
 const listeners = new Set<() => void>()
 const notify = () => listeners.forEach((l) => l())
@@ -42,8 +42,15 @@ export function matchRoom(pathname: string): string | null {
 
 /** Página de criar ou entrar em uma sala. */
 export const START_PATH = '/comecar'
+/** Perfil de quem entrou com Discord. */
+export const PROFILE_PATH = '/perfil'
+
+const rel = (pathname: string) => (pathname.startsWith(BASE) ? pathname.slice(BASE.length - 1) : pathname)
 
 export function isStartPath(pathname: string): boolean {
-  const rel = pathname.startsWith(BASE) ? pathname.slice(BASE.length - 1) : pathname
-  return /^\/comecar\/?$/.test(rel)
+  return /^\/comecar\/?$/.test(rel(pathname))
+}
+
+export function isProfilePath(pathname: string): boolean {
+  return /^\/perfil\/?$/.test(rel(pathname))
 }

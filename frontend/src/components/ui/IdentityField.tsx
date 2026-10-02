@@ -7,13 +7,15 @@ interface Props {
   guestName: string
   onGuestName: (name: string) => void
   autoFocus?: boolean
+  /** Sem opção de convidado (ex.: criar sala exige Discord). */
+  discordOnly?: boolean
 }
 
 /**
  * "Quem é você": entrar com Discord (nome e avatar) ou como convidado.
  * Sem o Client ID do Discord configurado, mostra só o campo de nome.
  */
-export function IdentityField({ guestName, onGuestName, autoFocus }: Props) {
+export function IdentityField({ guestName, onGuestName, autoFocus, discordOnly }: Props) {
   const { profile, busy, error } = useStore(authStore, (s) => s)
 
   if (profile) {
@@ -24,9 +26,26 @@ export function IdentityField({ guestName, onGuestName, autoFocus }: Props) {
           <strong>{profile.name}</strong>
           <span>conectado com Discord</span>
         </div>
-        <button type="button" className="link-btn" onClick={logoutDiscord}>
+        <button type="button" className="link-btn" onClick={() => void logoutDiscord()}>
           Sair
         </button>
+      </div>
+    )
+  }
+
+  if (discordOnly) {
+    return (
+      <div className="identity">
+        <p className="hint">Para criar uma sala, entre com Discord: o dono precisa de uma conta para administrar a sala.</p>
+        {discordEnabled ? (
+          <button type="button" className="btn btn-discord" onClick={startDiscordLogin} disabled={busy}>
+            <DiscordIcon width={20} height={20} />
+            <span>{busy ? 'Conectando ao Discord…' : 'Entrar com Discord'}</span>
+          </button>
+        ) : (
+          <p className="form-error">O login com Discord ainda não foi configurado neste site.</p>
+        )}
+        {error && <p className="form-error">{error}</p>}
       </div>
     )
   }

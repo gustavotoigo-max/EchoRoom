@@ -3,7 +3,7 @@ import { removeEntry, subscribeLibrary, type LibraryEntry } from '../../services
 import { useRoomSession } from '../../services/RoomSessionContext'
 import { thumbnailUrl } from '../../services/youtube/metadata'
 import { useStore } from '../../stores/createStore'
-import { roomStore } from '../../stores/roomStore'
+import { roomStore, selectIsOwner } from '../../stores/roomStore'
 import { showToast } from '../../stores/toastStore'
 import { PlusIcon } from '../ui/Icons'
 
@@ -31,7 +31,7 @@ function timeAgo(ms: number): string {
 }
 
 /**
- * Sugestões: músicas e playlists que o grupo já adicionou em qualquer sala.
+ * Sugestões: músicas e playlists que já tocaram nesta sala (o dono pode tirar itens).
  * Um clique coloca de volta na fila.
  */
 export function Suggestions() {
@@ -51,8 +51,10 @@ export function Suggestions() {
     return [r.currentTrack?.videoId, ...r.queue.map((q) => q.videoId)].filter(Boolean).join(',')
   })
   const inRoomSet = useMemo(() => new Set(inRoom.split(',')), [inRoom])
+  const isOwner = useStore(roomStore, selectIsOwner)
+  const addLocked = useStore(roomStore, (s) => s.settings.adding === 'owner') && !isOwner
 
-  useEffect(() => subscribeLibrary(setEntries, setError), [])
+  useEffect(() => subscribeLibrary(session.backend.roomKey, setEntries, setError), [session])
   useEffect(() => setLimit(PAGE), [kind, order, search])
 
   const counts = useMemo(() => {
@@ -90,7 +92,7 @@ export function Suggestions() {
 
   async function forget(e: LibraryEntry) {
     try {
-      await removeEntry(e)
+      await removeEntry(session.backend.roomKey, e)
       showToast(`"${e.title}" saiu das sugestões.`, 'info', 3000)
     } catch {
       showToast('Não foi possível remover a sugestão.', 'error')
@@ -148,8 +150,8 @@ export function Suggestions() {
           {search
             ? 'Nada encontrado com essa busca.'
             : kind === 'track'
-              ? 'As músicas que vocês adicionarem em qualquer sala aparecem aqui para tocar de novo com um clique.'
-              : 'As playlists que vocês adicionarem aparecem aqui.'}
+              ? 'As músicas que tocarem nesta sala aparecem aqui para tocar de novo com um clique.'
+              : 'As playlists adicionadas nesta sala aparecem aqui.'}
         </p>
       ) : (
         <>
@@ -179,7 +181,7 @@ export function Suggestions() {
                   <button
                     type="button"
                     className="btn btn-secondary sugg-add"
-                    disabled={queued || busy === e.id}
+                    disabled={queued || addLocked || busy === e.id}
                     onClick={() => add(e)}
                     aria-label={`Adicionar ${e.title} à fila`}
                   >
@@ -194,6 +196,7 @@ export function Suggestions() {
                       </>
                     )}
                   </button>
+                  {isOwner && (
                   <button
                     type="button"
                     className="sugg-remove"
@@ -203,6 +206,7 @@ export function Suggestions() {
                   >
                     ×
                   </button>
+                  )}
                 </li>
               )
             })}

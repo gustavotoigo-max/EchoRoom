@@ -26,7 +26,10 @@ export function PlayerPanel() {
   const loaded = useStore(roomStore, (s) => s.room !== null)
   const error = useStore(playerStore, (s) => s.playerError)
   const needsGesture = useStore(playerStore, (s) => s.needsGesture)
-  const hidden = useStore(playerStore, (s) => s.videoHidden)
+  const hiddenLocal = useStore(playerStore, (s) => s.videoHidden)
+  // O dono pode desligar o vídeo para todos: vira mini player, sem a opção de mostrar.
+  const videoOff = useStore(roomStore, (s) => s.settings.videoOff)
+  const hidden = hiddenLocal || videoOff
 
   const onReady = useCallback((p: PlayerAdapter) => session.attachPlayer(p), [session])
   const onState = useCallback((s: LocalPlayerState) => session.handlePlayerState(s), [session])
@@ -66,7 +69,7 @@ export function PlayerPanel() {
             {error}
           </div>
         )}
-        {!hidden && (
+        {!hidden && !videoOff && (
           <button
             type="button"
             className="video-toggle"
@@ -82,15 +85,24 @@ export function PlayerPanel() {
 
       {hidden && (
         <div className="player-compact-info">
-          <strong>Vídeo reduzido</strong>
-          <p>
-            Com o vídeo pequeno, o YouTube envia uma resolução menor: menos processamento e menos dados. A música continua
-            sincronizada.
-          </p>
-          <button type="button" className="btn btn-secondary" onClick={() => setVideoHidden(false)}>
-            <ExpandIcon width={16} height={16} />
-            <span>Mostrar vídeo</span>
-          </button>
+          {videoOff ? (
+            <>
+              <strong>Vídeo desligado nesta sala</strong>
+              <p>O dono deixou a sala só no som: o YouTube manda a menor resolução e a música continua sincronizada.</p>
+            </>
+          ) : (
+            <>
+              <strong>Vídeo reduzido</strong>
+              <p>
+                Com o vídeo pequeno, o YouTube envia uma resolução menor: menos processamento e menos dados. A música
+                continua sincronizada.
+              </p>
+              <button type="button" className="btn btn-secondary" onClick={() => setVideoHidden(false)}>
+                <ExpandIcon width={16} height={16} />
+                <span>Mostrar vídeo</span>
+              </button>
+            </>
+          )}
         </div>
       )}
     </section>

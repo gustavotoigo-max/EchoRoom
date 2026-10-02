@@ -3,14 +3,29 @@ import { firebaseConfig } from './config/firebase'
 import { Home } from './pages/Home/Home'
 import { Landing } from './pages/Landing/Landing'
 import { Room } from './pages/Room/Room'
-import { isStartPath, matchRoom, usePathname } from './router'
+import { InvitePopup } from './components/Invites/InvitePopup'
+import { Profile } from './pages/Profile/Profile'
+import { isProfilePath, isStartPath, matchRoom, usePathname } from './router'
 
 export function App() {
   const path = usePathname()
   if (!firebaseConfig) return <SetupNeeded />
   const roomId = matchRoom(path)
-  if (roomId) return <Room key={roomId} roomId={roomId} />
-  return isStartPath(path) ? <Home /> : <Landing />
+  const page = roomId ? (
+    <Room key={roomId} roomId={roomId} />
+  ) : isStartPath(path) ? (
+    <Home />
+  ) : isProfilePath(path) ? (
+    <Profile />
+  ) : (
+    <Landing />
+  )
+  return (
+    <>
+      {page}
+      <InvitePopup />
+    </>
+  )
 }
 
 /** Mostrado quando o site foi publicado sem a configuração do Firebase. */

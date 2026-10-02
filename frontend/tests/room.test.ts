@@ -3,7 +3,7 @@ import { parseFirebaseConfig } from '../src/config/firebase'
 import { applyCommand, CommandError, emptyRoom, normalizeRoom, queueCapacity, toFirebase } from '../src/rooms/roomLogic'
 import { parseYouTubeLink } from '../src/utils/youtubeUrlParser'
 import { SyncConfig } from '../src/sync/SyncConfig'
-import type { QueueItem, RoomDoc } from '../src/types/room'
+import { DEFAULT_SETTINGS, normalizeSettings, type CommandActor, type QueueItem, type RoomDoc, type RoomSettings } from '../src/types/room'
 
 const LEAD = SyncConfig.commandLeadTimeMs / 1000
 const TRACK_LEAD = SyncConfig.trackChangeLeadTimeMs / 1000
@@ -203,5 +203,96 @@ const app = initializeApp(firebaseConfig);`
   it('rejeita vazio ou incompleto', () => {
     expect(parseFirebaseConfig('')).toBe(null)
     expect(parseFirebaseConfig('{ apiKey: "x" }')).toBe(null)
+  })
+})
+
+describe('permissões da sala (configurações do dono)', () => {
+  const settings = (patch: Partial<RoomSettings> = {}): RoomSettings => ({ ...DEFAULT_SETTINGS, ...patch })
+  const owner = (patch: Partial<RoomSettings> = {}): CommandActor => ({ uid: 'dono', isOwner: true, settings: settings(patch) })
+  const guest = (patch: Partial<RoomSettings> = {}, uid = 'ana'): CommandActor => ({ uid, isOwner: false, settings: settings(patch) })
+  const playing = (): RoomDoc => {
+    const r = emptyRoom('ABCDE')
+    r.currentTrack = item('aaaaaaaaaaa', { addedByUid: 'dono' })
+    r.playbackState = 'playing'
+    r.startedAt = 100
+    r.queue = [item('bbbbbbbbbbb', { addedByUid: 'ana' }), item('ccccccccccc', { addedByUid: 'joao' })]
+    return r
+  }
+  const errorOf = (fn: () => unknown): string => {
+    try {
+      fn()
+      return ''
+    } catch (e) {
+      return e instanceof CommandError ? e.message : 'outro erro'
+    }
+  }
+
+  it('controle só do dono bloqueia play/pausa/seek/pular dos outros, mas não do dono', () => {
+    const doc = playing()
+    expect(errorOf(() => applyCommand(doc, { type: 'PAUSE' }, 200, guest({ controls: 'owner' })))).toBe(
+      'Nesta sala, só o dono controla a reprodução.',
+    )
+    expect(errorOf(() => applyCommand(doc, { type: 'TRACK_SKIP', currentItemId: doc.currentTrack!.id }, 200, guest({ controls: 'owner' })))).toBe(
+      'Nesta sala, só o dono pula músicas.',
+    )
+    expect(applyCommand(doc, { type: 'PAUSE' }, 200, owner({ controls: 'owner' }))!.playbackState).toBe('paused')
+  })
+
+  it('comandos automáticos passam mesmo com controle travado', () => {
+    const doc = playing()
+    const id = doc.currentTrack!.id
+    const next = applyCommand(doc, { type: 'TRACK_SKIP', currentItemId: id, reason: 'error' }, 200, guest({ controls: 'owner' }))
+    expect(next!.currentTrack!.videoId).toBe('bbbbbbbbbbb')
+  })
+
+  it('votação: pular direto é recusado, pular por voto concluído é aceito', () => {
+    const doc = playing()
+    const id = doc.currentTrack!.id
+    expect(errorOf(() => applyCommand(doc, { type: 'TRACK_SKIP', currentItemId: id }, 200, guest({ voteSkip: true })))).toBe(
+      'Nesta sala, pular é por votação.',
+    )
+    const next = applyCommand(doc, { type: 'TRACK_SKIP', currentItemId: id, reason: 'vote' }, 200, guest({ voteSkip: true }))
+    expect(next!.currentTrack!.videoId).toBe('bbbbbbbbbbb')
+    // o dono pula direto
+    expect(applyCommand(doc, { type: 'TRACK_SKIP', currentItemId: id }, 200, owner({ voteSkip: true }))).not.toBe(null)
+  })
+
+  it('só o dono adiciona quando configurado', () => {
+    const doc = playing()
+    expect(errorOf(() => applyCommand(doc, { type: 'TRACK_ADD', item: item() }, 200, guest({ adding: 'owner' })))).toBe(
+      'Nesta sala, só o dono adiciona músicas.',
+    )
+    expect(applyCommand(doc, { type: 'TRACK_ADD', item: item() }, 200, owner({ adding: 'owner' }))!.queue.length).toBe(3)
+  })
+
+  it('limite por pessoa: recusa a mais e corta playlists', () => {
+    const doc = playing()
+    expect(errorOf(() => applyCommand(doc, { type: 'TRACK_ADD', item: item() }, 200, guest({ maxPerUser: 1 })))).toBe(
+      'Você já tem 1 música na fila (limite da sala: 1).',
+    )
+    const items = [1, 2, 3, 4].map(() => item('ddddddddddd', { addedByUid: 'ana' }))
+    const next = applyCommand(doc, { type: 'TRACK_ADD_MANY', items }, 200, guest({ maxPerUser: 3 }))
+    expect(next!.queue.filter((q) => q.addedByUid === 'ana').length).toBe(3)
+    // o comando original não é alterado (a transação pode repetir)
+    expect(items.length).toBe(4)
+  })
+
+  it('remover: dono remove qualquer uma; os outros só as próprias', () => {
+    const doc = playing()
+    const deAna = doc.queue[0].id
+    const deJoao = doc.queue[1].id
+    expect(applyCommand(doc, { type: 'TRACK_REMOVE', itemId: deAna }, 200, guest())!.queue.length).toBe(1)
+    expect(errorOf(() => applyCommand(doc, { type: 'TRACK_REMOVE', itemId: deJoao }, 200, guest()))).toBe(
+      'Só o dono da sala ou quem adicionou pode remover esta música.',
+    )
+    expect(applyCommand(doc, { type: 'TRACK_REMOVE', itemId: deJoao }, 200, owner())!.queue.length).toBe(1)
+  })
+
+  it('configurações inválidas viram o padrão', () => {
+    const s = normalizeSettings({ controls: 'x', voteSkipPercent: 7, maxPerUser: -2, allowGuests: false })
+    expect(s.controls).toBe('all')
+    expect(s.voteSkipPercent).toBe(50)
+    expect(s.maxPerUser).toBe(0)
+    expect(s.allowGuests).toBe(false)
   })
 })

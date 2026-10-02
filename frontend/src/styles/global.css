@@ -2017,3 +2017,636 @@ input[readonly] {
     height: 32px;
   }
 }
+
+/* ==== contas: dono, configurações, convites, perfil ========================== */
+
+.btn-danger {
+  background: var(--red);
+  color: #fff;
+}
+.btn-danger:hover:not(:disabled) {
+  background: #ff7891;
+}
+
+/* Cabeçalho da sala: nome + código, engrenagem */
+.channel-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  max-width: 28ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.channel-code {
+  padding: 2px 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+}
+.header-btn {
+  width: 34px;
+  height: 34px;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+.header-btn:hover:not(:disabled) {
+  color: var(--text);
+}
+
+/* Sino de convites + avatar */
+.user-chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.topbar > .user-chip {
+  margin-left: 4px;
+}
+.bell {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+.bell:hover:not(:disabled) {
+  color: var(--text);
+}
+.bell b {
+  position: absolute;
+  top: 2px;
+  right: 1px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+}
+.bell.has-new {
+  color: var(--text);
+  animation: ring 1.2s ease-in-out 2;
+}
+@keyframes ring {
+  20%,
+  60% {
+    transform: rotate(-12deg);
+  }
+  40%,
+  80% {
+    transform: rotate(12deg);
+  }
+}
+.chip-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px 0 3px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+}
+.chip-profile .avatar {
+  width: 28px;
+  height: 28px;
+}
+.user-chip:has(.chip-profile:only-child) .chip-profile,
+.room-topbar .chip-profile,
+.lp-topbar .chip-profile {
+  padding: 2px;
+  background: transparent;
+  border-color: transparent;
+}
+.bell-menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(380px, calc(100vw - 32px));
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 8px;
+  background: var(--bg-deeper);
+  border: 1px solid var(--line);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+.bell-menu header {
+  padding: 6px 6px 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.bell-empty {
+  padding: 4px 6px 8px;
+  color: var(--text-faint);
+  font-size: 14px;
+}
+
+/* Convite */
+.invite-card {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 8px 12px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+}
+.invite-card + .invite-card {
+  margin-top: 6px;
+}
+.invite-text {
+  display: grid;
+  min-width: 0;
+  font-size: 14px;
+}
+.invite-text small {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.invite-actions {
+  grid-column: 2;
+  display: flex;
+  gap: 8px;
+}
+.invite-actions .btn {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+.invite-popup {
+  position: fixed;
+  z-index: 60;
+  left: 16px;
+  bottom: 16px;
+  width: min(380px, calc(100vw - 32px));
+  background: var(--bg-deeper);
+  border: 1px solid var(--line);
+  border-top: 2px solid transparent;
+  border-image: var(--grad) 1;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 40px rgba(124, 92, 255, 0.25);
+  animation: toast-in 0.2s ease-out;
+}
+.invite-popup header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px 0 14px;
+  color: var(--live);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.invite-popup .invite-card {
+  border: 0;
+  background: transparent;
+}
+.invite-list {
+  display: grid;
+  gap: 6px;
+  max-width: 560px;
+}
+
+/* Participantes: dono, convidado, menu do dono */
+.participants li {
+  position: relative;
+}
+.p-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.p-crown {
+  display: inline-grid;
+  color: var(--amber);
+}
+.p-guest {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.p-more {
+  flex: none;
+}
+.participants .menu {
+  top: calc(100% - 4px);
+}
+
+/* Votar para pular */
+.vote-btn {
+  position: relative;
+  width: auto;
+  padding: 0 10px;
+  gap: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+.vote-btn b {
+  font-size: 12px;
+  font-weight: 700;
+}
+.np-controls > .vote-btn.is-voted {
+  background: var(--accent-tint);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* Painel lateral (configurações / convidar) */
+.drawer-wrap {
+  position: fixed;
+  z-index: 55;
+  inset: 0;
+  background: rgba(4, 5, 10, 0.55);
+  backdrop-filter: blur(2px);
+  animation: appear 0.15s;
+}
+.drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(460px, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-deep);
+  border-left: 1px solid var(--line);
+  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.5);
+  animation: slide-in 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes slide-in {
+  from {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+}
+.drawer-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: var(--topbar-h);
+  padding: 0 12px 0 22px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.drawer-head::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--grad);
+  opacity: 0.55;
+}
+.drawer-head h2 {
+  font-size: 17px;
+  font-weight: 600;
+}
+.drawer-close {
+  width: 34px;
+  height: 34px;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 22px 32px;
+}
+.drawer-section {
+  display: grid;
+  gap: 14px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.drawer-section:last-child {
+  border-bottom: 0;
+}
+.drawer-section h3 {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.drawer-section.is-danger h3 {
+  color: var(--red);
+}
+.drawer-note {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border-left: 3px solid var(--amber);
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.drawer-note strong {
+  color: var(--text);
+}
+.drawer input:disabled {
+  opacity: 0.7;
+}
+.toggle-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.toggle-row > div {
+  display: grid;
+  gap: 2px;
+}
+.toggle-row strong {
+  font-size: 14px;
+}
+.toggle-row span {
+  color: var(--text-faint);
+  font-size: 13px;
+}
+.switch {
+  flex: none;
+  position: relative;
+  width: 42px;
+  height: 24px;
+  margin-top: 2px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface-3);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.switch i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+}
+.switch.on {
+  background: var(--accent);
+}
+.switch.on i {
+  transform: translateX(18px);
+}
+.switch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.seg-full {
+  display: flex;
+}
+.seg-full button {
+  flex: 1;
+}
+.seg button:disabled {
+  cursor: default;
+}
+.seg button:disabled:not(.on) {
+  opacity: 0.5;
+}
+.banned-list,
+.people-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.banned-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--surface);
+  font-size: 14px;
+}
+.people-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  background: var(--surface);
+}
+.people-list li.hint {
+  background: transparent;
+  padding: 4px 0;
+}
+.people-text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  line-height: 1.3;
+}
+.people-text strong {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.people-text small {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.people-list .btn {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+.sent-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--live);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Perfil */
+.profile-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 56px 24px 72px;
+}
+.profile-main > .gate {
+  margin: 40px auto 0;
+}
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.profile-head .avatar {
+  width: 88px;
+  height: 88px;
+  box-shadow: 0 0 0 4px var(--bg), 0 0 0 6px var(--accent);
+}
+.profile-head h1 {
+  font-size: clamp(26px, 4vw, 36px);
+  letter-spacing: -0.02em;
+}
+.profile-head p {
+  color: var(--text-muted);
+}
+.profile-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+.profile-block {
+  padding-top: 20px;
+}
+.profile-block .side-head {
+  padding-left: 0;
+}
+.room-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2px;
+}
+.room-card {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 20px;
+  background: var(--surface);
+  border-top: 2px solid var(--line);
+  transition: background-color 0.15s;
+}
+.room-card:hover {
+  background: var(--surface-2);
+}
+.room-card.is-owner {
+  border-top: 2px solid transparent;
+  border-image: var(--grad) 1;
+}
+.room-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.room-card h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.room-card p {
+  color: var(--text-faint);
+  font-size: 13px;
+}
+.room-card .mono-code {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.role-badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--surface-3);
+  color: var(--text-muted);
+}
+.role-badge.owner {
+  background: rgba(240, 181, 74, 0.14);
+  color: var(--amber);
+}
+.room-card-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.room-card-actions .btn {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+@media (max-width: 1199px) {
+  .channel-title {
+    max-width: 18ch;
+  }
+}
+@media (max-width: 900px) {
+  .room-topbar .user-chip,
+  .room-topbar .header-btn {
+    grid-area: auto;
+  }
+  .room-topbar {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-areas:
+      'brand gear chip invite'
+      'name name name status';
+  }
+  .room-topbar .header-btn {
+    grid-area: gear;
+  }
+  .room-topbar .user-chip {
+    grid-area: chip;
+  }
+  .room-topbar .invite-btn {
+    grid-area: invite;
+  }
+  .profile-head {
+    flex-wrap: wrap;
+  }
+  .profile-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+  .profile-main {
+    padding: 32px 16px 56px;
+  }
+}
+@media (max-width: 560px) {
+  .invite-btn span {
+    display: none;
+  }
+  .invite-btn {
+    width: 40px;
+    padding: 0;
+  }
+  .channel-code {
+    display: none;
+  }
+}
+.seg-full button {
+  padding: 0 6px;
+  white-space: nowrap;
+}

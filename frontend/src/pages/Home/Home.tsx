@@ -2,17 +2,21 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Brand } from '../../components/ui/Brand'
 import { Equalizer } from '../../components/ui/Equalizer'
 import { CopyButton } from '../../components/ui/CopyButton'
-import { currentIdentity, IdentityField } from '../../components/ui/IdentityField'
+import { UserChip } from '../../components/Invites/UserChip'
+import { IdentityField } from '../../components/ui/IdentityField'
+import { authStore } from '../../services/discordAuth'
 import { appPath, navigate } from '../../router'
 import { clearPendingAdd, pendingStore } from '../../services/externalAdd'
 import { useStore } from '../../stores/createStore'
-import { createRoom, MIN_PASSWORD } from '../../services/firebase/roomsApi'
+import { createRoom, MAX_ROOM_NAME, MIN_PASSWORD } from '../../services/firebase/roomsApi'
 import { parseRoomInput, roomLink } from '../../utils/format'
 import { storage } from '../../utils/storage'
 
 export function Home() {
   const [name, setName] = useState(storage.getName())
+  const [roomName, setRoomName] = useState('')
   const [password, setPassword] = useState('')
+  const profile = useStore(authStore, (s) => s.profile)
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [created, setCreated] = useState<string | null>(null)
@@ -28,13 +32,13 @@ export function Home() {
 
   async function create(e: FormEvent) {
     e.preventDefault()
-    if (!currentIdentity(name).name) return setCreateError('Entre com Discord ou digite um nome.')
+    if (!profile) return setCreateError('Entre com Discord para criar uma sala.')
+    if (!roomName.trim()) return setCreateError('Dê um nome para a sala.')
     if (password.length < MIN_PASSWORD) return setCreateError(`A senha precisa ter pelo menos ${MIN_PASSWORD} caracteres.`)
     setCreating(true)
     setCreateError(null)
     try {
-      const res = await createRoom(password)
-      storage.setName(name)
+      const res = await createRoom(roomName, password, profile.name)
       storage.setRoomKey(res.roomId, res.roomKey)
       setCreated(res.roomId)
     } catch (err) {
@@ -59,6 +63,7 @@ export function Home() {
         <nav className="topnav">
           <a href="#extensao">Extensão para Chrome</a>
         </nav>
+        <UserChip />
       </header>
 
       {pending && (
@@ -104,7 +109,10 @@ export function Home() {
                 <span>Link da sala</span>
                 <input readOnly value={roomLink(created)} onFocus={(e) => e.currentTarget.select()} />
               </label>
-              <p className="hint">Envie o link e a senha para quem vai ouvir com você.</p>
+              <p className="hint">
+                Envie o link e a senha para quem vai ouvir com você — ou, de dentro da sala, convide direto quem já tem
+                perfil no EchoRoom.
+              </p>
               <div className="row">
                 <CopyButton text={roomLink(created)} />
                 <button type="button" className="btn btn-primary grow" onClick={() => navigate(`/room/${created}`)}>
@@ -115,7 +123,17 @@ export function Home() {
           ) : (
             <form className="panel" onSubmit={create} noValidate>
               <h2>Criar sala</h2>
-              <IdentityField guestName={name} onGuestName={setName} />
+              <IdentityField guestName={name} onGuestName={setName} discordOnly />
+              <label className="field">
+                <span>Nome da sala</span>
+                <input
+                  value={roomName}
+                  onChange={(e) => setRoomName(e.target.value)}
+                  maxLength={MAX_ROOM_NAME}
+                  placeholder="Ex.: Noite de sexta"
+                  disabled={!profile}
+                />
+              </label>
               <label className="field">
                 <span>Senha da sala</span>
                 <input
@@ -124,10 +142,11 @@ export function Home() {
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="new-password"
                   placeholder={`Mínimo de ${MIN_PASSWORD} caracteres`}
+                  disabled={!profile}
                 />
               </label>
               {createError && <p className="form-error">{createError}</p>}
-              <button type="submit" className="btn btn-primary" disabled={creating}>
+              <button type="submit" className="btn btn-primary" disabled={creating || !profile}>
                 {creating ? 'Criando sala…' : 'Criar sala'}
               </button>
             </form>

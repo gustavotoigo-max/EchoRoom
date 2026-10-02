@@ -32,13 +32,24 @@ Endereço: `https://<usuário>.github.io/EchoRoom/`
   API); entram até o limite da fila (200).
 - Vídeos indisponíveis (removidos, privados ou sem incorporação) são pulados
   automaticamente.
-- **Sugestões**: músicas e playlists adicionadas em qualquer sala ficam salvas
-  (`/library` no Firebase) e aparecem na sala ordenadas por mais tocadas ou
-  recentes, com busca e adição em um clique.
-- **Login com Discord** (opcional, escopo `identify`: só nome e avatar). Ative
-  criando a variável `DISCORD_CLIENT_ID` no GitHub (Settings → Secrets and
-  variables → Actions → Variables). O avatar aparece na lista de participantes.
-  Quem não quiser entra como convidado.
+- **Sugestões** de cada sala: músicas e playlists que já tocaram ficam salvas
+  (`/rooms/{chave}/library`), ordenadas por mais tocadas ou recentes, com busca
+  e adição em um clique.
+- **Login com Discord** (escopo `identify`: só nome e avatar), validado pelo
+  serviço de login em `auth-worker/` (Cloudflare Workers, grátis). Guia completo:
+  [`auth-worker/README.md`](auth-worker/README.md). Variáveis no GitHub:
+  `DISCORD_CLIENT_ID` e `AUTH_URL`.
+- **Dono da sala:** criar sala exige Discord e pede nome + senha. Só o dono
+  altera as configurações, remove/bloqueia pessoas e apaga sugestões.
+- **Configurações da sala** (engrenagem no topo): quem controla a reprodução,
+  votar para pular (com porcentagem), vídeo desligado para todos, quem adiciona
+  músicas, limite por pessoa, permitir convidados, bloqueados, apagar sala.
+- **Perfil** (`/perfil`): salas de que a pessoa faz parte (dono ou membro) e
+  convites pendentes.
+- **Convites:** de dentro da sala, busque quem já tem perfil pelo usuário do
+  Discord. A pessoa recebe uma notificação (Aceitar/Recusar) e entra sem senha.
+  O convite expira em 1 hora.
+- **Convidados** (sem Discord) entram com link + senha, se o dono permitir.
 - **Páginas:** `/` apresentação, `/comecar` criar ou entrar numa sala,
   `/room/CODIGO` a sala.
 - **Visual "Frequência":** estrutura no estilo do Discord (fila à esquerda,
@@ -75,7 +86,11 @@ SyncEngine). Modo debug da sincronização: adicione `?debug` à URL da sala.
 | Participantes por WebSocket     | Presença com `onDisconnect()`                                     |
 
 - **Senha:** só quem sabe código + senha calcula o caminho da sala; as regras
-  proíbem listar `/rooms`. O código fica público em `/roomIndex` apenas para
+  proíbem listar `/rooms`. Convites aceitos guardam a chave no perfil.
+- **Permissões no banco:** as regras conferem dono (`meta/ownerUid`), bloqueio,
+  sala só para Discord, perfil igual ao login, convite só de membro e por até 1 h.
+  Quem controla a reprodução / adiciona / remove é conferido dentro da transação
+  da sala (pelo app). O código fica público em `/roomIndex` apenas para
   diferenciar "sala não existe" de "senha incorreta".
 - **Concorrência:** dois cliques simultâneos são resolvidos pela transação; o
   segundo é reaplicado sobre o resultado do primeiro (ex.: dois "Próxima"
@@ -89,6 +104,7 @@ SyncEngine). Modo debug da sincronização: adicione `?debug` à URL da sala.
 
 ```text
 database.rules.json            regras do Realtime Database (copiar no console)
+auth-worker/                   serviço de login (Cloudflare Worker) + guia de configuração
 .github/workflows/deploy.yml   build + deploy no GitHub Pages
 frontend/src/
   config/firebase.ts           lê a configuração do Firebase

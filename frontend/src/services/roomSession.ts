@@ -1,5 +1,5 @@
 import { playerStore } from '../stores/playerStore'
-import { applyRoomState, roomStore } from '../stores/roomStore'
+import { applyRoomState, roomStore, selectIsOwner, validVotes, votesNeeded } from '../stores/roomStore'
 import { CommandError, queueCapacity, type RoomCommand } from '../rooms/roomLogic'
 import { ClockSync } from '../sync/ClockSync'
 import { SyncConfig, isSyncDebug } from '../sync/SyncConfig'
@@ -29,16 +29,22 @@ export class RoomSession {
   private player: PlayerAdapter | null = null
   private gotFirstState = false
   private errorSkipTimer: ReturnType<typeof setTimeout> | null = null
+  private unsubStore: (() => void) | null = null
+  private voteSkipFiredFor: string | null = null
 
   constructor(
     readonly roomId: string,
     roomKey: string,
     private readonly name: string,
-    private readonly participantId: string,
     avatar: string | null = null,
   ) {
     this.clock = new ClockSync((t1) => void this.backend.clockPing(t1))
-    this.backend = new FirebaseRoomBackend(roomId, roomKey, participantId, name, avatar, this.clock, {
+    this.backend = new FirebaseRoomBackend(roomId, roomKey, name, avatar, this.clock, {
+      onIdentity: (uid) => roomStore.set({ participantId: uid }),
+      onRemoved: (message) => {
+        roomStore.set({ removedReason: message })
+        void import('./firebase/social').then((m) => m.forgetMyRoom(roomId)).catch(() => {})
+      },
       onState: (room) => this.onRoomState(room),
       onStatus: (s) => {
         roomStore.set({ connection: s })
@@ -53,7 +59,7 @@ export class RoomSession {
       onTrackMeta: (itemId, title, duration) => {
         this.fire({ type: 'TRACK_META', itemId, title, duration })
         const videoId = roomStore.get().room?.currentTrack?.videoId
-        if (title && videoId) void fixTrackTitle(videoId, title)
+        if (title && videoId) void fixTrackTitle(this.backend.roomKey, videoId, title)
       },
       onStatus: (status) => {
         playerStore.set({ sync: status.ui })
@@ -66,7 +72,8 @@ export class RoomSession {
   }
 
   start(): void {
-    roomStore.set({ participantId: this.participantId, fatalError: null })
+    roomStore.set({ fatalError: null, removedReason: null })
+    this.unsubStore = roomStore.subscribe(() => this.checkVotes())
     this.engine.start()
     this.backend.start().catch((err: Error) => roomStore.set({ fatalError: err.message, connection: 'closed' }))
     setActiveSession(this)
@@ -76,6 +83,8 @@ export class RoomSession {
 
   stop(): void {
     setActiveSession(null)
+    this.unsubStore?.()
+    this.unsubStore = null
     if (this.resyncTimer) clearTimeout(this.resyncTimer)
     if (this.errorSkipTimer) clearTimeout(this.errorSkipTimer)
     playerStore.set({ needsGesture: false })
@@ -162,6 +171,30 @@ export class RoomSession {
   restart = () => this.seek(0)
   skip = () =>
     this.backend.command({ type: 'TRACK_SKIP', currentItemId: roomStore.get().room?.currentTrack?.id ?? null })
+  /** Votar (ou tirar o voto) para pular a música atual. */
+  toggleVoteSkip = async () => {
+    const st = roomStore.get()
+    const itemId = st.room?.currentTrack?.id
+    if (!itemId) return
+    const mine = st.votes.itemId === itemId && st.votes.voters.includes(st.participantId)
+    await this.backend.vote(itemId, !mine)
+  }
+
+  /** Quem completa a votação dispara o pulo (a transação garante um só pulo). */
+  private checkVotes(): void {
+    const st = roomStore.get()
+    const itemId = st.room?.currentTrack?.id
+    if (!st.settings.voteSkip || !itemId || this.voteSkipFiredFor === itemId) return
+    const votes = validVotes(st)
+    if (!votes.includes(st.participantId) || votes.length < votesNeeded(st)) return
+    this.voteSkipFiredFor = itemId
+    this.fire({ type: 'TRACK_SKIP', currentItemId: itemId, reason: 'vote' })
+  }
+
+  get isOwner(): boolean {
+    return selectIsOwner(roomStore.get())
+  }
+
   removeTrack = (itemId: string) => this.backend.command({ type: 'TRACK_REMOVE', itemId })
   moveToTop = (itemId: string) => this.backend.command({ type: 'TRACK_MOVE', itemId, toIndex: 0 })
 
@@ -189,7 +222,7 @@ export class RoomSession {
       type: 'TRACK_ADD',
       item: this.makeItem(link.videoId, { ...meta, title, resolved: meta.resolved || !!opts.title }),
     })
-    void recordTrack(link.videoId, title, meta.author, this.name)
+    void recordTrack(this.backend.roomKey, link.videoId, title, meta.author, this.name)
     return { added: 1, skipped: 0, title }
   }
 
@@ -220,7 +253,7 @@ export class RoomSession {
       items: ids.map((id, i) => this.makeItem(id, metas[i])),
     })
     const name = (await titlePromise) || `Playlist de ${metas[0]?.resolved ? metas[0].title : `${fullSize} músicas`}`
-    void recordPlaylist(playlistId, name, fullSize, firstVideoId, this.name)
+    void recordPlaylist(this.backend.roomKey, playlistId, name, fullSize, firstVideoId, this.name)
     return { added: ids.length, skipped: total - ids.length, title: name }
   }
 
@@ -232,6 +265,7 @@ export class RoomSession {
       author: meta.author,
       thumbnail: thumbnailUrl(videoId),
       addedBy: this.name,
+      addedByUid: this.backend.uid,
       titleResolved: meta.resolved,
     }
   }
@@ -304,7 +338,7 @@ export class RoomSession {
     if (!itemId) return
     if (this.errorSkipTimer) clearTimeout(this.errorSkipTimer)
     this.errorSkipTimer = setTimeout(() => {
-      if (roomStore.get().room?.currentTrack?.id === itemId) this.fire({ type: 'TRACK_SKIP', currentItemId: itemId })
+      if (roomStore.get().room?.currentTrack?.id === itemId) this.fire({ type: 'TRACK_SKIP', currentItemId: itemId, reason: 'error' })
     }, 2500)
   }
 }

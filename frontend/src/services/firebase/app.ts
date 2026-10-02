@@ -1,13 +1,28 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
-import { getAuth, signInAnonymously, type Auth } from 'firebase/auth'
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInAnonymously,
+  signInWithCustomToken,
+  signOut,
+  type Auth,
+  type User,
+} from 'firebase/auth'
 import { getDatabase, type Database } from 'firebase/database'
 import { firebaseConfig } from '../../config/firebase'
 
-/** Inicialização única do Firebase e login anônimo. */
+/**
+ * Inicialização única do Firebase e sessão do usuário.
+ *
+ * - Quem entra com Discord recebe um token do serviço de login (Cloudflare)
+ *   e vira o usuário "discord_<id>" — o mesmo em qualquer computador.
+ * - Quem não entra com Discord usa login anônimo (convidado, vale só neste navegador).
+ */
 
 let app: FirebaseApp | null = null
 let db: Database | null = null
 let auth: Auth | null = null
+let firstUser: Promise<User | null> | null = null
 let signIn: Promise<string> | null = null
 
 export class FirebaseSetupError extends Error {}
@@ -20,30 +35,79 @@ export function getDb(): Database {
     app = initializeApp(firebaseConfig)
     db = getDatabase(app)
     auth = getAuth(app)
+    // O Firebase restaura a sessão salva de forma assíncrona: espera a primeira resposta.
+    firstUser = new Promise((resolve) => {
+      const off = onAuthStateChanged(auth!, (u) => {
+        off()
+        resolve(u)
+      })
+    })
   }
   return db!
 }
 
-/** Garante usuário anônimo autenticado. Retorna o uid. */
+export function getFirebaseAuth(): Auth {
+  getDb()
+  return auth!
+}
+
+/** true para usuários que entraram com Discord (uid "discord_…"). */
+export const isDiscordUid = (uid: string | null | undefined) => !!uid && uid.startsWith('discord_')
+
+/** Garante um usuário autenticado (Discord salvo ou convidado anônimo). Retorna o uid. */
 export function ensureSignedIn(): Promise<string> {
   getDb()
+  if (auth!.currentUser) return Promise.resolve(auth!.currentUser.uid)
   if (!signIn) {
-    signIn = signInAnonymously(auth!)
-      .then((cred) => cred.user.uid)
+    signIn = firstUser!
+      .then((u) => u ?? signInAnonymously(auth!).then((cred) => cred.user))
+      .then((u) => u.uid)
       .catch((err: { code?: string }) => {
         signIn = null
-        if (err?.code === 'auth/operation-not-allowed' || err?.code === 'auth/admin-restricted-operation') {
-          throw new FirebaseSetupError(
-            'O login anônimo está desativado no Firebase. Ative em Authentication → Sign-in method → Anônimo.',
-          )
-        }
-        if (err?.code === 'auth/network-request-failed') {
-          throw new FirebaseSetupError('Sem conexão com a internet.')
-        }
-        throw new FirebaseSetupError(`Não foi possível entrar no Firebase (${err?.code ?? 'erro desconhecido'}).`)
+        throw toSetupError(err)
       })
   }
   return signIn
+}
+
+/** Usuário atual já restaurado (ou null), sem criar convidado. */
+export async function currentUser(): Promise<User | null> {
+  getDb()
+  return auth!.currentUser ?? (await firstUser!)
+}
+
+/** Entra com o token devolvido pelo serviço de login. */
+export async function signInWithServerToken(token: string): Promise<string> {
+  getDb()
+  try {
+    const cred = await signInWithCustomToken(auth!, token)
+    signIn = null
+    return cred.user.uid
+  } catch (err) {
+    throw toSetupError(err as { code?: string })
+  }
+}
+
+/** Sai da conta (o próximo acesso ao banco entra como convidado). */
+export async function signOutUser(): Promise<void> {
+  getDb()
+  signIn = null
+  await signOut(auth!)
+}
+
+function toSetupError(err: { code?: string }): FirebaseSetupError {
+  if (err?.code === 'auth/operation-not-allowed' || err?.code === 'auth/admin-restricted-operation') {
+    return new FirebaseSetupError(
+      'O login anônimo está desativado no Firebase. Ative em Authentication → Sign-in method → Anônimo.',
+    )
+  }
+  if (err?.code === 'auth/network-request-failed') return new FirebaseSetupError('Sem conexão com a internet.')
+  if (err?.code === 'auth/invalid-custom-token' || err?.code === 'auth/custom-token-mismatch') {
+    return new FirebaseSetupError(
+      'O serviço de login está com a conta de serviço errada. Confira FIREBASE_SERVICE_ACCOUNT no Cloudflare.',
+    )
+  }
+  return new FirebaseSetupError(`Não foi possível entrar no Firebase (${err?.code ?? 'erro desconhecido'}).`)
 }
 
 /** Mensagem legível para erros do banco. */
@@ -55,3 +119,6 @@ export function describeDbError(err: unknown): string {
   }
   return (err as Error)?.message || 'Erro ao falar com o Firebase.'
 }
+
+export const isPermissionDenied = (err: unknown) =>
+  /permission[_-]denied/i.test(String((err as { code?: string })?.code ?? (err as Error)?.message ?? ''))

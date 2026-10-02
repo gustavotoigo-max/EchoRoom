@@ -5,7 +5,9 @@ import { Participants } from '../../components/Participants/Participants'
 import { PlayerPanel } from '../../components/Player/PlayerPanel'
 import { Queue } from '../../components/Queue/Queue'
 import { RoomHeader } from '../../components/RoomHeader/RoomHeader'
+import { RoomSettingsPanel } from '../../components/RoomSettings/RoomSettings'
 import { Suggestions } from '../../components/Suggestions/Suggestions'
+import { UserChip } from '../../components/Invites/UserChip'
 import { Brand } from '../../components/ui/Brand'
 import { Toasts } from '../../components/ui/Toasts'
 import { UserPanel } from '../../components/UserPanel/UserPanel'
@@ -29,6 +31,7 @@ type Phase =
 export function Room({ roomId }: { roomId: string }) {
   const [phase, setPhase] = useState<Phase>({ kind: 'checking' })
   const fatal = useStore(roomStore, (s) => s.fatalError)
+  const removed = useStore(roomStore, (s) => s.removedReason)
 
   useEffect(() => {
     let alive = true
@@ -36,11 +39,12 @@ export function Room({ roomId }: { roomId: string }) {
       .then((exists) => {
         if (!alive) return
         if (!exists) return setPhase({ kind: 'missing', message: 'A sala não existe mais.' })
-        // Vindo da extensão com nome e senha já salvos: entra direto.
+        // Chave já conhecida (perfil, convite aceito ou extensão): entra direto.
         const key = storage.getRoomKey(roomId)
-        if (key && takeAutoJoin(roomId)) {
-          const name = authStore.get().profile?.name || storage.getName().trim()
-          return setPhase({ kind: 'joined', roomKey: key, name })
+        const profile = authStore.get().profile
+        if (key && (profile || takeAutoJoin(roomId))) {
+          const name = profile?.name || storage.getName().trim()
+          if (name) return setPhase({ kind: 'joined', roomKey: key, name })
         }
         setPhase({ kind: 'gate' })
       })
@@ -50,11 +54,20 @@ export function Room({ roomId }: { roomId: string }) {
     }
   }, [roomId])
 
+  // Removido ou bloqueado pelo dono (ou sala só para Discord).
+  useEffect(() => {
+    if (phase.kind === 'joined' && removed) {
+      setPhase({ kind: 'missing', message: removed })
+      roomStore.set({ removedReason: null })
+    }
+  }, [removed, phase.kind])
+
   // Sala apagada (ou chave salva inválida) durante a sessão.
   useEffect(() => {
     if (phase.kind !== 'joined' || !fatal) return
     if (fatal === 'A sala não existe mais.') {
       storage.clearRoomKey(roomId)
+      void import('../../services/firebase/social').then((m) => m.forgetMyRoom(roomId)).catch(() => {})
       setPhase({ kind: 'missing', message: fatal })
     }
   }, [fatal, phase.kind, roomId])
@@ -67,13 +80,14 @@ export function Room({ roomId }: { roomId: string }) {
     <div className="home">
       <header className="topbar">
         <Brand />
+        <UserChip />
       </header>
       <main className="gate-main">
         {phase.kind === 'checking' && <div className="panel gate skeleton-panel" aria-busy="true" />}
         {phase.kind === 'missing' && (
           <div className="panel gate">
             <h2>{phase.message}</h2>
-            <p className="hint">Confira o link com quem criou a sala ou crie uma nova.</p>
+            <p className="hint">Fale com quem criou a sala ou crie uma nova.</p>
             <a className="btn btn-primary" href={appPath(START_PATH)}>
               Criar uma sala
             </a>
@@ -97,8 +111,7 @@ export function Room({ roomId }: { roomId: string }) {
 
 function RoomView({ roomId, roomKey, name }: { roomId: string; roomKey: string; name: string }) {
   const session = useMemo(
-    () =>
-      new RoomSession(roomId, roomKey, name, storage.getParticipantId(), authStore.get().profile?.avatarUrl ?? null),
+    () => new RoomSession(roomId, roomKey, name, authStore.get().profile?.avatarUrl ?? null),
     [roomId, roomKey, name],
   )
 
@@ -131,6 +144,7 @@ function RoomView({ roomId, roomKey, name }: { roomId: string; roomKey: string; 
           </aside>
         </main>
         <Toasts />
+        <RoomSettingsPanel />
       </div>
     </RoomSessionContext.Provider>
   )

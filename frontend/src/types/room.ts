@@ -10,16 +10,81 @@ export interface QueueItem {
   thumbnail: string
   duration?: number | null
   addedBy: string
+  /** uid de quem adicionou (permissões: quem adicionou pode remover). */
+  addedByUid?: string
   /** false enquanto o título é provisório (ex.: "youtu.be/ID"). */
   titleResolved?: boolean
 }
 
 export interface Participant {
+  /** uid do Firebase ("discord_…" para quem entrou com Discord). */
   id: string
   name: string
   connected: boolean
   /** Avatar do Discord, quando a pessoa entrou com Discord. */
   avatar?: string | null
+  /** Entrou sem Discord. */
+  guest?: boolean
+}
+
+/** Dados fixos da sala, em /rooms/{chave}/meta. */
+export interface RoomMeta {
+  roomId: string
+  name: string
+  /** uid do dono; ausente em salas antigas (antes de existir dono). */
+  ownerUid: string | null
+  ownerName: string
+  createdAt: number
+}
+
+/** Configurações da sala (só o dono altera), em /rooms/{chave}/settings. */
+export interface RoomSettings {
+  /** Quem dá play, pausa, avança e reordena: todos ou só o dono. */
+  controls: 'all' | 'owner'
+  /** Quem adiciona músicas: todos ou só o dono. */
+  adding: 'all' | 'owner'
+  /** Pular exige votos de parte da sala (o dono pula direto). */
+  voteSkip: boolean
+  /** Porcentagem das pessoas conectadas necessária para pular. */
+  voteSkipPercent: number
+  /** Vídeo desligado para todos (só o som; o player fica no tamanho mínimo). */
+  videoOff: boolean
+  /** Máximo de músicas de cada pessoa na fila (0 = sem limite). */
+  maxPerUser: number
+  /** Convidados (sem Discord) podem entrar. */
+  allowGuests: boolean
+}
+
+export const DEFAULT_SETTINGS: RoomSettings = {
+  controls: 'all',
+  adding: 'all',
+  voteSkip: false,
+  voteSkipPercent: 50,
+  videoOff: false,
+  maxPerUser: 0,
+  allowGuests: true,
+}
+
+export function normalizeSettings(raw: unknown): RoomSettings {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<Record<keyof RoomSettings, unknown>>
+  const pct = Number(r.voteSkipPercent)
+  const max = Number(r.maxPerUser)
+  return {
+    controls: r.controls === 'owner' ? 'owner' : 'all',
+    adding: r.adding === 'owner' ? 'owner' : 'all',
+    voteSkip: r.voteSkip === true,
+    voteSkipPercent: [25, 50, 66, 75, 100].includes(pct) ? pct : 50,
+    videoOff: r.videoOff === true,
+    maxPerUser: Number.isInteger(max) && max >= 0 && max <= 50 ? max : 0,
+    allowGuests: r.allowGuests !== false,
+  }
+}
+
+/** Quem está pedindo o comando (permissões verificadas dentro da transação). */
+export interface CommandActor {
+  uid: string
+  isOwner: boolean
+  settings: RoomSettings
 }
 
 /**

@@ -1,19 +1,22 @@
 import { createStore } from '../stores/createStore'
 import { appPath, navigate } from '../router'
+import { firebaseConfig } from '../config/firebase'
+import { currentUser, isDiscordUid, signInWithServerToken, signOutUser } from './firebase/app'
 
 /**
- * Login com Discord (OAuth2 "implicit grant", escopo `identify`).
+ * Login com Discord (OAuth2 "authorization code", escopo `identify`).
  *
- * - Pede só o escopo `identify`: nome de usuário, nome de exibição e avatar.
- *   Nada de e-mail, servidores ou mensagens.
- * - O token do Discord é usado uma única vez para ler o perfil e é
- *   descartado; só nome, id e avatar ficam salvos neste navegador.
- * - Funciona sem servidor próprio (GitHub Pages). Limitação: como não há
- *   servidor validando, o perfil é confiável só entre amigos — para um
- *   produto comercial, a troca do token deve passar por um backend.
+ * 1. O site manda a pessoa para o Discord pedindo só nome e avatar.
+ * 2. O Discord volta para o site com um `code`.
+ * 3. O serviço de login (Cloudflare) confirma o `code` com o Discord e
+ *    devolve um token do Firebase. O token do Discord nunca chega ao site.
+ * 4. Com esse token o Firebase sabe quem é a pessoa (uid "discord_<id>"),
+ *    e as regras do banco protegem dono da sala, perfis e convites.
  */
 
 export interface DiscordProfile {
+  /** uid no Firebase ("discord_<id>"). */
+  uid: string
   id: string
   name: string
   username: string
@@ -25,44 +28,44 @@ const STATE_KEY = 'echoroom.discordState'
 const RETURN_KEY = 'echoroom.discordReturn'
 
 export const DISCORD_CLIENT_ID = ((import.meta.env?.VITE_DISCORD_CLIENT_ID as string | undefined) ?? '').trim()
-export const discordEnabled = /^\d{15,25}$/.test(DISCORD_CLIENT_ID)
+export const AUTH_URL = ((import.meta.env?.VITE_AUTH_URL as string | undefined) ?? '').trim().replace(/\/+$/, '')
+export const discordEnabled = /^\d{15,25}$/.test(DISCORD_CLIENT_ID) && /^https:\/\//.test(AUTH_URL)
 
-function readProfile(): DiscordProfile | null {
+function readCachedProfile(): DiscordProfile | null {
   try {
     const raw = localStorage.getItem(PROFILE_KEY)
-    return raw ? (JSON.parse(raw) as DiscordProfile) : null
+    const p = raw ? (JSON.parse(raw) as DiscordProfile) : null
+    return p?.uid ? p : null // perfis do login antigo (sem uid) são descartados
   } catch {
     return null
   }
 }
 
-export const authStore = createStore<{ profile: DiscordProfile | null; error: string | null; busy: boolean }>({
-  profile: typeof window !== 'undefined' ? readProfile() : null,
+function cacheProfile(p: DiscordProfile | null): void {
+  try {
+    if (p) localStorage.setItem(PROFILE_KEY, JSON.stringify(p))
+    else localStorage.removeItem(PROFILE_KEY)
+  } catch {
+    /* ignora */
+  }
+}
+
+export const authStore = createStore<{
+  profile: DiscordProfile | null
+  error: string | null
+  busy: boolean
+  /** A sessão salva já foi conferida com o Firebase. */
+  ready: boolean
+}>({
+  profile: typeof window !== 'undefined' ? readCachedProfile() : null,
   error: null,
   busy: false,
+  ready: false,
 })
 
 /** Endereço de retorno cadastrado no Discord: a raiz do site. */
 export function discordRedirectUri(): string {
   return `${window.location.origin}${appPath('/')}`
-}
-
-/** Avatar do Discord (ou o avatar padrão quando a pessoa não tem um). */
-export function avatarUrlFor(user: { id: string; avatar: string | null; discriminator?: string }): string {
-  if (user.avatar) {
-    const ext = user.avatar.startsWith('a_') ? 'gif' : 'png'
-    return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${ext}?size=128`
-  }
-  let index = 0
-  try {
-    index =
-      user.discriminator && user.discriminator !== '0'
-        ? Number(user.discriminator) % 5
-        : Number((BigInt(user.id) >> 22n) % 6n)
-  } catch {
-    index = 0
-  }
-  return `https://cdn.discordapp.com/embed/avatars/${index}.png`
 }
 
 export function startDiscordLogin(): void {
@@ -71,13 +74,13 @@ export function startDiscordLogin(): void {
   try {
     sessionStorage.setItem(STATE_KEY, state)
     // Volta para a mesma página (ex.: a sala) depois do login.
-    sessionStorage.setItem(RETURN_KEY, window.location.pathname.replace(appPath('/'), '/'))
+    sessionStorage.setItem(RETURN_KEY, window.location.pathname.replace(appPath('/'), '/') + window.location.hash)
   } catch {
     /* sem sessionStorage: volta para o início */
   }
   const params = new URLSearchParams({
     client_id: DISCORD_CLIENT_ID,
-    response_type: 'token',
+    response_type: 'code',
     redirect_uri: discordRedirectUri(),
     scope: 'identify',
     state,
@@ -86,22 +89,58 @@ export function startDiscordLogin(): void {
   window.location.assign(`https://discord.com/oauth2/authorize?${params}`)
 }
 
-export function logoutDiscord(): void {
+export async function logoutDiscord(): Promise<void> {
+  cacheProfile(null)
+  authStore.set({ profile: null, error: null })
   try {
-    localStorage.removeItem(PROFILE_KEY)
+    await signOutUser()
   } catch {
     /* ignora */
   }
-  authStore.set({ profile: null, error: null })
 }
 
-/** Chamado ao abrir o site: trata o retorno do Discord (#access_token=…). */
+/** Chamado ao abrir o site: confere a sessão salva e trata o retorno do Discord (?code=…). */
 export function initDiscordAuth(): void {
-  const hash = new URLSearchParams(window.location.hash.slice(1))
-  const token = hash.get('access_token')
-  const error = hash.get('error')
-  if (!token && !error) return
+  if (!firebaseConfig) {
+    authStore.set({ profile: null, ready: true })
+    return
+  }
+  const params = new URLSearchParams(window.location.search)
+  const code = params.get('code')
+  const error = params.get('error')
+  if (code || error) void finishLogin(params)
+  else void restoreSession()
+}
 
+/** Perfil a partir das claims do token (dn, un, av), que o serviço de login preencheu. */
+async function profileFromFirebase(): Promise<DiscordProfile | null> {
+  const user = await currentUser()
+  if (!user || !isDiscordUid(user.uid)) return null
+  const { claims } = await user.getIdTokenResult()
+  return {
+    uid: user.uid,
+    id: user.uid.slice('discord_'.length),
+    name: String(claims.dn ?? 'Discord'),
+    username: String(claims.un ?? ''),
+    avatarUrl: String(claims.av ?? ''),
+  }
+}
+
+async function restoreSession(): Promise<void> {
+  try {
+    const profile = await profileFromFirebase()
+    cacheProfile(profile)
+    authStore.set({ profile, ready: true })
+    if (profile) {
+      const { publishProfile } = await import('./firebase/social')
+      void publishProfile(profile)
+    }
+  } catch {
+    authStore.set({ ready: true })
+  }
+}
+
+async function finishLogin(params: URLSearchParams): Promise<void> {
   let expected: string | null = null
   let returnPath = '/'
   try {
@@ -112,46 +151,62 @@ export function initDiscordAuth(): void {
   } catch {
     /* ignora */
   }
-  // Limpa o token da barra de endereços na hora.
-  window.history.replaceState(null, '', window.location.pathname + window.location.search)
-  if (returnPath !== '/') navigate(returnPath, true)
+  // Limpa o code da barra de endereços na hora.
+  const code = params.get('code')
+  const error = params.get('error')
+  const state = params.get('state')
+  for (const k of ['code', 'state', 'error', 'error_description']) params.delete(k)
+  const rest = params.toString()
+  window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : ''))
+  if (returnPath !== '/') {
+    const [path, hash] = returnPath.split('#')
+    navigate(path, true)
+    if (hash) window.history.replaceState(null, '', window.location.pathname + '#' + hash)
+  }
 
-  if (error) {
+  if (error || !code) {
     authStore.set({
+      ready: true,
       error: error === 'access_denied' ? 'Login com Discord cancelado.' : 'O Discord não autorizou o login. Tente de novo.',
     })
-    return
+    return restoreSession()
   }
-  if (!expected || hash.get('state') !== expected) {
-    authStore.set({ error: 'Login com Discord inválido. Tente de novo.' })
-    return
+  if (!expected || state !== expected) {
+    authStore.set({ ready: true, error: 'Login com Discord inválido. Tente de novo.' })
+    return restoreSession()
   }
 
   authStore.set({ busy: true, error: null })
-  fetch('https://discord.com/api/v10/users/@me', {
-    headers: { Authorization: `${hash.get('token_type') || 'Bearer'} ${token}` },
-  })
-    .then(async (res) => {
-      if (!res.ok) throw new Error(String(res.status))
-      const u = (await res.json()) as {
-        id: string
-        username: string
-        global_name?: string | null
-        avatar: string | null
-        discriminator?: string
-      }
-      const profile: DiscordProfile = {
-        id: u.id,
-        name: (u.global_name || u.username).slice(0, 32),
-        username: u.username,
-        avatarUrl: avatarUrlFor(u),
-      }
-      try {
-        localStorage.setItem(PROFILE_KEY, JSON.stringify(profile))
-      } catch {
-        /* vale só nesta visita */
-      }
-      authStore.set({ profile, busy: false })
+  try {
+    const res = await fetch(`${AUTH_URL}/discord`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, redirectUri: discordRedirectUri() }),
     })
-    .catch(() => authStore.set({ busy: false, error: 'Não foi possível ler seu perfil do Discord. Tente de novo.' }))
+    const data = (await res.json().catch(() => ({}))) as { firebaseToken?: string; error?: string }
+    if (!res.ok || !data.firebaseToken) throw new Error(loginErrorMessage(data.error))
+    await signInWithServerToken(data.firebaseToken)
+    const profile = await profileFromFirebase()
+    if (!profile) throw new Error('Não foi possível concluir o login.')
+    cacheProfile(profile)
+    authStore.set({ profile, busy: false, ready: true })
+    const { publishProfile } = await import('./firebase/social')
+    void publishProfile(profile)
+  } catch (err) {
+    authStore.set({ busy: false, ready: true, error: (err as Error).message || 'Não foi possível entrar com Discord.' })
+    void restoreSession()
+  }
+}
+
+function loginErrorMessage(code?: string): string {
+  switch (code) {
+    case 'not_configured':
+      return 'O serviço de login ainda não foi configurado (Cloudflare).'
+    case 'origin_not_allowed':
+      return 'O serviço de login não reconhece este site (confira ALLOWED_ORIGIN no Cloudflare).'
+    case 'discord_rejected':
+      return 'O Discord recusou o login. Confira o Client Secret e o endereço de retorno.'
+    default:
+      return 'Não foi possível entrar com Discord. Tente de novo.'
+  }
 }

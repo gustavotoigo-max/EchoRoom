@@ -1,12 +1,12 @@
 import { useStore } from '../../stores/createStore'
 import { playerStore } from '../../stores/playerStore'
-import { roomStore } from '../../stores/roomStore'
+import { roomStore, selectIsOwner } from '../../stores/roomStore'
 import type { SyncUiState } from '../../sync/SyncEngine'
 import type { ConnectionStatus } from '../../types/room'
-import { roomLink } from '../../utils/format'
 import { Brand } from '../ui/Brand'
-import { CopyButton } from '../ui/CopyButton'
-import { WaveIcon } from '../ui/Icons'
+import { UserChip } from '../Invites/UserChip'
+import { openPanel } from '../RoomSettings/ui'
+import { GearIcon, LinkIcon, WaveIcon } from '../ui/Icons'
 
 type Tone = 'ok' | 'work' | 'warn' | 'bad' | 'idle'
 
@@ -51,6 +51,8 @@ export function StatusIndicator() {
 }
 
 export function RoomHeader({ roomId }: { roomId: string }) {
+  const name = useStore(roomStore, (s) => s.meta?.name ?? null)
+  const isOwner = useStore(roomStore, selectIsOwner)
   return (
     <header className="topbar room-topbar">
       <div className="topbar-brand">
@@ -59,13 +61,27 @@ export function RoomHeader({ roomId }: { roomId: string }) {
       <div className="channel">
         <div className="channel-name">
           <WaveIcon width={20} height={20} />
-          <span className="room-id-label">Sala</span>
-          <span className="mono-code">{roomId}</span>
+          <span className="channel-title" title={name ?? undefined}>
+            {name ?? 'Sala'}
+          </span>
+          <span className="mono-code channel-code">{roomId}</span>
         </div>
-        <span className="channel-topic">ouvindo juntos, no mesmo segundo</span>
         <div className="topbar-room">
           <StatusIndicator />
-          <CopyButton text={roomLink(roomId)} variant="primary" label="Convidar" doneLabel="Link copiado" />
+          <button
+            type="button"
+            className="icon-btn header-btn"
+            title={isOwner ? 'Configurações da sala' : 'Regras da sala'}
+            aria-label={isOwner ? 'Configurações da sala' : 'Regras da sala'}
+            onClick={() => openPanel('settings')}
+          >
+            <GearIcon width={18} height={18} />
+          </button>
+          <UserChip compact />
+          <button type="button" className="btn btn-primary invite-btn" onClick={() => openPanel('invite')}>
+            <LinkIcon width={16} height={16} />
+            <span>Convidar</span>
+          </button>
         </div>
       </div>
     </header>

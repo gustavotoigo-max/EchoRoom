@@ -1,6 +1,6 @@
 # Publica o front-end no GitHub Pages a cada push na branch main.
 # Requer: Settings → Pages → Source = "GitHub Actions"
-#         Settings → Secrets and variables → Actions → Variables → FIREBASE_CONFIG
+#         Settings → Secrets and variables → Actions → Variables → FIREBASE_CONFIG, DISCORD_CLIENT_ID, AUTH_URL
 name: Deploy GitHub Pages
 
 on:
@@ -41,6 +41,7 @@ jobs:
           VITE_BASE: /${{ github.event.repository.name }}/
           VITE_FIREBASE_CONFIG: ${{ vars.FIREBASE_CONFIG }}
           VITE_DISCORD_CLIENT_ID: ${{ vars.DISCORD_CLIENT_ID }}
+          VITE_AUTH_URL: ${{ vars.AUTH_URL }}
         run: |
           if [ -z "$VITE_FIREBASE_CONFIG" ]; then
             echo "::warning::Variável FIREBASE_CONFIG não definida. O site vai mostrar a tela de configuração."

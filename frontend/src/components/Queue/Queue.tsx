@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRoomSession } from '../../services/RoomSessionContext'
 import { useStore } from '../../stores/createStore'
-import { roomStore } from '../../stores/roomStore'
+import { roomStore, selectIsOwner } from '../../stores/roomStore'
 import type { QueueItem } from '../../types/room'
 import { copyText, formatTime } from '../../utils/format'
 import { youtubeWatchUrl } from '../../utils/youtubeUrlParser'
@@ -43,6 +43,10 @@ function QueueRow({ item, index }: { item: QueueItem; index: number }) {
   const [open, setOpen] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const ref = useRef<HTMLLIElement>(null)
+  const isOwner = useStore(roomStore, selectIsOwner)
+  const me = useStore(roomStore, (s) => s.participantId)
+  const canMove = useStore(roomStore, (s) => s.settings.controls === 'all') || isOwner
+  const canRemove = isOwner || (!!item.addedByUid && item.addedByUid === me)
 
   useEffect(() => {
     if (!open) return
@@ -110,7 +114,7 @@ function QueueRow({ item, index }: { item: QueueItem; index: number }) {
       </button>
       {open && (
         <div className="menu" role="menu">
-          {index > 0 && (
+          {index > 0 && canMove && (
             <button role="menuitem" type="button" onClick={() => act(() => session.moveToTop(item.id))}>
               Mover para o topo
             </button>
@@ -125,9 +129,11 @@ function QueueRow({ item, index }: { item: QueueItem; index: number }) {
           >
             Copiar link da música
           </button>
-          <button role="menuitem" type="button" className="danger" onClick={() => act(() => session.removeTrack(item.id))}>
-            Remover da fila
-          </button>
+          {canRemove && (
+            <button role="menuitem" type="button" className="danger" onClick={() => act(() => session.removeTrack(item.id))}>
+              Remover da fila
+            </button>
+          )}
         </div>
       )}
     </li>

@@ -13,10 +13,10 @@ import {
 import { ensureSignedIn, getDb } from './app'
 
 /**
- * Biblioteca de sugestões, compartilhada entre todas as salas do site.
+ * Sugestões de cada sala (só o dono apaga itens).
  *
- *   /library/tracks/{videoId}      { title, author, count, lastAt, lastBy }
- *   /library/playlists/{listId}    { title, size, firstVideoId, count, lastAt, lastBy }
+ *   /rooms/{chave}/library/tracks/{videoId}    { title, author, count, lastAt, lastBy }
+ *   /rooms/{chave}/library/playlists/{listId}  { title, size, firstVideoId, count, lastAt, lastBy }
  *
  * Cada vez que alguém adiciona uma música (ou playlist), o contador sobe e a
  * data é atualizada. Falhas aqui nunca atrapalham a sala: são silenciosas.
@@ -49,10 +49,10 @@ export type LibraryEntry = LibraryTrack | LibraryPlaylist
 
 const isProvisional = (title: string) => !title || title.startsWith('youtu.be/') || title.startsWith('Playlist ')
 
-export async function recordTrack(videoId: string, title: string, author: string, by: string): Promise<void> {
+export async function recordTrack(roomKey: string, videoId: string, title: string, author: string, by: string): Promise<void> {
   try {
     await ensureSignedIn()
-    const r = ref(getDb(), `library/tracks/${videoId}`)
+    const r = ref(getDb(), `rooms/${roomKey}/library/tracks/${videoId}`)
     // Não troca um título bom por um provisório.
     const current = (await get(r)).val() as { title?: string } | null
     const keepTitle = current?.title && !isProvisional(current.title) && isProvisional(title)
@@ -68,6 +68,7 @@ export async function recordTrack(videoId: string, title: string, author: string
 }
 
 export async function recordPlaylist(
+  roomKey: string,
   listId: string,
   title: string,
   size: number,
@@ -76,7 +77,7 @@ export async function recordPlaylist(
 ): Promise<void> {
   try {
     await ensureSignedIn()
-    const r = ref(getDb(), `library/playlists/${listId}`)
+    const r = ref(getDb(), `rooms/${roomKey}/library/playlists/${listId}`)
     const current = (await get(r)).val() as { title?: string } | null
     const keepTitle = current?.title && !isProvisional(current.title) && isProvisional(title)
     await update(r, {
@@ -93,10 +94,10 @@ export async function recordPlaylist(
 }
 
 /** Corrige um título provisório quando o player descobre o título real. */
-export async function fixTrackTitle(videoId: string, title: string): Promise<void> {
+export async function fixTrackTitle(roomKey: string, videoId: string, title: string): Promise<void> {
   if (isProvisional(title)) return
   try {
-    const r = ref(getDb(), `library/tracks/${videoId}`)
+    const r = ref(getDb(), `rooms/${roomKey}/library/tracks/${videoId}`)
     const current = (await get(r)).val() as { title?: string } | null
     if (current && isProvisional(current.title ?? '')) await update(r, { title: title.slice(0, 200) })
   } catch {
@@ -104,8 +105,8 @@ export async function fixTrackTitle(videoId: string, title: string): Promise<voi
   }
 }
 
-export async function removeEntry(entry: LibraryEntry): Promise<void> {
-  await remove(ref(getDb(), `library/${entry.kind === 'track' ? 'tracks' : 'playlists'}/${entry.id}`))
+export async function removeEntry(roomKey: string, entry: LibraryEntry): Promise<void> {
+  await remove(ref(getDb(), `rooms/${roomKey}/library/${entry.kind === 'track' ? 'tracks' : 'playlists'}/${entry.id}`))
 }
 
 /**
@@ -113,6 +114,7 @@ export async function removeEntry(entry: LibraryEntry): Promise<void> {
  * de cada tipo). `onError` recebe a mensagem se as regras não permitirem.
  */
 export function subscribeLibrary(
+  roomKey: string,
   onData: (entries: LibraryEntry[]) => void,
   onError: (message: string) => void,
 ): () => void {
@@ -130,7 +132,7 @@ export function subscribeLibrary(
         onError('As sugestões precisam das regras novas do Firebase (database.rules.json). Peça para quem cuida do site atualizar.')
       unsubs.push(
         onValue(
-          query(ref(db, 'library/tracks'), orderByChild('lastAt'), limitToLast(LIBRARY_LIMIT)),
+          query(ref(db, `rooms/${roomKey}/library/tracks`), orderByChild('lastAt'), limitToLast(LIBRARY_LIMIT)),
           (snap) => {
             const v = (snap.val() ?? {}) as Record<string, Omit<LibraryTrack, 'kind' | 'id'>>
             tracks = Object.entries(v).map(([id, t]) => ({
@@ -147,7 +149,7 @@ export function subscribeLibrary(
           fail,
         ),
         onValue(
-          query(ref(db, 'library/playlists'), orderByChild('lastAt'), limitToLast(LIBRARY_LIMIT)),
+          query(ref(db, `rooms/${roomKey}/library/playlists`), orderByChild('lastAt'), limitToLast(LIBRARY_LIMIT)),
           (snap) => {
             const v = (snap.val() ?? {}) as Record<string, Omit<LibraryPlaylist, 'kind' | 'id'>>
             playlists = Object.entries(v).map(([id, p]) => ({
