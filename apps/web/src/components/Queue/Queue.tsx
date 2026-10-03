@@ -120,9 +120,7 @@ export function Queue() {
             </li>
           ))}
         </ol>
-      ) : queue.length === 0 ? (
-        <p className="queue-empty">{current ? 'Nada depois desta. ' : ''}Músicas adicionadas aparecem aqui, na ordem em que vão tocar.</p>
-      ) : (
+      ) : queue.length === 0 ? null : (
         <ol ref={listRef} className={drag ? 'is-dragging' : ''}>
           {queue.map((item, i) => (
             <QueueRow

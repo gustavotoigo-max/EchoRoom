@@ -3,7 +3,12 @@
 .room-left .queue {
   flex: 0 1 auto;
   max-height: 46%;
-  min-height: 120px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* Nada da fila invade as sugestões: a lista rola por dentro. */
+  overflow: hidden;
+  padding-bottom: 8px;
 }
 .q-now {
   display: grid;
