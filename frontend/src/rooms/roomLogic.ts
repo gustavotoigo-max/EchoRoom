@@ -12,7 +12,7 @@
 
 import { SyncConfig } from '../sync/SyncConfig'
 import { getExpectedPosition } from '../sync/Timeline'
-import type { CommandActor, QueueItem, RoomDoc } from '../types/room'
+import type { CommandActor, QueueItem, RepeatMode, RoomDoc } from '../types/room'
 
 export class CommandError extends Error {}
 
@@ -27,6 +27,7 @@ export type RoomCommand =
   | { type: 'TRACK_SKIP'; currentItemId: string | null; reason?: 'user' | 'vote' | 'error' }
   | { type: 'TRACK_ENDED'; itemId: string }
   | { type: 'TRACK_META'; itemId: string; title: string | null; duration: number | null }
+  | { type: 'SET_MODES'; shuffle?: boolean; repeat?: RepeatMode }
 
 const sec = (ms: number) => ms / 1000
 
@@ -40,6 +41,8 @@ export function emptyRoom(roomId: string): RoomDoc {
     executeAt: null,
     stateVersion: 0,
     queue: [],
+    shuffle: false,
+    repeat: 'off',
   }
 }
 
@@ -64,6 +67,8 @@ export function normalizeRoom(raw: unknown, roomId = ''): RoomDoc | null {
     executeAt: typeof r.executeAt === 'number' ? r.executeAt : null,
     stateVersion: Number(r.stateVersion) || 0,
     queue,
+    shuffle: r.shuffle === true,
+    repeat: r.repeat === 'all' || r.repeat === 'one' ? r.repeat : 'off',
   }
 }
 
@@ -75,8 +80,26 @@ function startTrack(doc: RoomDoc, now: number): void {
   doc.executeAt = at
 }
 
-function advance(doc: RoomDoc, now: number): void {
-  const next = doc.queue.shift() ?? null
+/**
+ * Nova identidade para uma música que volta a tocar (repetir/ciclar): o
+ * player recarrega e os votos/avisos de fim da vez anterior não contam.
+ */
+function again(item: QueueItem, version: number): QueueItem {
+  return { ...item, id: `${item.id.split('~')[0]}~${version}` }
+}
+
+function advance(doc: RoomDoc, now: number, ended = false): void {
+  const cur = doc.currentTrack
+  // Repetir a música: só quando ela termina sozinha (pular avança normalmente).
+  if (ended && cur && doc.repeat === 'one') {
+    doc.currentTrack = again(cur, doc.stateVersion)
+    startTrack(doc, now)
+    return
+  }
+  // Ciclar: a música que saiu volta para o fim da fila.
+  if (cur && doc.repeat === 'all') doc.queue.push(again(cur, doc.stateVersion))
+  const index = doc.shuffle && doc.queue.length > 1 ? Math.floor(Math.random() * doc.queue.length) : 0
+  const next = doc.queue.splice(index, 1)[0] ?? null
   doc.currentTrack = next
   if (next) startTrack(doc, now)
   else {
@@ -108,8 +131,15 @@ export function applyCommand(current: RoomDoc, cmd: RoomCommand, now: number, ac
  * votação concluída) valem para todos.
  */
 function checkPermission(doc: RoomDoc, cmd: RoomCommand, actor: CommandActor): void {
-  if (actor.isOwner) return
   const { settings } = actor
+  if (cmd.type === 'SET_MODES') {
+    // Desligar é sempre permitido (ex.: o dono desativou a opção com algo ligado).
+    const turningOn = cmd.shuffle === true || (cmd.repeat && cmd.repeat !== 'off')
+    if (turningOn && settings.modes === 'off') throw new CommandError('O dono desativou o aleatório e a repetição nesta sala.')
+    if (!actor.isOwner && settings.modes === 'owner') throw new CommandError('Nesta sala, só o dono muda o aleatório e a repetição.')
+    return
+  }
+  if (actor.isOwner) return
   const controlsLocked = settings.controls === 'owner'
   switch (cmd.type) {
     case 'PLAY':
@@ -251,8 +281,21 @@ function run(doc: RoomDoc, cmd: RoomCommand, now: number, lead: number): boolean
       if (!cur || cur.id !== cmd.itemId || doc.playbackState !== 'playing') return false
       const pos = getExpectedPosition({ ...doc, currentTrack: null }, now)
       if (cur.duration ? pos < cur.duration - SyncConfig.trackEndToleranceSec : pos < 1) return false
-      advance(doc, now)
+      advance(doc, now, true)
       return true
+    }
+
+    case 'SET_MODES': {
+      let changed = false
+      if (typeof cmd.shuffle === 'boolean' && cmd.shuffle !== doc.shuffle) {
+        doc.shuffle = cmd.shuffle
+        changed = true
+      }
+      if (cmd.repeat && ['off', 'all', 'one'].includes(cmd.repeat) && cmd.repeat !== doc.repeat) {
+        doc.repeat = cmd.repeat
+        changed = true
+      }
+      return changed
     }
 
     case 'TRACK_META': {

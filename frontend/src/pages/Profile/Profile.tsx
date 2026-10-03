@@ -10,6 +10,7 @@ import { useStore } from '../../stores/createStore'
 import { showToast } from '../../stores/toastStore'
 import { Toasts } from '../../components/ui/Toasts'
 import { storage } from '../../utils/storage'
+import { MyPlaylists } from './MyPlaylists'
 
 function lastAccess(ms: number): string {
   if (!ms) return ''
@@ -177,6 +178,8 @@ export function Profile() {
                 </div>
               )}
             </section>
+
+            <MyPlaylists profile={profile} rooms={rooms} />
           </>
         )}
       </main>

@@ -18,9 +18,19 @@ import { showToast } from '../../stores/toastStore'
 import type { RoomSettings } from '../../types/room'
 import { CloseIcon, CrownIcon } from '../ui/Icons'
 import { InviteDialog } from './InviteDialog'
-import { openPanel, roomUi } from './ui'
+import { openPanel, roomUi, type RoomPanel } from './ui'
+import { NewPlaylistPanel, PlaylistDetail, SavePanel, SharePanel } from '../Playlists/PlaylistPanels'
 
-/** Painel lateral: configurações ou convite. */
+const TITLES: Record<RoomPanel, string> = {
+  settings: 'Configurações da sala',
+  invite: 'Convidar para a sala',
+  playlist: 'Playlist',
+  save: 'Salvar em playlist',
+  share: 'Sugerir playlist',
+  newPlaylist: 'Nova playlist',
+}
+
+/** Painel lateral: configurações, convite e playlists. */
 export function RoomSettingsPanel() {
   const panel = useStore(roomUi, (s) => s.panel)
   useEffect(() => {
@@ -33,14 +43,21 @@ export function RoomSettingsPanel() {
   if (!panel) return null
   return (
     <div className="drawer-wrap" onMouseDown={(e) => e.target === e.currentTarget && openPanel(null)}>
-      <aside className="drawer" role="dialog" aria-modal="true" aria-label={panel === 'settings' ? 'Configurações da sala' : 'Convidar'}>
+      <aside className="drawer" role="dialog" aria-modal="true" aria-label={TITLES[panel]}>
         <header className="drawer-head">
-          <h2>{panel === 'settings' ? 'Configurações da sala' : 'Convidar para a sala'}</h2>
+          <h2>{TITLES[panel]}</h2>
           <button type="button" className="icon-btn drawer-close" aria-label="Fechar" onClick={() => openPanel(null)}>
             <CloseIcon width={18} height={18} />
           </button>
         </header>
-        <div className="drawer-body">{panel === 'settings' ? <SettingsBody /> : <InviteDialog />}</div>
+        <div className="drawer-body">
+          {panel === 'settings' && <SettingsBody />}
+          {panel === 'invite' && <InviteDialog />}
+          {panel === 'playlist' && <PlaylistDetail />}
+          {panel === 'save' && <SavePanel />}
+          {panel === 'share' && <SharePanel />}
+          {panel === 'newPlaylist' && <NewPlaylistPanel />}
+        </div>
       </aside>
     </div>
   )
@@ -158,6 +175,21 @@ function SettingsBody() {
             onChange={(v) => save({ voteSkipPercent: Number(v) })}
           />
         )}
+        <Choice
+          label="Aleatório, ciclar e repetir"
+          value={settings.modes}
+          options={[
+            ['all', 'Todos'],
+            ['owner', 'Só o dono'],
+            ['off', 'Desligado'],
+          ]}
+          disabled={locked}
+          onChange={(v) => {
+            void save({ modes: v as RoomSettings['modes'] })
+            // Desligado: volta a sala ao normal.
+            if (v === 'off') void session.setModes({ shuffle: false, repeat: 'off' }).catch(() => {})
+          }}
+        />
         <Toggle
           label="Desativar vídeo para todos"
           hint="Todo mundo ouve só o som, com o player no tamanho mínimo: menos processamento e menos dados."
@@ -334,11 +366,17 @@ function Permissions({ settings }: { settings: RoomSettings }) {
       'Adicionar músicas',
       settings.adding === 'owner' ? 'Só o dono' : settings.maxPerUser ? `${everyone}, até ${settings.maxPerUser} por pessoa na fila` : everyone,
     ],
+    [
+      'Aleatório, ciclar e repetir',
+      settings.modes === 'off' ? 'Desligado pelo dono' : settings.modes === 'owner' ? 'Só o dono' : everyone,
+    ],
     ['Tirar música da fila', 'Dono: qualquer uma · os outros: só as que adicionaram'],
     ['Convidar', 'Link + senha: qualquer um · pelo site: quem entrou com Discord'],
     ['Entrar na sala', settings.allowGuests ? 'Quem tem o link e a senha (com ou sem Discord)' : 'Só quem entra com Discord'],
     ['Configurações, remover/bloquear pessoas, apagar sugestões e a sala', 'Só o dono'],
-    ['Volume, esconder vídeo e tela cheia', 'Cada um no seu'],
+    ['Criar playlist da sala e pôr música nela', everyone],
+    ['Editar ou apagar uma playlist', 'Quem criou · o dono pode apagar qualquer uma'],
+    ['Volume, tamanho do vídeo e tela cheia', 'Cada um no seu'],
   ]
   return (
     <dl className="perm-table">

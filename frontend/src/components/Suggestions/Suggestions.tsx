@@ -7,6 +7,7 @@ import { useStore } from '../../stores/createStore'
 import { roomStore, selectIsOwner } from '../../stores/roomStore'
 import { showToast } from '../../stores/toastStore'
 import { PlusIcon } from '../ui/Icons'
+import { Equalizer } from '../ui/Equalizer'
 
 type Kind = 'track' | 'playlist' | 'related'
 type Order = 'top' | 'recent'
@@ -53,6 +54,8 @@ export function Suggestions() {
   })
   const inRoomSet = useMemo(() => new Set(inRoom.split(',')), [inRoom])
   const isOwner = useStore(roomStore, selectIsOwner)
+  const currentVideo = useStore(roomStore, (s) => s.room?.currentTrack?.videoId ?? null)
+  const playing = useStore(roomStore, (s) => s.room?.playbackState === 'playing')
   const addLocked = useStore(roomStore, (s) => s.settings.adding === 'owner') && !isOwner
 
   useEffect(() => subscribeLibrary(session.backend.roomKey, setEntries, setError), [session])
@@ -104,7 +107,7 @@ export function Suggestions() {
     <section className="suggestions" aria-labelledby="sugg-title">
       <header className="sugg-head">
         <h3 id="sugg-title">Sugestões</h3>
-        <div className="seg" role="tablist" aria-label="Tipo">
+        <div className="seg seg-full" role="tablist" aria-label="Tipo">
           <button role="tab" aria-selected={kind === 'track'} className={kind === 'track' ? 'on' : ''} onClick={() => setKind('track')}>
             Músicas <span>{entries ? counts.track : ''}</span>
           </button>
@@ -114,7 +117,7 @@ export function Suggestions() {
             className={kind === 'playlist' ? 'on' : ''}
             onClick={() => setKind('playlist')}
           >
-            Playlists <span>{entries ? counts.playlist : ''}</span>
+            Playlists YT <span>{entries ? counts.playlist : ''}</span>
           </button>
           <button role="tab" aria-selected={kind === 'related'} className={kind === 'related' ? 'on' : ''} onClick={() => setKind('related')}>
             Parecidas
@@ -168,14 +171,20 @@ export function Suggestions() {
           <ul className="sugg-list">
             {list.slice(0, limit).map((e) => {
               const queued = e.kind === 'track' && inRoomSet.has(e.id)
+              const isCurrent = e.kind === 'track' && e.id === currentVideo
               const thumb = e.kind === 'track' ? thumbnailUrl(e.id) : e.firstVideoId ? thumbnailUrl(e.firstVideoId) : ''
               return (
-                <li key={`${e.kind}-${e.id}`} className="sugg-item">
+                <li key={`${e.kind}-${e.id}`} className={`sugg-item ${isCurrent ? 'is-current' : ''}`} aria-current={isCurrent || undefined}>
                   <span className={`sugg-thumb ${e.kind === 'playlist' ? 'is-playlist' : ''}`}>
                     {thumb && (
                       <img src={thumb} alt="" loading="lazy" width={64} height={36} onError={(ev) => (ev.currentTarget.style.visibility = 'hidden')} />
                     )}
                     {e.kind === 'playlist' && <b>{e.size || '…'}</b>}
+                    {isCurrent && (
+                      <span className="sugg-playing">
+                        <Equalizer on={playing} />
+                      </span>
+                    )}
                   </span>
                   <span className="sugg-text">
                     <span className="sugg-title" title={e.title}>
@@ -195,8 +204,10 @@ export function Suggestions() {
                     onClick={() => add(e)}
                     aria-label={`Adicionar ${e.title} à fila`}
                   >
-                    {queued ? (
-                      'Na sala'
+                    {isCurrent ? (
+                      'Tocando'
+                    ) : queued ? (
+                      'Na fila'
                     ) : busy === e.id ? (
                       'Adicionando…'
                     ) : (
@@ -298,7 +309,7 @@ function RelatedList({ inRoom, locked }: { inRoom: Set<string>; locked: boolean 
               onClick={() => add(r)}
               aria-label={`Adicionar ${r.title} à fila`}
             >
-              {queued ? 'Na sala' : busy === r.videoId ? 'Adicionando…' : (
+              {queued ? 'Na fila' : busy === r.videoId ? 'Adicionando…' : (
                 <>
                   <PlusIcon width={14} height={14} />
                   <span>Fila</span>

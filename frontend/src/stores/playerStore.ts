@@ -2,6 +2,13 @@ import type { SyncStatus, SyncUiState } from '../sync/SyncEngine'
 import { storage } from '../utils/storage'
 import { createStore } from './createStore'
 
+export type VideoSize = 'small' | 'normal' | 'max'
+
+export function setVideoSize(size: VideoSize): void {
+  playerStore.set({ videoSize: size })
+  storage.setVideoSize(size)
+}
+
 export interface PlayerStoreState {
   sync: SyncUiState
   /** Métricas técnicas (somente modo debug). */
@@ -13,8 +20,8 @@ export interface PlayerStoreState {
   muted: boolean
   /** O navegador bloqueou o som até um clique na página. */
   needsGesture: boolean
-  /** Vídeo reduzido a um mini player (preferência deste navegador). */
-  videoHidden: boolean
+  /** Tamanho do vídeo (preferência deste navegador). */
+  videoSize: VideoSize
 }
 
 export const playerStore = createStore<PlayerStoreState>({
@@ -25,5 +32,5 @@ export const playerStore = createStore<PlayerStoreState>({
   volume: typeof window !== 'undefined' ? storage.getVolume() : 80,
   muted: typeof window !== 'undefined' ? storage.getMuted() : false,
   needsGesture: false,
-  videoHidden: typeof window !== 'undefined' ? storage.getVideoHidden() : false,
+  videoSize: typeof window !== 'undefined' ? storage.getVideoSize() : 'normal',
 })

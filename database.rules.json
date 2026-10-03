@@ -29,6 +29,24 @@
             ".validate": "newData.child('key').val().matches(/^[0-9a-f]{64}$/) && newData.child('name').isString() && newData.child('name').val().length <= 60"
           }
         },
+        "playlists": {
+          "$pid": {
+            ".validate": "newData.hasChildren(['name'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60"
+            },
+            "sharedIn": {
+              "$roomId": {
+                ".validate": "newData.isString() && newData.val().matches(/^[0-9a-f]{64}$/)"
+              }
+            },
+            "tracks": {
+              "$tid": {
+                ".validate": "newData.child('videoId').isString() && newData.child('videoId').val().matches(/^[A-Za-z0-9_-]{11}$/)"
+              }
+            }
+          }
+        },
         "$other": {
           ".validate": false
         }
@@ -93,6 +111,9 @@
           },
           "allowGuests": {
             ".validate": "newData.isBoolean()"
+          },
+          "modes": {
+            ".validate": "newData.val() == 'all' || newData.val() == 'owner' || newData.val() == 'off'"
           },
           "$other": {
             ".validate": false
@@ -162,6 +183,24 @@
             "$listId": {
               ".write": "auth != null && !root.child('rooms').child($roomKey).child('banned').child(auth.uid).exists() && (auth.uid.beginsWith('discord_') || root.child('rooms').child($roomKey).child('settings').child('allowGuests').val() != false) && newData.exists()",
               ".validate": "$listId.matches(/^[A-Za-z0-9_-]{10,64}$/) && newData.hasChildren(['title', 'count', 'lastAt']) && newData.child('count').isNumber()"
+            }
+          }
+        },
+        "playlists": {
+          "$pid": {
+            ".write": "auth != null && !root.child('rooms').child($roomKey).child('banned').child(auth.uid).exists() && (auth.uid.beginsWith('discord_') || root.child('rooms').child($roomKey).child('settings').child('allowGuests').val() != false) && ((!data.exists() && newData.child('createdBy').val() == auth.uid && (newData.child('kind').val() == 'room' || auth.uid.beginsWith('discord_'))) || (data.exists() && (data.child('createdBy').val() == auth.uid || (auth != null && root.child('rooms').child($roomKey).child('meta').child('ownerUid').val() == auth.uid)) && (!newData.exists() || newData.child('createdBy').val() == data.child('createdBy').val())))",
+            ".validate": "newData.hasChildren(['name', 'createdBy', 'kind']) && (newData.child('kind').val() == 'room' || newData.child('kind').val() == 'personal')",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60"
+            },
+            "updatedAt": {
+              ".write": "auth != null && !root.child('rooms').child($roomKey).child('banned').child(auth.uid).exists() && (auth.uid.beginsWith('discord_') || root.child('rooms').child($roomKey).child('settings').child('allowGuests').val() != false) && root.child('rooms').child($roomKey).child('playlists').child($pid).child('kind').val() == 'room'"
+            },
+            "tracks": {
+              "$tid": {
+                ".write": "auth != null && !root.child('rooms').child($roomKey).child('banned').child(auth.uid).exists() && (auth.uid.beginsWith('discord_') || root.child('rooms').child($roomKey).child('settings').child('allowGuests').val() != false) && !data.exists() && newData.exists() && root.child('rooms').child($roomKey).child('playlists').child($pid).child('kind').val() == 'room'",
+                ".validate": "newData.child('videoId').isString() && newData.child('videoId').val().matches(/^[A-Za-z0-9_-]{11}$/) && newData.child('title').isString()"
+              }
             }
           }
         },

@@ -53,6 +53,8 @@ export interface RoomSettings {
   maxPerUser: number
   /** Convidados (sem Discord) podem entrar. */
   allowGuests: boolean
+  /** Quem usa aleatório / ciclar / repetir. */
+  modes: 'all' | 'owner' | 'off'
 }
 
 export const DEFAULT_SETTINGS: RoomSettings = {
@@ -63,6 +65,7 @@ export const DEFAULT_SETTINGS: RoomSettings = {
   videoOff: false,
   maxPerUser: 0,
   allowGuests: true,
+  modes: 'all',
 }
 
 export function normalizeSettings(raw: unknown): RoomSettings {
@@ -77,6 +80,7 @@ export function normalizeSettings(raw: unknown): RoomSettings {
     videoOff: r.videoOff === true,
     maxPerUser: Number.isInteger(max) && max >= 0 && max <= 50 ? max : 0,
     allowGuests: r.allowGuests !== false,
+    modes: r.modes === 'owner' || r.modes === 'off' ? r.modes : 'all',
   }
 }
 
@@ -103,7 +107,13 @@ export interface RoomDoc {
   executeAt: number | null
   stateVersion: number
   queue: QueueItem[]
+  /** Próxima música sorteada da fila. */
+  shuffle: boolean
+  /** off · all = ciclar a fila (a que termina volta para o fim) · one = repetir a música. */
+  repeat: RepeatMode
 }
+
+export type RepeatMode = 'off' | 'all' | 'one'
 
 /** Estado completo usado pela interface. */
 export interface RoomState extends RoomDoc {

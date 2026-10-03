@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AddTrack } from '../../components/AddTrack/AddTrack'
 import { Controls } from '../../components/Controls/Controls'
 import { Participants } from '../../components/Participants/Participants'
+import { RoomPlaylists } from '../../components/Playlists/RoomPlaylists'
 import { PlayerPanel } from '../../components/Player/PlayerPanel'
 import { Queue } from '../../components/Queue/Queue'
 import { RoomHeader } from '../../components/RoomHeader/RoomHeader'
@@ -128,8 +129,9 @@ function RoomView({ roomId, roomKey, name }: { roomId: string; roomKey: string; 
       <div className="room">
         <RoomHeader roomId={roomId} />
         <main className="room-grid">
-          <aside className="room-left" aria-label="Fila e você">
+          <aside className="room-left" aria-label="Fila e sugestões">
             <Queue />
+            <Suggestions />
             <UserPanel />
           </aside>
           <div className="room-main">
@@ -137,10 +139,10 @@ function RoomView({ roomId, roomKey, name }: { roomId: string; roomKey: string; 
             <PlayerPanel />
             <Controls />
             <AddTrack />
-            <Suggestions />
           </div>
-          <aside className="room-right" aria-label="Participantes">
+          <aside className="room-right" aria-label="Participantes e playlists">
             <Participants />
+            <RoomPlaylists />
           </aside>
         </main>
         <Toasts />

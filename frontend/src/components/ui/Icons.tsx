@@ -131,6 +131,31 @@ export const GripIcon = (p: P) => (
     <circle cx="15" cy="18" r="1.6" />
   </svg>
 )
+export const ShuffleIcon = (p: P) => (
+  <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
+  </svg>
+)
+export const RepeatIcon = ({ one, ...p }: P & { one?: boolean }) => (
+  <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3" />
+    {one && (
+      <text x="12" y="15.5" textAnchor="middle" fontSize="8" fontWeight="700" fill="currentColor" stroke="none">
+        1
+      </text>
+    )}
+  </svg>
+)
+export const BookmarkPlusIcon = (p: P) => (
+  <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2zM12 7v6M9 10h6" />
+  </svg>
+)
+export const ListIcon = (p: P) => (
+  <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M8 6h13M8 12h13M8 18h8M3 6h.01M3 12h.01M3 18h.01" />
+  </svg>
+)
 /** Sair da sala. */
 export const LeaveIcon = (p: P) => (
   <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2">

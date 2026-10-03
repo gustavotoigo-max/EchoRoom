@@ -129,6 +129,8 @@ function room(partial: Partial<RoomState>): RoomState {
     roomId: 'ABX72',
     currentTrack: { id: 'i1', videoId: 'dQw4w9WgXcQ', title: 't', author: '', thumbnail: '', addedBy: 'Gus', duration: 240 },
     currentVideoId: 'dQw4w9WgXcQ',
+    shuffle: false,
+    repeat: 'off',
     playbackState: 'paused',
     position: 0,
     startedAt: null,

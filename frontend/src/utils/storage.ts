@@ -5,6 +5,7 @@ const VOLUME_KEY = 'echoroom.volume'
 const MUTED_KEY = 'echoroom.muted'
 const LAST_ROOM_KEY = 'echoroom.lastRoom'
 const VIDEO_HIDDEN_KEY = 'echoroom.videoHidden'
+const VIDEO_SIZE_KEY = 'echoroom.videoSize'
 const PID_KEY = 'echoroom.participant'
 const roomKeyKey = (roomId: string) => `echoroom.key.${roomId.toUpperCase()}`
 
@@ -49,9 +50,13 @@ export const storage = {
   getMuted: () => read(MUTED_KEY) === '1',
   setMuted: (m: boolean) => write(MUTED_KEY, m ? '1' : '0'),
 
-  /** Vídeo reduzido (mini player) para economizar processamento. */
-  getVideoHidden: () => read(VIDEO_HIDDEN_KEY) === '1',
-  setVideoHidden: (v: boolean) => write(VIDEO_HIDDEN_KEY, v ? '1' : '0'),
+  /** Tamanho do vídeo: pequeno (mini player), normal ou máximo (modo cinema). */
+  getVideoSize(): 'small' | 'normal' | 'max' {
+    const v = read(VIDEO_SIZE_KEY)
+    if (v === 'small' || v === 'normal' || v === 'max') return v
+    return read(VIDEO_HIDDEN_KEY) === '1' ? 'small' : 'normal' // preferência antiga
+  },
+  setVideoSize: (v: 'small' | 'normal' | 'max') => write(VIDEO_SIZE_KEY, v),
 
   /** Última sala em que o usuário entrou (usada pela extensão). */
   getLastRoom: () => read(LAST_ROOM_KEY),

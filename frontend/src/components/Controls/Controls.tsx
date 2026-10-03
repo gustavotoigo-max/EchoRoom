@@ -3,7 +3,8 @@ import { usePlayback } from '../../hooks/usePlayback'
 import { useRoomSession } from '../../services/RoomSessionContext'
 import { useStore } from '../../stores/createStore'
 import { roomStore, selectIsOwner, validVotes, votesNeeded } from '../../stores/roomStore'
-import { NextIcon, PauseIcon, PlayIcon, RestartIcon } from '../ui/Icons'
+import { NextIcon, PauseIcon, PlayIcon, RepeatIcon, RestartIcon, ShuffleIcon } from '../ui/Icons'
+import { SaveToPlaylist } from '../Playlists/SaveToPlaylist'
 import { Equalizer } from '../ui/Equalizer'
 import { VolumeControl } from './VolumeControl'
 
@@ -22,6 +23,9 @@ export function Controls() {
     const votes = new Set(validVotes(s))
     return (s.room?.participants ?? []).filter((p) => votes.has(p.id) && p.id !== s.participantId).map((p) => p.name).join(', ')
   })
+  const shuffle = useStore(roomStore, (s) => s.room?.shuffle ?? false)
+  const repeat = useStore(roomStore, (s) => s.room?.repeat ?? 'off')
+  const modesAllowed = settings.modes === 'all' || (settings.modes === 'owner' && isOwner)
   const pb = usePlayback()
   const [error, setError] = useState<string | null>(null)
 
@@ -71,6 +75,19 @@ export function Controls() {
       </div>
 
       <div className="np-controls">
+        {settings.modes !== 'off' && (
+          <button
+            type="button"
+            className={`icon-btn mode-btn ${shuffle ? 'is-on' : ''}`}
+            aria-pressed={shuffle}
+            aria-label="Aleatório"
+            title={modesAllowed ? (shuffle ? 'Aleatório ligado' : 'Aleatório') : 'Nesta sala, só o dono muda o aleatório'}
+            disabled={!loaded || !connected || !modesAllowed}
+            onClick={() => run(() => session.setModes({ shuffle: !shuffle }))}
+          >
+            <ShuffleIcon width={18} height={18} />
+          </button>
+        )}
         <button
           type="button"
           className="icon-btn"
@@ -155,6 +172,27 @@ export function Controls() {
           </button>
         )}
         </span>
+        {settings.modes !== 'off' && (
+          <button
+            type="button"
+            className={`icon-btn mode-btn ${repeat !== 'off' ? 'is-on' : ''}`}
+            aria-label={repeat === 'one' ? 'Repetir música (ligado)' : repeat === 'all' ? 'Ciclar fila (ligado)' : 'Ciclar ou repetir'}
+            title={
+              !modesAllowed
+                ? 'Nesta sala, só o dono muda a repetição'
+                : repeat === 'off'
+                  ? 'Ciclar a fila'
+                  : repeat === 'all'
+                    ? 'Ciclando a fila · clique para repetir esta música'
+                    : 'Repetindo esta música · clique para desligar'
+            }
+            disabled={!loaded || !connected || !modesAllowed}
+            onClick={() => run(() => session.setModes({ repeat: repeat === 'off' ? 'all' : repeat === 'all' ? 'one' : 'off' }))}
+          >
+            <RepeatIcon width={18} height={18} one={repeat === 'one'} />
+          </button>
+        )}
+        {track && <SaveToPlaylist track={track} />}
         <VolumeControl />
       </div>
 

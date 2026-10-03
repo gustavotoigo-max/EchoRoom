@@ -197,6 +197,7 @@ export class RoomSession {
 
   removeTrack = (itemId: string) => this.backend.command({ type: 'TRACK_REMOVE', itemId })
   moveToTop = (itemId: string) => this.backend.command({ type: 'TRACK_MOVE', itemId, toIndex: 0 })
+  setModes = (modes: { shuffle?: boolean; repeat?: 'off' | 'all' | 'one' }) => this.backend.command({ type: 'SET_MODES', ...modes })
   moveTrack = (itemId: string, toIndex: number) => this.backend.command({ type: 'TRACK_MOVE', itemId, toIndex })
 
   /**
@@ -264,6 +265,26 @@ export class RoomSession {
     const name = (await titlePromise) || `Playlist de ${metas[0]?.resolved ? metas[0].title : `${fullSize} músicas`}`
     void recordPlaylist(this.backend.roomKey, playlistId, name, fullSize, firstVideoId, this.name)
     return { added: ids.length, skipped: total - ids.length, repeated, title: name }
+  }
+
+  /**
+   * Põe músicas já conhecidas (de uma playlist do EchoRoom) na fila, de uma vez.
+   * Repetidas ficam de fora; o resto respeita limite da fila e permissões.
+   */
+  addKnownTracks = async (
+    tracks: { videoId: string; title: string; author?: string }[],
+  ): Promise<{ added: number; repeated: number; skipped: number }> => {
+    const room = roomStore.get().room
+    const fresh = room ? withoutDuplicates(room, tracks) : tracks
+    const repeated = tracks.length - fresh.length
+    if (!fresh.length) throw new CommandError(tracks.length === 1 ? 'Essa música já está na fila.' : 'Todas essas músicas já estão na fila.')
+    const capacity = room ? queueCapacity(room) : fresh.length
+    if (capacity <= 0) throw new CommandError('A fila atingiu o limite de músicas.')
+    const take = fresh.slice(0, capacity)
+    const items = take.map((t) => this.makeItem(t.videoId, { title: t.title, author: t.author ?? '', resolved: true }))
+    if (items.length === 1) await this.backend.command({ type: 'TRACK_ADD', item: items[0] })
+    else await this.backend.command({ type: 'TRACK_ADD_MANY', items })
+    return { added: take.length, repeated, skipped: fresh.length - take.length }
   }
 
   private makeItem(videoId: string, meta: { title: string; author: string; resolved: boolean }): QueueItem {

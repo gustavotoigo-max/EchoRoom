@@ -324,3 +324,72 @@ describe('músicas repetidas', () => {
     expect(next.queue.map((q) => q.videoId).join(',')).toBe('bbbbbbbbbbb,ccccccccccc,ddddddddddd')
   })
 })
+
+describe('aleatório, ciclar e repetir', () => {
+  const room = (repeat: 'off' | 'all' | 'one', shuffle = false): RoomDoc => {
+    const r = emptyRoom('ABCDE')
+    r.currentTrack = item(undefined, { duration: 100 })
+    r.queue = [item(), item(), item()]
+    r.playbackState = 'playing'
+    r.startedAt = 0
+    r.position = 0
+    r.repeat = repeat
+    r.shuffle = shuffle
+    return r
+  }
+  const end = (r: RoomDoc) => applyCommand(r, { type: 'TRACK_ENDED', itemId: r.currentTrack!.id }, 101)!
+
+  it('repetir: a mesma música recomeça com identidade nova', () => {
+    const r = room('one')
+    const next = end(r)
+    expect(next.currentTrack!.videoId).toBe(r.currentTrack!.videoId)
+    expect(next.currentTrack!.id === r.currentTrack!.id).toBe(false)
+    expect(next.position).toBe(0)
+    expect(next.queue.length).toBe(3)
+    // pular avança mesmo repetindo
+    const skipped = applyCommand(r, { type: 'TRACK_SKIP', currentItemId: r.currentTrack!.id }, 50)!
+    expect(skipped.currentTrack!.videoId).toBe(r.queue[0].videoId)
+  })
+
+  it('ciclar: a que terminou vai para o fim da fila', () => {
+    const r = room('all')
+    const next = end(r)
+    expect(next.currentTrack!.videoId).toBe(r.queue[0].videoId)
+    expect(next.queue.at(-1)!.videoId).toBe(r.currentTrack!.videoId)
+    expect(next.queue.length).toBe(3)
+  })
+
+  it('aleatório: sorteia uma da fila', () => {
+    const r = room('off', true)
+    const ids = new Set(r.queue.map((q) => q.videoId))
+    const seen = new Set<string>()
+    for (let i = 0; i < 40; i++) seen.add(end(r).currentTrack!.videoId)
+    expect([...seen].every((v) => ids.has(v))).toBe(true)
+    expect(seen.size > 1).toBe(true)
+  })
+
+  it('permissões dos modos', () => {
+    const r = room('off')
+    const actor = (modes: RoomSettings['modes'], isOwner = false): CommandActor => ({
+      uid: 'ana',
+      isOwner,
+      settings: { ...DEFAULT_SETTINGS, modes },
+    })
+    const err = (fn: () => unknown) => {
+      try {
+        fn()
+        return ''
+      } catch (e) {
+        return (e as Error).message
+      }
+    }
+    expect(applyCommand(r, { type: 'SET_MODES', shuffle: true }, 1, actor('all'))!.shuffle).toBe(true)
+    expect(err(() => applyCommand(r, { type: 'SET_MODES', repeat: 'all' }, 1, actor('owner')))).toBe(
+      'Nesta sala, só o dono muda o aleatório e a repetição.',
+    )
+    expect(applyCommand(r, { type: 'SET_MODES', repeat: 'all' }, 1, actor('owner', true))!.repeat).toBe('all')
+    expect(err(() => applyCommand(r, { type: 'SET_MODES', shuffle: true }, 1, actor('off', true)))).toBe(
+      'O dono desativou o aleatório e a repetição nesta sala.',
+    )
+  })
+})

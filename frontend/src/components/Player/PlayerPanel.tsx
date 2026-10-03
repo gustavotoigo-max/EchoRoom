@@ -3,17 +3,30 @@ import { usePlayback } from '../../hooks/usePlayback'
 import { useRoomSession } from '../../services/RoomSessionContext'
 import type { LocalPlayerState, PlayerAdapter } from '../../services/youtube/PlayerAdapter'
 import { useStore } from '../../stores/createStore'
-import { playerStore } from '../../stores/playerStore'
+import { playerStore, setVideoSize, type VideoSize } from '../../stores/playerStore'
 import { roomStore } from '../../stores/roomStore'
-import { storage } from '../../utils/storage'
 import { ProgressBar } from '../Controls/ProgressBar'
-import { ExitFullscreenIcon, ExpandIcon, FullscreenIcon, PauseIcon, PlayIcon, ShrinkIcon } from '../ui/Icons'
+import { ExitFullscreenIcon, FullscreenIcon, PauseIcon, PlayIcon } from '../ui/Icons'
 import { EndCard } from './EndCard'
 import { YouTubePlayer } from './YouTubePlayer'
 
-function setVideoHidden(hidden: boolean) {
-  playerStore.set({ videoHidden: hidden })
-  storage.setVideoHidden(hidden)
+const SIZES: [VideoSize, string][] = [
+  ['small', 'Pequeno'],
+  ['normal', 'Normal'],
+  ['max', 'Máximo'],
+]
+
+/** Pequeno (só o som, mínimo de processamento) · Normal · Máximo (modo cinema). */
+function SizePicker({ size, overlay }: { size: VideoSize; overlay?: boolean }) {
+  return (
+    <div className={`size-picker ${overlay ? 'is-overlay' : ''}`} role="radiogroup" aria-label="Tamanho do vídeo">
+      {SIZES.map(([v, label]) => (
+        <button key={v} type="button" role="radio" aria-checked={size === v} className={size === v ? 'on' : ''} onClick={() => setVideoSize(v)}>
+          {label}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 /**
@@ -29,10 +42,17 @@ export function PlayerPanel() {
   const loaded = useStore(roomStore, (s) => s.room !== null)
   const error = useStore(playerStore, (s) => s.playerError)
   const needsGesture = useStore(playerStore, (s) => s.needsGesture)
-  const hiddenLocal = useStore(playerStore, (s) => s.videoHidden)
-  // O dono pode desligar o vídeo para todos: vira mini player, sem a opção de mostrar.
+  const sizeLocal = useStore(playerStore, (s) => s.videoSize)
+  // O dono pode desligar o vídeo para todos: vira mini player, sem a opção de mudar.
   const videoOff = useStore(roomStore, (s) => s.settings.videoOff)
-  const hidden = hiddenLocal || videoOff
+  const size: VideoSize = videoOff ? 'small' : sizeLocal
+  const hidden = size === 'small'
+
+  // Máximo: modo cinema (a página esconde as colunas laterais).
+  useEffect(() => {
+    document.documentElement.classList.toggle('video-max', size === 'max')
+    return () => document.documentElement.classList.remove('video-max')
+  }, [size])
 
   const onReady = useCallback((p: PlayerAdapter) => session.attachPlayer(p), [session])
   const onState = useCallback((s: LocalPlayerState) => session.handlePlayerState(s), [session])
@@ -131,18 +151,7 @@ export function PlayerPanel() {
             {error}
           </div>
         )}
-        {!hidden && !videoOff && !fullscreen && (
-          <button
-            type="button"
-            className="video-toggle"
-            aria-label="Esconder vídeo"
-            title="Esconder vídeo (economiza processamento)"
-            onClick={() => setVideoHidden(true)}
-          >
-            <ShrinkIcon width={16} height={16} />
-            <span>Esconder vídeo</span>
-          </button>
-        )}
+        {!hidden && !fullscreen && <SizePicker size={size} overlay />}
       </div>
 
       {hidden && (
@@ -154,15 +163,12 @@ export function PlayerPanel() {
             </>
           ) : (
             <>
-              <strong>Vídeo reduzido</strong>
+              <strong>Vídeo pequeno</strong>
               <p>
                 Com o vídeo pequeno, o YouTube envia uma resolução menor: menos processamento e menos dados. A música
                 continua sincronizada.
               </p>
-              <button type="button" className="btn btn-secondary" onClick={() => setVideoHidden(false)}>
-                <ExpandIcon width={16} height={16} />
-                <span>Mostrar vídeo</span>
-              </button>
+              <SizePicker size={size} />
             </>
           )}
         </div>

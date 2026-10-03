@@ -6,6 +6,8 @@ import type { QueueItem } from '../../types/room'
 import { copyText, formatTime } from '../../utils/format'
 import { youtubeWatchUrl } from '../../utils/youtubeUrlParser'
 import { GripIcon, MoreIcon } from '../ui/Icons'
+import { Equalizer } from '../ui/Equalizer'
+import { SaveToPlaylistMenuItems } from '../Playlists/SaveToPlaylist'
 import { showToast } from '../../stores/toastStore'
 
 interface Drag {
@@ -21,6 +23,10 @@ interface Drag {
 export function Queue() {
   const session = useRoomSession()
   const queueRaw = useStore(roomStore, (s) => s.room?.queue ?? null)
+  const current = useStore(roomStore, (s) => s.room?.currentTrack ?? null)
+  const playing = useStore(roomStore, (s) => s.room?.playbackState === 'playing')
+  const shuffle = useStore(roomStore, (s) => s.room?.shuffle ?? false)
+  const repeat = useStore(roomStore, (s) => s.room?.repeat ?? 'off')
   const canMove = useStore(roomStore, (s) => s.settings.controls === 'all' || selectIsOwner(s))
   const [drag, setDrag] = useState<Drag | null>(null)
   // Ordem otimista depois de soltar, até a sala confirmar.
@@ -85,7 +91,26 @@ export function Queue() {
       <header className="side-head">
         <h3>A seguir</h3>
         <span className="count">{queue ? queue.length : ''}</span>
+        {(shuffle || repeat !== 'off') && (
+          <span className="mode-tags">
+            {shuffle && <span>aleatório</span>}
+            {repeat === 'all' && <span>ciclando</span>}
+            {repeat === 'one' && <span>repetindo</span>}
+          </span>
+        )}
       </header>
+      {current && (
+        <div className="q-now" title={current.title}>
+          <span className="q-now-art">
+            <img src={current.thumbnail} alt="" width={56} height={32} onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />
+            <Equalizer on={playing} />
+          </span>
+          <span className="q-text">
+            <span className="q-title">{current.title}</span>
+            <span className="q-sub">Tocando agora · {current.addedBy}</span>
+          </span>
+        </div>
+      )}
       {queue === null ? (
         <ol>
           {[0, 1, 2].map((i) => (
@@ -96,7 +121,7 @@ export function Queue() {
           ))}
         </ol>
       ) : queue.length === 0 ? (
-        <p className="queue-empty">Nada na fila. Músicas adicionadas aparecem aqui, na ordem em que vão tocar.</p>
+        <p className="queue-empty">{current ? 'Nada depois desta. ' : ''}Músicas adicionadas aparecem aqui, na ordem em que vão tocar.</p>
       ) : (
         <ol ref={listRef} className={drag ? 'is-dragging' : ''}>
           {queue.map((item, i) => (
@@ -255,6 +280,7 @@ function QueueRow({ item, index, total, canMove, dragging, offset, onGrip, onMov
           >
             Copiar link da música
           </button>
+          <SaveToPlaylistMenuItems track={item} onDone={() => setOpen(false)} />
           {canRemove && (
             <button role="menuitem" type="button" className="danger" onClick={() => act(() => session.removeTrack(item.id))}>
               Remover da fila
