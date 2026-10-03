@@ -1,11 +1,14 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { usePlayback } from '../../hooks/usePlayback'
 import { useRoomSession } from '../../services/RoomSessionContext'
 import type { LocalPlayerState, PlayerAdapter } from '../../services/youtube/PlayerAdapter'
 import { useStore } from '../../stores/createStore'
 import { playerStore } from '../../stores/playerStore'
 import { roomStore } from '../../stores/roomStore'
 import { storage } from '../../utils/storage'
-import { ExpandIcon, PlayIcon, ShrinkIcon } from '../ui/Icons'
+import { ProgressBar } from '../Controls/ProgressBar'
+import { ExitFullscreenIcon, ExpandIcon, FullscreenIcon, PauseIcon, PlayIcon, ShrinkIcon } from '../ui/Icons'
+import { EndCard } from './EndCard'
 import { YouTubePlayer } from './YouTubePlayer'
 
 function setVideoHidden(hidden: boolean) {
@@ -37,12 +40,71 @@ export function PlayerPanel() {
 
   useEffect(() => () => session.detachPlayer(), [session])
 
+  const track = useStore(roomStore, (s) => s.room?.currentTrack ?? null)
+  const playback = usePlayback()
+  const stageRef = useRef<HTMLDivElement>(null)
+  const [fullscreen, setFullscreen] = useState(false)
+  const clickTimer = useRef<ReturnType<typeof setTimeout>>()
+
+  useEffect(() => {
+    const onChange = () => setFullscreen(document.fullscreenElement === stageRef.current)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    else void stageRef.current?.requestFullscreen?.().catch(() => {})
+  }
+
+  // Clique no vídeo: play/pausa. Duplo clique: tela cheia (como no YouTube).
+  function onVideoClick() {
+    clearTimeout(clickTimer.current)
+    clickTimer.current = setTimeout(() => void playback.toggle(), 220)
+  }
+  function onVideoDoubleClick() {
+    clearTimeout(clickTimer.current)
+    if (!hidden) toggleFullscreen()
+  }
+
+  const overlay = hasTrack && !needsGesture && !error
+
   return (
+    <div className={`player-stage ${fullscreen ? 'is-fullscreen' : ''}`} ref={stageRef}>
     <section className={`player-area ${hidden ? 'is-compact' : ''}`} aria-label="Vídeo">
-      <div className="player-frame">
+      <div className={`player-frame ${playback.isPlaying ? 'is-playing' : 'is-paused'}`}>
         <YouTubePlayer onReady={onReady} onStateChange={onState} onError={onError} />
-        {/* Bloqueia cliques no iframe: os controles da sala são a única fonte de comandos. */}
-        <div className="player-shield" aria-hidden="true" />
+        {/* Cobre o iframe: os comandos passam pela sala (clique = play/pausa, duplo clique = tela cheia). */}
+        <div
+          className={`player-shield ${overlay && !playback.disabled ? 'is-clickable' : ''}`}
+          aria-hidden="true"
+          onClick={overlay ? onVideoClick : undefined}
+          onDoubleClick={overlay ? onVideoDoubleClick : undefined}
+        />
+        {overlay && (
+          <button
+            type="button"
+            className="video-play"
+            aria-label={playback.isPlaying ? 'Pausar' : 'Tocar'}
+            title={playback.locked ? 'Nesta sala, só o dono controla a reprodução' : playback.isPlaying ? 'Pausar' : 'Tocar'}
+            disabled={playback.disabled}
+            onClick={() => void playback.toggle()}
+          >
+            {playback.isPlaying ? <PauseIcon width={30} height={30} /> : <PlayIcon width={30} height={30} />}
+          </button>
+        )}
+        {overlay && !hidden && (
+          <button
+            type="button"
+            className="video-fullscreen"
+            aria-label={fullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+            title={fullscreen ? 'Sair da tela cheia (Esc)' : 'Tela cheia'}
+            onClick={toggleFullscreen}
+          >
+            {fullscreen ? <ExitFullscreenIcon width={20} height={20} /> : <FullscreenIcon width={20} height={20} />}
+          </button>
+        )}
+        {overlay && !hidden && <EndCard />}
         {!hasTrack && (
           <div className="player-empty">
             {loaded ? (
@@ -69,7 +131,7 @@ export function PlayerPanel() {
             {error}
           </div>
         )}
-        {!hidden && !videoOff && (
+        {!hidden && !videoOff && !fullscreen && (
           <button
             type="button"
             className="video-toggle"
@@ -106,5 +168,10 @@ export function PlayerPanel() {
         </div>
       )}
     </section>
+    {/* Tempo da música logo abaixo do vídeo */}
+    <div className="video-bar">
+      <ProgressBar duration={track?.duration ?? null} trackId={track?.id ?? null} disabled={!track || playback.disabled} />
+    </div>
+    </div>
   )
 }

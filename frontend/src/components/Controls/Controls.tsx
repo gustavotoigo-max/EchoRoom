@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { usePlayback } from '../../hooks/usePlayback'
 import { useRoomSession } from '../../services/RoomSessionContext'
 import { useStore } from '../../stores/createStore'
 import { roomStore, selectIsOwner, validVotes, votesNeeded } from '../../stores/roomStore'
 import { NextIcon, PauseIcon, PlayIcon, RestartIcon } from '../ui/Icons'
 import { Equalizer } from '../ui/Equalizer'
-import { ProgressBar } from './ProgressBar'
 import { VolumeControl } from './VolumeControl'
 
 export function Controls() {
@@ -18,25 +18,23 @@ export function Controls() {
   const voteCount = useStore(roomStore, (s) => validVotes(s).length)
   const voted = useStore(roomStore, (s) => validVotes(s).includes(s.participantId))
   const needed = useStore(roomStore, votesNeeded)
-
-  // Feedback imediato: o botão mostra a intenção até o servidor confirmar.
-  const [intent, setIntent] = useState<'play' | 'pause' | null>(null)
+  const voterNames = useStore(roomStore, (s) => {
+    const votes = new Set(validVotes(s))
+    return (s.room?.participants ?? []).filter((p) => votes.has(p.id) && p.id !== s.participantId).map((p) => p.name).join(', ')
+  })
+  const pb = usePlayback()
   const [error, setError] = useState<string | null>(null)
-  useEffect(() => setIntent(null), [playback, track?.id])
 
-  const isPlaying = intent ? intent === 'play' : playback === 'playing'
   const disabled = !track || !connected
   const locked = settings.controls === 'owner' && !isOwner
   const voting = settings.voteSkip && !isOwner
   const lockTitle = 'Nesta sala, só o dono controla a reprodução'
 
-  async function run(action: () => Promise<unknown>, nextIntent: 'play' | 'pause' | null = null) {
+  async function run(action: () => Promise<unknown>) {
     setError(null)
-    setIntent(nextIntent)
     try {
       await action()
     } catch (err) {
-      setIntent(null)
       setError((err as Error).message)
     }
   }
@@ -85,14 +83,50 @@ export function Controls() {
         </button>
         <button
           type="button"
-          className={`icon-btn play-btn ${intent ? 'is-pending' : ''}`}
-          aria-label={isPlaying ? 'Pausar' : 'Tocar'}
-          title={locked ? lockTitle : isPlaying ? 'Pausar' : 'Tocar'}
-          disabled={disabled || locked}
-          onClick={() => (isPlaying ? run(session.pause, 'pause') : run(session.play, 'play'))}
+          className={`icon-btn play-btn ${pb.pending ? 'is-pending' : ''}`}
+          aria-label={pb.isPlaying ? 'Pausar' : 'Tocar'}
+          title={locked ? lockTitle : pb.isPlaying ? 'Pausar' : 'Tocar'}
+          disabled={pb.disabled}
+          onClick={() => {
+            setError(null)
+            void pb.toggle(setError)
+          }}
         >
-          {isPlaying ? <PauseIcon width={24} height={24} /> : <PlayIcon width={24} height={24} />}
+          {pb.isPlaying ? <PauseIcon width={24} height={24} /> : <PlayIcon width={24} height={24} />}
         </button>
+        <span className="skip-wrap">
+        {settings.voteSkip && track && voteCount > 0 && (
+          <span className="vote-prompt" role="status">
+            {voted ? (
+              <>
+                <span>
+                  Você votou para pular · <b>{voteCount}/{needed}</b>
+                </span>
+                <button type="button" className="link-btn" onClick={() => run(session.toggleVoteSkip)}>
+                  Desfazer
+                </button>
+              </>
+            ) : isOwner ? (
+              <>
+                <span>
+                  {voterNames || 'Alguém'} quer pular · <b>{voteCount}/{needed}</b>
+                </span>
+                <button type="button" className="btn btn-primary" onClick={() => run(session.skip)}>
+                  Pular agora
+                </button>
+              </>
+            ) : (
+              <>
+                <span>
+                  {voterNames || 'Alguém'} quer pular. <strong>Pular?</strong> <b>{voteCount}/{needed}</b>
+                </span>
+                <button type="button" className="btn btn-primary" onClick={() => run(session.toggleVoteSkip)}>
+                  Sim, pular
+                </button>
+              </>
+            )}
+          </span>
+        )}
         {voting ? (
           <button
             type="button"
@@ -120,10 +154,10 @@ export function Controls() {
             <NextIcon />
           </button>
         )}
+        </span>
         <VolumeControl />
       </div>
 
-      <ProgressBar duration={track?.duration ?? null} trackId={track?.id ?? null} disabled={disabled || locked} />
       {error && <p className="form-error">{error}</p>}
     </section>
   )

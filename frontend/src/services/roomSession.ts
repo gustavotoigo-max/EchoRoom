@@ -1,6 +1,6 @@
 import { playerStore } from '../stores/playerStore'
 import { applyRoomState, roomStore, selectIsOwner, validVotes, votesNeeded } from '../stores/roomStore'
-import { CommandError, queueCapacity, type RoomCommand } from '../rooms/roomLogic'
+import { CommandError, queueCapacity, withoutDuplicates, type RoomCommand } from '../rooms/roomLogic'
 import { ClockSync } from '../sync/ClockSync'
 import { SyncConfig, isSyncDebug } from '../sync/SyncConfig'
 import { SyncEngine } from '../sync/SyncEngine'
@@ -197,6 +197,7 @@ export class RoomSession {
 
   removeTrack = (itemId: string) => this.backend.command({ type: 'TRACK_REMOVE', itemId })
   moveToTop = (itemId: string) => this.backend.command({ type: 'TRACK_MOVE', itemId, toIndex: 0 })
+  moveTrack = (itemId: string, toIndex: number) => this.backend.command({ type: 'TRACK_MOVE', itemId, toIndex })
 
   /**
    * Adiciona um link do YouTube: vídeo, ou playlist inteira quando o link é
@@ -206,7 +207,7 @@ export class RoomSession {
   addTrack = async (
     url: string,
     opts: { title?: string; playlistTitle?: string; wholePlaylist?: boolean; onProgress?: (text: string) => void } = {},
-  ): Promise<{ added: number; skipped: number; title: string }> => {
+  ): Promise<{ added: number; skipped: number; repeated?: number; title: string }> => {
     const link = parseYouTubeLink(url)
     if (link.kind === 'invalid') {
       throw new CommandError('Link do YouTube inválido. Use um link de vídeo, de shorts ou de playlist.')
@@ -216,6 +217,10 @@ export class RoomSession {
       const startAt = link.kind === 'video' ? link.videoId : null
       return this.addPlaylist(playlistId, startAt, opts.onProgress, link.kind === 'playlist' ? opts.title ?? opts.playlistTitle : opts.playlistTitle)
     }
+    // Aviso rápido de repetida (a transação confere de novo).
+    const room = roomStore.get().room
+    if (room?.currentTrack?.videoId === link.videoId) throw new CommandError('Essa música já está tocando.')
+    if (room?.queue.some((q) => q.videoId === link.videoId)) throw new CommandError('Essa música já está na fila.')
     const meta = await fetchVideoMeta(link.videoId)
     const title = meta.resolved ? meta.title : opts.title?.trim() || meta.title
     await this.backend.command({
@@ -231,7 +236,7 @@ export class RoomSession {
     startAtVideoId: string | null,
     onProgress?: (text: string) => void,
     knownTitle?: string,
-  ): Promise<{ added: number; skipped: number; title: string }> {
+  ): Promise<{ added: number; skipped: number; repeated: number; title: string }> {
     onProgress?.('Lendo a playlist…')
     const titlePromise = knownTitle ? Promise.resolve(knownTitle) : fetchPlaylistTitle(playlistId)
     let ids = await loadPlaylistVideoIds(playlistId)
@@ -241,8 +246,12 @@ export class RoomSession {
       const i = ids.indexOf(startAtVideoId)
       if (i > 0) ids = ids.slice(i)
     }
-    const total = ids.length
     const room = roomStore.get().room
+    const before = ids.length
+    if (room) ids = withoutDuplicates(room, ids.map((videoId) => ({ videoId }))).map((x) => x.videoId)
+    const repeated = before - ids.length
+    if (!ids.length) throw new CommandError('Todas as músicas dessa playlist já estão na fila.')
+    const total = ids.length
     const capacity = room ? queueCapacity(room) : total
     if (capacity <= 0) throw new CommandError('A fila atingiu o limite de músicas.')
     ids = ids.slice(0, capacity)
@@ -254,7 +263,7 @@ export class RoomSession {
     })
     const name = (await titlePromise) || `Playlist de ${metas[0]?.resolved ? metas[0].title : `${fullSize} músicas`}`
     void recordPlaylist(this.backend.roomKey, playlistId, name, fullSize, firstVideoId, this.name)
-    return { added: ids.length, skipped: total - ids.length, title: name }
+    return { added: ids.length, skipped: total - ids.length, repeated, title: name }
   }
 
   private makeItem(videoId: string, meta: { title: string; author: string; resolved: boolean }): QueueItem {

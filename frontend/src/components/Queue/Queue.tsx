@@ -1,14 +1,84 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useRoomSession } from '../../services/RoomSessionContext'
 import { useStore } from '../../stores/createStore'
 import { roomStore, selectIsOwner } from '../../stores/roomStore'
 import type { QueueItem } from '../../types/room'
 import { copyText, formatTime } from '../../utils/format'
 import { youtubeWatchUrl } from '../../utils/youtubeUrlParser'
-import { MoreIcon } from '../ui/Icons'
+import { GripIcon, MoreIcon } from '../ui/Icons'
+import { showToast } from '../../stores/toastStore'
+
+interface Drag {
+  id: string
+  from: number
+  over: number
+  startY: number
+  dy: number
+  rowH: number
+  tops: number[]
+}
 
 export function Queue() {
-  const queue = useStore(roomStore, (s) => s.room?.queue ?? null)
+  const session = useRoomSession()
+  const queueRaw = useStore(roomStore, (s) => s.room?.queue ?? null)
+  const canMove = useStore(roomStore, (s) => s.settings.controls === 'all' || selectIsOwner(s))
+  const [drag, setDrag] = useState<Drag | null>(null)
+  // Ordem otimista depois de soltar, até a sala confirmar.
+  const [pending, setPending] = useState<{ id: string; to: number } | null>(null)
+  const listRef = useRef<HTMLOListElement>(null)
+  useEffect(() => setPending(null), [queueRaw])
+
+  const queue = useMemo(() => {
+    if (!queueRaw || !pending) return queueRaw
+    const from = queueRaw.findIndex((q) => q.id === pending.id)
+    if (from < 0) return queueRaw
+    const next = [...queueRaw]
+    const [it] = next.splice(from, 1)
+    next.splice(pending.to, 0, it)
+    return next
+  }, [queueRaw, pending])
+
+  function move(id: string, to: number) {
+    setPending({ id, to })
+    session.moveTrack(id, to).catch((err: Error) => {
+      setPending(null)
+      showToast(err.message || 'Não foi possível mudar a ordem.', 'error')
+    })
+  }
+
+  function startDrag(e: ReactPointerEvent<HTMLButtonElement>, id: string, index: number) {
+    if (!canMove || e.button !== 0 || !listRef.current) return
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    const rows = [...listRef.current.children] as HTMLElement[]
+    const tops = rows.map((r) => r.getBoundingClientRect().top)
+    setDrag({ id, from: index, over: index, startY: e.clientY, dy: 0, rowH: rows[index].getBoundingClientRect().height, tops })
+  }
+  function onDragMove(e: ReactPointerEvent<HTMLButtonElement>) {
+    if (!drag) return
+    const dy = e.clientY - drag.startY
+    const center = drag.tops[drag.from] + drag.rowH / 2 + dy
+    let over = 0
+    drag.tops.forEach((t, i) => {
+      if (center > t + drag.rowH / 2) over = i
+    })
+    if (center < drag.tops[0] + drag.rowH / 2) over = 0
+    setDrag({ ...drag, dy, over })
+  }
+  function endDrag() {
+    if (!drag) return
+    if (drag.over !== drag.from) move(drag.id, drag.over)
+    setDrag(null)
+  }
+
+  /** Deslocamento visual de cada linha durante o arraste. */
+  function shift(i: number): number {
+    if (!drag) return 0
+    if (i === drag.from) return drag.dy
+    if (drag.from < drag.over && i > drag.from && i <= drag.over) return -drag.rowH
+    if (drag.from > drag.over && i < drag.from && i >= drag.over) return drag.rowH
+    return 0
+  }
 
   return (
     <section className="side-block queue" aria-label="Fila">
@@ -28,9 +98,24 @@ export function Queue() {
       ) : queue.length === 0 ? (
         <p className="queue-empty">Nada na fila. Músicas adicionadas aparecem aqui, na ordem em que vão tocar.</p>
       ) : (
-        <ol>
+        <ol ref={listRef} className={drag ? 'is-dragging' : ''}>
           {queue.map((item, i) => (
-            <QueueRow key={item.id} item={item} index={i} />
+            <QueueRow
+              key={item.id}
+              item={item}
+              index={i}
+              total={queue.length}
+              canMove={canMove}
+              dragging={drag?.id === item.id}
+              offset={shift(i)}
+              onGrip={{
+                onPointerDown: (e) => startDrag(e, item.id, i),
+                onPointerMove: onDragMove,
+                onPointerUp: endDrag,
+                onPointerCancel: () => setDrag(null),
+              }}
+              onMove={(to) => move(item.id, to)}
+            />
           ))}
         </ol>
       )}
@@ -38,14 +123,29 @@ export function Queue() {
   )
 }
 
-function QueueRow({ item, index }: { item: QueueItem; index: number }) {
+interface RowProps {
+  item: QueueItem
+  index: number
+  total: number
+  canMove: boolean
+  dragging: boolean
+  offset: number
+  onGrip: {
+    onPointerDown: (e: ReactPointerEvent<HTMLButtonElement>) => void
+    onPointerMove: (e: ReactPointerEvent<HTMLButtonElement>) => void
+    onPointerUp: () => void
+    onPointerCancel: () => void
+  }
+  onMove: (to: number) => void
+}
+
+function QueueRow({ item, index, total, canMove, dragging, offset, onGrip, onMove }: RowProps) {
   const session = useRoomSession()
   const [open, setOpen] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const ref = useRef<HTMLLIElement>(null)
   const isOwner = useStore(roomStore, selectIsOwner)
   const me = useStore(roomStore, (s) => s.participantId)
-  const canMove = useStore(roomStore, (s) => s.settings.controls === 'all') || isOwner
   const canRemove = isOwner || (!!item.addedByUid && item.addedByUid === me)
 
   useEffect(() => {
@@ -78,8 +178,34 @@ function QueueRow({ item, index }: { item: QueueItem; index: number }) {
   }
 
   return (
-    <li className="q-item" ref={ref}>
-      <span className="q-pos">{index + 1}</span>
+    <li
+      className={`q-item ${dragging ? 'is-dragged' : ''} ${canMove ? 'can-move' : ''}`}
+      ref={ref}
+      style={offset ? { transform: `translateY(${offset}px)` } : undefined}
+    >
+      {canMove ? (
+        <button
+          type="button"
+          className="q-grip"
+          aria-label={`Arrastar "${item.title}" (posição ${index + 1}). Setas para cima e para baixo também movem.`}
+          title="Arraste para mudar a ordem"
+          {...onGrip}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowUp' && index > 0) {
+              e.preventDefault()
+              onMove(index - 1)
+            } else if (e.key === 'ArrowDown' && index < total - 1) {
+              e.preventDefault()
+              onMove(index + 1)
+            }
+          }}
+        >
+          <span className="q-pos">{index + 1}</span>
+          <GripIcon width={14} height={14} />
+        </button>
+      ) : (
+        <span className="q-pos">{index + 1}</span>
+      )}
       <img
         className="q-thumb"
         src={item.thumbnail}

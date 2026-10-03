@@ -9,9 +9,10 @@ const LEAD = SyncConfig.commandLeadTimeMs / 1000
 const TRACK_LEAD = SyncConfig.trackChangeLeadTimeMs / 1000
 
 let seq = 0
-const item = (videoId = 'aaaaaaaaaaa', extra: Partial<QueueItem> = {}): QueueItem => ({
+// Cada música de teste tem um vídeo próprio (a sala recusa repetidas).
+const item = (videoId?: string, extra: Partial<QueueItem> = {}): QueueItem => ({
   id: `i${++seq}`,
-  videoId,
+  videoId: videoId ?? `v${seq}`.padEnd(11, '_'),
   title: 't',
   author: '',
   thumbnail: '',
@@ -123,7 +124,7 @@ describe('roomLogic', () => {
   it('playlist respeita o limite da fila', () => {
     let r = must(emptyRoom('ABCDE'), { type: 'TRACK_ADD', item: item() }, 0)
     const cap = queueCapacity(r)
-    const many = Array.from({ length: cap + 5 }, () => item('zzzzzzzzzzz'))
+    const many = Array.from({ length: cap + 5 }, () => item())
     r = must(r, { type: 'TRACK_ADD_MANY', items: many }, 0)
     expect(r.queue.length).toBe(SyncConfig.maxQueueSize)
     expect(queueCapacity(r)).toBe(0)
@@ -270,7 +271,7 @@ describe('permissões da sala (configurações do dono)', () => {
     expect(errorOf(() => applyCommand(doc, { type: 'TRACK_ADD', item: item() }, 200, guest({ maxPerUser: 1 })))).toBe(
       'Você já tem 1 música na fila (limite da sala: 1).',
     )
-    const items = [1, 2, 3, 4].map(() => item('ddddddddddd', { addedByUid: 'ana' }))
+    const items = [1, 2, 3, 4].map(() => item(undefined, { addedByUid: 'ana' }))
     const next = applyCommand(doc, { type: 'TRACK_ADD_MANY', items }, 200, guest({ maxPerUser: 3 }))
     expect(next!.queue.filter((q) => q.addedByUid === 'ana').length).toBe(3)
     // o comando original não é alterado (a transação pode repetir)
@@ -294,5 +295,32 @@ describe('permissões da sala (configurações do dono)', () => {
     expect(s.voteSkipPercent).toBe(50)
     expect(s.maxPerUser).toBe(0)
     expect(s.allowGuests).toBe(false)
+  })
+})
+
+describe('músicas repetidas', () => {
+  it('recusa a música que está tocando ou já está na fila', () => {
+    const r = emptyRoom('ABCDE')
+    r.currentTrack = item('aaaaaaaaaaa')
+    r.queue = [item('bbbbbbbbbbb')]
+    const err = (videoId: string) => {
+      try {
+        applyCommand(r, { type: 'TRACK_ADD', item: item(videoId) }, 100)
+        return ''
+      } catch (e) {
+        return (e as Error).message
+      }
+    }
+    expect(err('aaaaaaaaaaa')).toBe('Essa música já está tocando.')
+    expect(err('bbbbbbbbbbb')).toBe('Essa música já está na fila.')
+    expect(err('ccccccccccc')).toBe('')
+  })
+  it('playlist entra sem as repetidas', () => {
+    const r = emptyRoom('ABCDE')
+    r.currentTrack = item('aaaaaaaaaaa')
+    r.queue = [item('bbbbbbbbbbb')]
+    const ids = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc', 'ccccccccccc', 'ddddddddddd']
+    const next = applyCommand(r, { type: 'TRACK_ADD_MANY', items: ids.map((v) => item(v)) }, 100)!
+    expect(next.queue.map((q) => q.videoId).join(',')).toBe('bbbbbbbbbbb,ccccccccccc,ddddddddddd')
   })
 })

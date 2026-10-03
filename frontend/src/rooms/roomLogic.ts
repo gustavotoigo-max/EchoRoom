@@ -193,6 +193,8 @@ function run(doc: RoomDoc, cmd: RoomCommand, now: number, lead: number): boolean
     }
 
     case 'TRACK_ADD': {
+      if (doc.currentTrack?.videoId === cmd.item.videoId) throw new CommandError('Essa música já está tocando.')
+      if (doc.queue.some((q) => q.videoId === cmd.item.videoId)) throw new CommandError('Essa música já está na fila.')
       if (doc.queue.length >= SyncConfig.maxQueueSize) throw new CommandError('A fila atingiu o limite de músicas.')
       if (!doc.currentTrack) {
         // Sala vazia: a música começa a tocar para todos.
@@ -205,8 +207,10 @@ function run(doc: RoomDoc, cmd: RoomCommand, now: number, lead: number): boolean
     }
 
     case 'TRACK_ADD_MANY': {
-      // Playlist: entra o que couber na fila, na ordem.
-      const items = cmd.items.slice(0, queueCapacity(doc))
+      // Playlist: entra o que couber na fila, na ordem, sem repetir músicas.
+      const fresh = withoutDuplicates(doc, cmd.items)
+      if (!fresh.length) throw new CommandError('Todas essas músicas já estão na fila.')
+      const items = fresh.slice(0, queueCapacity(doc))
       if (!items.length) throw new CommandError('A fila atingiu o limite de músicas.')
       if (!doc.currentTrack) {
         doc.currentTrack = items.shift()!
@@ -269,6 +273,15 @@ function run(doc: RoomDoc, cmd: RoomCommand, now: number, lead: number): boolean
       return changed
     }
   }
+}
+
+/** Tira músicas que já estão tocando, na fila ou repetidas na própria lista. */
+export function withoutDuplicates<T extends { videoId: string }>(
+  doc: Pick<RoomDoc, 'queue' | 'currentTrack'>,
+  items: T[],
+): T[] {
+  const seen = new Set([doc.currentTrack?.videoId, ...doc.queue.map((q) => q.videoId)].filter(Boolean) as string[])
+  return items.filter((i) => (seen.has(i.videoId) ? false : (seen.add(i.videoId), true)))
 }
 
 /** Quantas músicas ainda cabem (a atual não conta para o limite da fila). */

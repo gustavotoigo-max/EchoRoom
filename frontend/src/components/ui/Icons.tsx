@@ -111,6 +111,26 @@ export const SendIcon = (p: P) => (
     <path d="M22 2L11 13M22 2l-7 20-4-9-9-4z" />
   </svg>
 )
+export const FullscreenIcon = (p: P) => (
+  <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2.2">
+    <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+  </svg>
+)
+export const ExitFullscreenIcon = (p: P) => (
+  <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2.2">
+    <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
+  </svg>
+)
+export const GripIcon = (p: P) => (
+  <svg {...base} {...p} fill="currentColor">
+    <circle cx="9" cy="6" r="1.6" />
+    <circle cx="15" cy="6" r="1.6" />
+    <circle cx="9" cy="12" r="1.6" />
+    <circle cx="15" cy="12" r="1.6" />
+    <circle cx="9" cy="18" r="1.6" />
+    <circle cx="15" cy="18" r="1.6" />
+  </svg>
+)
 /** Sair da sala. */
 export const LeaveIcon = (p: P) => (
   <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2">

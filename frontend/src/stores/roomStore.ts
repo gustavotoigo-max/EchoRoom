@@ -21,10 +21,14 @@ export interface RoomStoreState {
   removedReason: string | null
 }
 
-/** Votos necessários para pular: porcentagem das pessoas conectadas (mínimo 1). */
+/**
+ * Votos necessários para pular: porcentagem das pessoas conectadas.
+ * Com duas ou mais pessoas, nunca basta um voto só (senão quem vota pula sozinho).
+ */
 export function votesNeeded(s: RoomStoreState): number {
-  const online = s.room?.participants.filter((p) => p.connected).length ?? 1
-  return Math.max(1, Math.ceil((Math.max(1, online) * s.settings.voteSkipPercent) / 100))
+  const online = Math.max(1, s.room?.participants.filter((p) => p.connected).length ?? 1)
+  const byPercent = Math.ceil((online * s.settings.voteSkipPercent) / 100)
+  return online >= 2 ? Math.min(online, Math.max(2, byPercent)) : 1
 }
 
 /** Votos válidos (só de quem ainda está conectado). */

@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { removeEntry, subscribeLibrary, type LibraryEntry } from '../../services/firebase/library'
 import { useRoomSession } from '../../services/RoomSessionContext'
 import { thumbnailUrl } from '../../services/youtube/metadata'
+import { getRelated, type RelatedTrack } from '../../services/youtube/related'
 import { useStore } from '../../stores/createStore'
 import { roomStore, selectIsOwner } from '../../stores/roomStore'
 import { showToast } from '../../stores/toastStore'
 import { PlusIcon } from '../ui/Icons'
 
-type Kind = 'track' | 'playlist'
+type Kind = 'track' | 'playlist' | 'related'
 type Order = 'top' | 'recent'
 
 const PAGE = 30
@@ -115,7 +116,11 @@ export function Suggestions() {
           >
             Playlists <span>{entries ? counts.playlist : ''}</span>
           </button>
+          <button role="tab" aria-selected={kind === 'related'} className={kind === 'related' ? 'on' : ''} onClick={() => setKind('related')}>
+            Parecidas
+          </button>
         </div>
+        {kind !== 'related' && (
         <div className="seg seg-quiet" aria-label="Ordem">
           <button className={order === 'top' ? 'on' : ''} aria-pressed={order === 'top'} onClick={() => setOrder('top')}>
             Mais tocadas
@@ -124,6 +129,8 @@ export function Suggestions() {
             Recentes
           </button>
         </div>
+        )}
+        {kind !== 'related' && (
         <input
           className="sugg-search"
           type="search"
@@ -132,9 +139,12 @@ export function Suggestions() {
           placeholder={kind === 'track' ? 'Buscar música ou artista' : 'Buscar playlist'}
           aria-label="Buscar nas sugestões"
         />
+        )}
       </header>
 
-      {error ? (
+      {kind === 'related' ? (
+        <RelatedList inRoom={inRoomSet} locked={addLocked} />
+      ) : error ? (
         <p className="sugg-empty">{error}</p>
       ) : entries === null ? (
         <ul className="sugg-list">
@@ -219,5 +229,85 @@ export function Suggestions() {
         </>
       )}
     </section>
+  )
+}
+
+/** Parecidas com a música que está tocando (Mix automático do YouTube). */
+function RelatedList({ inRoom, locked }: { inRoom: Set<string>; locked: boolean }) {
+  const session = useRoomSession()
+  const current = useStore(roomStore, (s) => s.room?.currentTrack ?? null)
+  const [items, setItems] = useState<RelatedTrack[] | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+
+  useEffect(() => {
+    setItems(null)
+    if (!current) return
+    let alive = true
+    void getRelated(current.videoId).then((r) => alive && setItems(r))
+    return () => {
+      alive = false
+    }
+  }, [current?.videoId])
+
+  if (!current) return <p className="sugg-empty">Quando uma música estiver tocando, aparecem aqui outras parecidas com ela.</p>
+  if (items === null) {
+    return (
+      <ul className="sugg-list">
+        {[0, 1, 2, 3].map((i) => (
+          <li key={i} className="sugg-item">
+            <div className="skeleton skeleton-thumb" />
+            <div className="skeleton skeleton-line" />
+          </li>
+        ))}
+      </ul>
+    )
+  }
+  if (!items.length) return <p className="sugg-empty">O YouTube não trouxe parecidas para esta música.</p>
+
+  async function add(r: RelatedTrack) {
+    setBusy(r.videoId)
+    try {
+      await session.addTrack(`https://www.youtube.com/watch?v=${r.videoId}`, { title: r.title })
+      showToast(`"${r.title}" adicionada à fila.`, 'ok', 3000)
+    } catch (err) {
+      showToast((err as Error).message || 'Não foi possível adicionar.', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <ul className="sugg-list">
+      {items.map((r) => {
+        const queued = inRoom.has(r.videoId)
+        return (
+          <li key={r.videoId} className="sugg-item sugg-related">
+            <span className="sugg-thumb">
+              <img src={thumbnailUrl(r.videoId)} alt="" loading="lazy" width={64} height={36} onError={(ev) => (ev.currentTarget.style.visibility = 'hidden')} />
+            </span>
+            <span className="sugg-text">
+              <span className="sugg-title" title={r.title}>
+                {r.title}
+              </span>
+              <span className="sugg-sub">{r.author || 'Parecida com a atual'}</span>
+            </span>
+            <button
+              type="button"
+              className="btn btn-secondary sugg-add"
+              disabled={queued || locked || busy === r.videoId}
+              onClick={() => add(r)}
+              aria-label={`Adicionar ${r.title} à fila`}
+            >
+              {queued ? 'Na sala' : busy === r.videoId ? 'Adicionando…' : (
+                <>
+                  <PlusIcon width={14} height={14} />
+                  <span>Fila</span>
+                </>
+              )}
+            </button>
+          </li>
+        )
+      })}
+    </ul>
   )
 }

@@ -37,7 +37,11 @@ export function AddTrack() {
       setValue('')
       const link = parseYouTubeLink(url)
       if (res.added > 1 || wholePlaylist || link.kind === 'playlist') {
-        const extra = res.skipped ? ` (${res.skipped} ficaram de fora: limite da fila)` : ''
+        const notes = [
+          res.repeated ? `${res.repeated} já estavam na fila` : '',
+          res.skipped ? `${res.skipped} ficaram de fora: limite da fila` : '',
+        ].filter(Boolean)
+        const extra = notes.length ? ` (${notes.join('; ')})` : ''
         setFeedback({ kind: 'ok', text: `${res.added} músicas da playlist adicionadas${extra}` })
         clearLater(5000)
       } else if (link.kind === 'video' && link.playlistId) {
