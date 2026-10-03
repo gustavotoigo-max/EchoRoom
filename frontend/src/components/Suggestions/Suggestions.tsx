@@ -202,14 +202,13 @@ export function Suggestions() {
                     className="btn btn-secondary sugg-add"
                     disabled={queued || addLocked || busy === e.id}
                     onClick={() => add(e)}
-                    aria-label={`Adicionar ${e.title} à fila`}
+                    aria-label={isCurrent ? 'Tocando agora' : queued ? 'Já está na fila' : `Adicionar ${e.title} à fila`}
+                    title={isCurrent ? 'Tocando agora' : queued ? 'Já está na fila' : 'Pôr na fila'}
                   >
                     {isCurrent ? (
-                      'Tocando'
-                    ) : queued ? (
-                      'Na fila'
-                    ) : busy === e.id ? (
-                      'Adicionando…'
+                      <Equalizer on={playing} />
+                    ) : queued ? null : busy === e.id ? (
+                      '…'
                     ) : (
                       <>
                         <PlusIcon width={14} height={14} />
@@ -307,9 +306,10 @@ function RelatedList({ inRoom, locked }: { inRoom: Set<string>; locked: boolean 
               className="btn btn-secondary sugg-add"
               disabled={queued || locked || busy === r.videoId}
               onClick={() => add(r)}
-              aria-label={`Adicionar ${r.title} à fila`}
+              aria-label={queued ? 'Já está na fila' : `Adicionar ${r.title} à fila`}
+              title={queued ? 'Já está na fila' : 'Pôr na fila'}
             >
-              {queued ? 'Na fila' : busy === r.videoId ? 'Adicionando…' : (
+              {queued ? null : busy === r.videoId ? '…' : (
                 <>
                   <PlusIcon width={14} height={14} />
                   <span>Fila</span>

@@ -252,8 +252,8 @@ function ExtensionGuide() {
         <li>
           <strong>Use no YouTube</strong>
           <span>
-            Abra um vídeo ou playlist: o botão aparece no canto direito da tela. Dá para arrastar pela alça ⋮⋮ ou
-            esconder pelo ×. Entre numa sala do EchoRoom pelo menos uma vez para a extensão saber para onde mandar.
+            Abra um vídeo ou playlist: o botão aparece no canto direito da tela. Clique para pôr na fila da sua sala, ou
+            use a setinha ao lado para salvar numa playlist sua. Dá para arrastar pela alça ⋮⋮ ou esconder pelo ×.
           </span>
         </li>
       </ol>

@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "EchoRoom — tocar na sala",
   "short_name": "EchoRoom",
-  "version": "1.1.0",
-  "description": "Botão flutuante no YouTube que manda a música (ou playlist) para a sua sala do EchoRoom.",
+  "version": "1.2.0",
+  "description": "Botão flutuante no YouTube que manda a música para a sua sala do EchoRoom ou para uma playlist sua.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -20,17 +20,32 @@
   "background": {
     "service_worker": "background.js"
   },
-  "host_permissions": ["https://gustavotoigo-max.github.io/EchoRoom/*"],
+  "host_permissions": [
+    "https://gustavotoigo-max.github.io/EchoRoom/*"
+  ],
   "content_scripts": [
     {
-      "matches": ["https://www.youtube.com/*", "https://music.youtube.com/*", "https://m.youtube.com/*"],
-      "js": ["youtube.js"],
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://music.youtube.com/*",
+        "https://m.youtube.com/*"
+      ],
+      "js": [
+        "youtube.js"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://gustavotoigo-max.github.io/EchoRoom/*"],
-      "js": ["echoroom.js"],
+      "matches": [
+        "https://gustavotoigo-max.github.io/EchoRoom/*"
+      ],
+      "js": [
+        "echoroom.js"
+      ],
       "run_at": "document_start"
     }
+  ],
+  "permissions": [
+    "storage"
   ]
 }

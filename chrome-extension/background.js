@@ -52,10 +52,110 @@ async function sendToEchoRoom({ url, title }, sender) {
   return { ok: true, mode: 'new' }
 }
 
+// ---- playlists (precisam do login do site) -----------------------------------
+
+/** Abas que a extensão abriu só para atender um pedido (fechadas depois). */
+const helperTabs = new Set()
+
+function waitComplete(tabId, timeoutMs = 20000) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener)
+      resolve(false)
+    }, timeoutMs)
+    function listener(id, info) {
+      if (id === tabId && info.status === 'complete') {
+        clearTimeout(timer)
+        chrome.tabs.onUpdated.removeListener(listener)
+        resolve(true)
+      }
+    }
+    chrome.tabs.onUpdated.addListener(listener)
+  })
+}
+
+/** Uma aba do EchoRoom que responda; se não houver, abre uma em segundo plano. */
+async function echoRoomTab(opener) {
+  const tabs = await chrome.tabs.query({ url: SITE + '*' })
+  for (const t of tabs) {
+    if (t.discarded || t.status === 'unloaded') continue
+    try {
+      const res = await chrome.tabs.sendMessage(t.id, { type: 'ECHOROOM_PING' })
+      if (res && res.ok) return t
+    } catch {
+      /* aba antiga, sem a extensão: tenta outra */
+    }
+  }
+  const created = await chrome.tabs.create({
+    url: SITE + 'perfil',
+    active: false,
+    ...(opener ? { windowId: opener.windowId, index: opener.index + 1 } : {}),
+  })
+  helperTabs.add(created.id)
+  await waitComplete(created.id)
+  for (let i = 0; i < 20; i++) {
+    try {
+      const res = await chrome.tabs.sendMessage(created.id, { type: 'ECHOROOM_PING' })
+      if (res && res.ok) return created
+    } catch {
+      /* script ainda não carregou */
+    }
+    await new Promise((r) => setTimeout(r, 300))
+  }
+  return created
+}
+
+function closeHelperLater(tabId, ms = 60000) {
+  if (!helperTabs.has(tabId)) return
+  setTimeout(() => {
+    helperTabs.delete(tabId)
+    chrome.tabs.remove(tabId).catch(() => {})
+  }, ms)
+}
+
+async function askEchoRoom(payload, sender, { closeAfterMs } = {}) {
+  const tab = await echoRoomTab(sender && sender.tab)
+  let res
+  try {
+    res = await chrome.tabs.sendMessage(tab.id, { type: 'ECHOROOM_REQUEST', payload })
+  } catch {
+    res = { ok: false, error: 'O EchoRoom não respondeu. Tente de novo.' }
+  }
+  if (closeAfterMs != null) closeHelperLater(tab.id, closeAfterMs)
+  return res || { ok: false, error: 'Sem resposta do EchoRoom.' }
+}
+
+async function listPlaylists(sender) {
+  const res = await askEchoRoom({ type: 'LIST_PLAYLISTS' }, sender, { closeAfterMs: 60000 })
+  if (res.ok) await chrome.storage.local.set({ playlists: res.playlists, playlistsUser: res.user, playlistsAt: Date.now() })
+  else if (res.error === 'login') await chrome.storage.local.remove(['playlists', 'playlistsUser'])
+  return res
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === 'ECHOROOM_SEND' && typeof msg.url === 'string') {
     sendToEchoRoom(msg, sender).then(sendResponse, (err) => sendResponse({ ok: false, error: String(err) }))
     return true // resposta assíncrona
+  }
+  if (msg && msg.type === 'ECHOROOM_PLAYLISTS') {
+    listPlaylists(sender).then(sendResponse, (err) => sendResponse({ ok: false, error: String(err) }))
+    return true
+  }
+  if (msg && msg.type === 'ECHOROOM_SAVE' && typeof msg.url === 'string') {
+    const payload = msg.newName
+      ? { type: 'NEW_PLAYLIST', name: msg.newName, url: msg.url, title: msg.title }
+      : { type: 'ADD_TO_PLAYLIST', playlistId: msg.playlistId, url: msg.url, title: msg.title }
+    askEchoRoom(payload, sender, { closeAfterMs: 1500 })
+      .then(async (res) => {
+        if (res.ok) await listPlaylists(sender).catch(() => {})
+        sendResponse(res)
+      })
+      .catch((err) => sendResponse({ ok: false, error: String(err) }))
+    return true
+  }
+  if (msg && msg.type === 'ECHOROOM_OPEN_LOGIN') {
+    chrome.tabs.create({ url: SITE + 'perfil', active: true }).then(() => sendResponse({ ok: true }))
+    return true
   }
   return false
 })

@@ -3203,7 +3203,7 @@ input[readonly] {
   color: var(--text-faint);
 }
 .room-left .sugg-item {
-  grid-template-columns: 48px minmax(0, 1fr) auto 18px;
+  grid-template-columns: 48px minmax(0, 1fr) 24px 18px;
   gap: 8px;
   padding: 6px 4px 6px 6px;
   background: transparent;
@@ -3212,7 +3212,7 @@ input[readonly] {
   background: var(--surface);
 }
 .room-left .sugg-related {
-  grid-template-columns: 48px minmax(0, 1fr) auto;
+  grid-template-columns: 48px minmax(0, 1fr) 24px;
 }
 .room-left .sugg-thumb,
 .room-left .sugg-thumb img {
@@ -3226,9 +3226,32 @@ input[readonly] {
   font-size: 11px;
 }
 .room-left .sugg-add {
-  height: 26px;
-  padding: 0 8px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  gap: 0;
+  font-size: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 50%;
+}
+.room-left .sugg-add svg {
+  width: 13px;
+  height: 13px;
+}
+.room-left .sugg-item:hover .sugg-add:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+}
+/* Já na fila / tocando: vira só um sinal discreto */
+.room-left .sugg-add:disabled::before {
+  content: '✓';
   font-size: 12px;
+  color: var(--live);
+}
+.room-left .sugg-item.is-current .sugg-add:disabled::before {
+  content: '';
 }
 .room-left .sugg-add span {
   display: none;
@@ -3510,7 +3533,27 @@ input[readonly] {
   .room-left .sugg-list {
     max-height: 420px;
   }
-  .room-left .sugg-add span {
-    display: inline;
+}
+
+/* Nome e código da sala centralizados na barra (telas largas) */
+@media (min-width: 1200px) {
+  .room-topbar .channel-name {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-50%);
+    max-width: 34vw;
+    justify-content: center;
+  }
+}
+@media (min-width: 901px) and (max-width: 1199px) {
+  .room-topbar .channel-name {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-50%);
+    max-width: 28vw;
   }
 }

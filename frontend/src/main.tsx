@@ -4,10 +4,12 @@ import { App } from './App'
 import { authStore, initDiscordAuth } from './services/discordAuth'
 import { watchInvites } from './services/firebase/social'
 import { initExternalAdd } from './services/externalAdd'
+import { initExtensionBridge } from './services/extensionBridge'
 import './styles/global.css'
 
 initDiscordAuth()
 initExternalAdd()
+initExtensionBridge()
 
 // Convites chegam em qualquer página para quem entrou com Discord.
 const syncInvites = () => {

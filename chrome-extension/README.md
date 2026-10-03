@@ -32,3 +32,10 @@ O botão pode ser arrastado na vertical pela alça `⋮⋮` e escondido na aba p
 
 Está em `background.js` (`SITE`) e no `manifest.json` (`host_permissions` e o
 segundo `matches`). Se o site mudar de endereço, altere os três.
+
+## Playlists (versão 1.2)
+
+A setinha ao lado do botão abre as suas playlists pessoais do EchoRoom. Escolha uma
+para salvar a música (ou a playlist do YouTube inteira), ou crie uma nova ali mesmo.
+É preciso ter entrado com Discord no EchoRoom. Se nenhuma aba do EchoRoom estiver
+aberta, a extensão abre uma em segundo plano e fecha depois.
