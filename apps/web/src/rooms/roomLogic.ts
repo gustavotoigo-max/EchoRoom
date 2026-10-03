@@ -18,7 +18,7 @@ export class CommandError extends Error {}
 
 export type RoomCommand =
   | { type: 'PLAY' }
-  | { type: 'PAUSE' }
+  | { type: 'PAUSE'; reason?: 'user' | 'idle' }
   | { type: 'SEEK'; position: number }
   | { type: 'TRACK_ADD'; item: QueueItem }
   | { type: 'TRACK_ADD_MANY'; items: QueueItem[] }
@@ -128,6 +128,7 @@ export function applyCommand(current: RoomDoc, cmd: RoomCommand, now: number, ac
 /**
  * Permissões conforme as configurações da sala. O dono pode tudo.
  * Comandos automáticos (fim da música, título real, vídeo indisponível,
+ * pausa por inatividade,
  * votação concluída) valem para todos.
  */
 function checkPermission(doc: RoomDoc, cmd: RoomCommand, actor: CommandActor): void {
@@ -142,8 +143,12 @@ function checkPermission(doc: RoomDoc, cmd: RoomCommand, actor: CommandActor): v
   if (actor.isOwner) return
   const controlsLocked = settings.controls === 'owner'
   switch (cmd.type) {
-    case 'PLAY':
     case 'PAUSE':
+      // Pausa automática por inatividade vale para todos.
+      if (cmd.reason === 'idle') return
+      if (controlsLocked) throw new CommandError('Nesta sala, só o dono controla a reprodução.')
+      return
+    case 'PLAY':
     case 'SEEK':
       if (controlsLocked) throw new CommandError('Nesta sala, só o dono controla a reprodução.')
       return

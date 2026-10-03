@@ -1,11 +1,11 @@
 /* Tocando agora */
 .now-playing {
   position: relative;
+  /* Nome da música em cima, controles e volume embaixo. */
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px 24px;
-  padding: 18px 28px 20px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  padding: 14px 28px 16px;
   background: var(--surface);
   border-bottom: 1px solid var(--line-soft);
 }
@@ -16,18 +16,18 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   color: var(--live);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 .np-title {
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.01em;
   line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
@@ -38,9 +38,10 @@
   display: flex;
   gap: 12px;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 .np-added {
   color: var(--text-faint);
@@ -49,6 +50,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 .np-controls .icon-btn:not(.play-btn) {
   background: transparent;
@@ -86,7 +88,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: 12px;
+  /* Volume encostado à direita, separado dos botões de reprodução. */
+  margin-left: auto;
   padding-left: 16px;
   border-left: 1px solid var(--line);
 }

@@ -19,6 +19,8 @@ export interface RoomStoreState {
   banned: Record<string, string>
   /** Motivo de saída forçada (removido, bloqueado, sala só para Discord). */
   removedReason: string | null
+  /** Ninguém interagiu com a sala por um bom tempo: música pausada e você saiu da lista. */
+  idle: boolean
 }
 
 /**
@@ -50,6 +52,7 @@ export const roomStore = createStore<RoomStoreState>({
   votes: { itemId: null, voters: [] },
   banned: {},
   removedReason: null,
+  idle: false,
 })
 
 /**
@@ -74,5 +77,6 @@ export function resetRoomStore(): void {
     votes: { itemId: null, voters: [] },
     banned: {},
     removedReason: null,
+    idle: false,
   })
 }

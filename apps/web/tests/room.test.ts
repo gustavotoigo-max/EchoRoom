@@ -246,6 +246,13 @@ describe('permissões da sala (configurações do dono)', () => {
     expect(next!.currentTrack!.videoId).toBe('bbbbbbbbbbb')
   })
 
+  it('pausa por inatividade vale para todos e não faz nada se já estiver pausada', () => {
+    const doc = playing()
+    const paused = applyCommand(doc, { type: 'PAUSE', reason: 'idle' }, 200, guest({ controls: 'owner' }))
+    expect(paused!.playbackState).toBe('paused')
+    expect(applyCommand(paused!, { type: 'PAUSE', reason: 'idle' }, 201, guest({ controls: 'owner' }))).toBe(null)
+  })
+
   it('votação: pular direto é recusado, pular por voto concluído é aceito', () => {
     const doc = playing()
     const id = doc.currentTrack!.id

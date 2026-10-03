@@ -30,13 +30,28 @@ function safeAvatar(url: unknown): string | null {
   return typeof url === 'string' && /^https:\/\/cdn\.discordapp\.com\//.test(url) ? url : null
 }
 
-/** Participantes desconectados somem da lista depois deste tempo. */
-const AWAY_VISIBLE_MS = 2 * 60_000
+/** Presença e inatividade (tempos em ms). */
+export const PresenceConfig = {
+  /** Desconectados aparecem como "Desconectado" por este tempo e depois somem. */
+  awayVisibleMs: 10 * 60_000,
+  /** Cada aba aberta confirma que está viva neste intervalo… */
+  heartbeatMs: 60_000,
+  /** …e conta como desconectada se ficar este tempo sem confirmar (aba congelada, rede caiu). */
+  staleMs: 3 * 60_000,
+  /** Sem nenhuma interação de ninguém por este tempo: pausa e libera a lista. */
+  idleMs: 60 * 60_000,
+  /** Interações são publicadas no máximo uma vez neste intervalo. */
+  activityPublishMs: 60_000,
+}
 
 interface ParticipantRecord {
   name?: string
   avatar?: string | null
   lastSeen?: number
+  /** Última confirmação de que a aba está aberta. */
+  beat?: number
+  /** Última interação da pessoa com a sala. */
+  activeAt?: number
   conns?: Record<string, boolean>
 }
 
@@ -46,7 +61,8 @@ interface ParticipantRecord {
  * - /rooms/{chave}/state          documento oficial (RoomDoc), alterado só por transação
  * - /rooms/{chave}/meta           nome e dono
  * - /rooms/{chave}/settings       configurações (só o dono altera)
- * - /rooms/{chave}/participants   presença (onDisconnect remove a conexão)
+ * - /rooms/{chave}/participants   presença: conexões (onDisconnect remove), beat (aba viva),
+ *                                 activeAt (última interação, base da pausa por inatividade)
  * - /rooms/{chave}/members/{uid}  quem já entrou (base para convites)
  * - /rooms/{chave}/banned, kicks  moderação do dono
  * - /rooms/{chave}/votes/{item}   votos para pular
@@ -71,6 +87,10 @@ export class FirebaseRoomBackend {
   private votesUnsub: (() => void) | null = null
   private votesItem: string | null = null
   private recordedMembership = false
+  /** Saiu da lista por inatividade (até clicar em "Voltar"). */
+  private idle = false
+  private lastActivity = Date.now()
+  private lastActivityPublished = 0
   status: ConnectionStatus = 'idle'
 
   constructor(
@@ -84,6 +104,8 @@ export class FirebaseRoomBackend {
       onStatus: (s: ConnectionStatus) => void
       onConnected: () => void
       onIdentity: (uid: string) => void
+      /** A sala ficou inativa (true) ou a pessoa voltou (false). */
+      onIdle: (idle: boolean) => void
       /** Removido pelo dono, bloqueado ou sem permissão: a sessão deve acabar. */
       onRemoved: (message: string) => void
     },
@@ -118,18 +140,13 @@ export class FirebaseRoomBackend {
       return this.fail(err)
     }
     if (gen !== this.generation) return
-    const meRef = ref(db, `${base}/participants/${this.participantId}`)
-    const myConnRef = ref(db, `${base}/participants/${this.participantId}/conns/${this.connId}`)
-
     // Conexão + presença
+    this.lastActivity = Date.now()
     this.unsubs.push(
       onValue(ref(db, '.info/connected'), (snap) => {
         if (snap.val() === true) {
           this.everConnected = true
-          onDisconnect(myConnRef).remove()
-          onDisconnect(ref(db, `${base}/participants/${this.participantId}/lastSeen`)).set(serverTimestamp())
-          void update(meRef, { name: this.name, avatar: this.avatar, lastSeen: serverTimestamp() })
-          void set(myConnRef, true)
+          if (!this.idle) this.joinPresence()
           this.setStatus('connected')
           this.handlers.onConnected()
         } else if (this.everConnected) {
@@ -137,6 +154,18 @@ export class FirebaseRoomBackend {
         }
       }),
     )
+
+    // Aba fechada: sai da lista na hora (o onDisconnect do servidor é o reforço).
+    const onHide = () => this.leavePresence()
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted && !this.idle && this.status === 'connected') this.joinPresence()
+    }
+    window.addEventListener('pagehide', onHide)
+    window.addEventListener('pageshow', onShow)
+    this.unsubs.push(() => {
+      window.removeEventListener('pagehide', onHide)
+      window.removeEventListener('pageshow', onShow)
+    })
 
     // Estimativa inicial do relógio (o Firebase calcula ao conectar).
     this.unsubs.push(
@@ -211,8 +240,17 @@ export class FirebaseRoomBackend {
         }
       }),
     )
-    const pruneTimer = setInterval(() => this.refreshParticipants(), 30_000)
-    this.unsubs.push(() => clearInterval(pruneTimer))
+    const pruneTimer = setInterval(() => {
+      this.refreshParticipants()
+      this.checkIdle()
+    }, 30_000)
+    const beatTimer = setInterval(() => {
+      if (this.status === 'connected' && !this.idle) void update(this.meRef(), { beat: serverTimestamp() }).catch(() => {})
+    }, PresenceConfig.heartbeatMs)
+    this.unsubs.push(() => {
+      clearInterval(pruneTimer)
+      clearInterval(beatTimer)
+    })
   }
 
   stop(): void {
@@ -222,13 +260,78 @@ export class FirebaseRoomBackend {
     this.votesUnsub?.()
     this.votesUnsub = null
     this.votesItem = null
-    if (this.stateRef) {
-      const db = getDb()
-      const base = `rooms/${this.roomKey}/participants/${this.participantId}`
-      void set(ref(db, `${base}/conns/${this.connId}`), null)
-      void update(ref(db, base), { lastSeen: serverTimestamp() })
-    }
+    if (this.stateRef && !this.idle) this.leavePresence()
     this.setStatus('closed')
+  }
+
+  // ---- presença e inatividade ------------------------------------------------
+
+  private meRef(): DatabaseReference {
+    return ref(getDb(), `rooms/${this.roomKey}/participants/${this.participantId}`)
+  }
+
+  private joinPresence(): void {
+    const me = this.meRef()
+    const db = getDb()
+    const base = `rooms/${this.roomKey}/participants/${this.participantId}`
+    onDisconnect(ref(db, `${base}/conns/${this.connId}`)).remove()
+    onDisconnect(ref(db, `${base}/lastSeen`)).set(serverTimestamp())
+    this.lastActivityPublished = Date.now()
+    void update(me, {
+      name: this.name,
+      avatar: this.avatar,
+      lastSeen: serverTimestamp(),
+      beat: serverTimestamp(),
+      activeAt: serverTimestamp(),
+      [`conns/${this.connId}`]: true,
+    }).catch(() => {})
+  }
+
+  private leavePresence(): void {
+    const db = getDb()
+    const base = `rooms/${this.roomKey}/participants/${this.participantId}`
+    void update(ref(db, base), { [`conns/${this.connId}`]: null, lastSeen: serverTimestamp() }).catch(() => {})
+  }
+
+  /** Clique, tecla, rolagem ou comando: a sala está em uso. */
+  noteActivity(): void {
+    this.lastActivity = Date.now()
+    if (this.idle || this.status !== 'connected') return
+    if (Date.now() - this.lastActivityPublished < PresenceConfig.activityPublishMs) return
+    this.lastActivityPublished = Date.now()
+    void update(this.meRef(), { activeAt: serverTimestamp() }).catch(() => {})
+  }
+
+  /** Última interação de qualquer pessoa (hora do servidor). */
+  private lastRoomActivity(): number {
+    const mine = this.clock.serverNow() - (Date.now() - this.lastActivity)
+    let last = mine
+    for (const p of Object.values(this.participantRecords)) {
+      if (typeof p.activeAt === 'number' && p.activeAt > last) last = p.activeAt
+    }
+    return last
+  }
+
+  private checkIdle(): void {
+    if (this.idle || this.status !== 'connected') return
+    if (this.clock.serverNow() - this.lastRoomActivity() < PresenceConfig.idleMs) return
+    this.idle = true
+    // Sai da lista por completo (sem deixar "Desconectado").
+    const db = getDb()
+    const base = `rooms/${this.roomKey}/participants/${this.participantId}`
+    void onDisconnect(ref(db, `${base}/conns/${this.connId}`)).cancel()
+    void onDisconnect(ref(db, `${base}/lastSeen`)).cancel()
+    void set(this.meRef(), null).catch(() => {})
+    this.handlers.onIdle(true)
+  }
+
+  /** Voltou depois da pausa por inatividade. */
+  resumeFromIdle(): void {
+    this.lastActivity = Date.now()
+    if (!this.idle) return
+    this.idle = false
+    if (this.status === 'connected') this.joinPresence()
+    this.handlers.onIdle(false)
   }
 
   /** Executa um comando como transação. Resolve true se algo mudou. */
@@ -355,8 +458,12 @@ export class FirebaseRoomBackend {
     const now = this.clock.serverNow()
     const list: Participant[] = []
     for (const [id, p] of Object.entries(this.participantRecords)) {
-      const connected = !!p.conns && Object.keys(p.conns).length > 0
-      if (!connected && (!p.lastSeen || now - p.lastSeen > AWAY_VISIBLE_MS)) continue
+      // Conectado = tem aba aberta e ela confirmou presença há pouco
+      // (uma aba congelada ou sem rede deixa de confirmar).
+      const connected =
+        !!p.conns && Object.keys(p.conns).length > 0 && typeof p.beat === 'number' && now - p.beat < PresenceConfig.staleMs
+      const seen = Math.max(p.lastSeen ?? 0, p.beat ?? 0)
+      if (!connected && (!seen || now - seen > PresenceConfig.awayVisibleMs)) continue
       list.push({ id, name: p.name || 'Convidado', connected, avatar: safeAvatar(p.avatar), guest: !isDiscordUid(id) })
     }
     list.sort((a, b) => Number(b.connected) - Number(a.connected) || a.name.localeCompare(b.name))

@@ -8,7 +8,7 @@ import { showToast } from '../../stores/toastStore'
 import { Equalizer } from '../ui/Equalizer'
 import { CrownIcon, MoreIcon } from '../ui/Icons'
 
-/** Lista de membros no estilo do Discord: agrupada por "ouvindo" e "reconectando". */
+/** Lista de membros no estilo do Discord: agrupada por "ouvindo" e "desconectados". */
 export function Participants() {
   const participants = useStore(roomStore, (s) => s.room?.participants ?? null)
   const playing = useStore(roomStore, (s) => s.room?.playbackState === 'playing')
@@ -36,7 +36,7 @@ export function Participants() {
   return (
     <section className="side-block participants" aria-label="Participantes">
       <Group title="Ouvindo" list={online} playing={playing} />
-      {away.length > 0 && <Group title="Reconectando" list={away} playing={false} />}
+      {away.length > 0 && <Group title="Desconectados" list={away} playing={false} />}
     </section>
   )
 }

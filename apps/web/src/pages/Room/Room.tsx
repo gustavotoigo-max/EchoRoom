@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AddTrack } from '../../components/AddTrack/AddTrack'
 import { Controls } from '../../components/Controls/Controls'
+import { IdleNotice } from '../../components/IdleNotice/IdleNotice'
 import { Participants } from '../../components/Participants/Participants'
 import { RoomPlaylists } from '../../components/Playlists/RoomPlaylists'
 import { PlayerPanel } from '../../components/Player/PlayerPanel'
@@ -147,6 +148,7 @@ function RoomView({ roomId, roomKey, name }: { roomId: string; roomKey: string; 
         </main>
         <Toasts />
         <RoomSettingsPanel />
+        <IdleNotice />
       </div>
     </RoomSessionContext.Provider>
   )

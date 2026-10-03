@@ -17,6 +17,9 @@ import { fetchManyVideoMeta, fetchPlaylistTitle, fetchVideoMeta, thumbnailUrl } 
 import { loadPlaylistVideoIds } from './youtube/playlist'
 import { describeYouTubeError, type LocalPlayerState, type PlayerAdapter } from './youtube/PlayerAdapter'
 
+/** Interações que contam como "alguém está usando a sala". */
+const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const
+
 /**
  * Liga as peças de uma sessão de sala:
  *   Firebase (FirebaseRoomBackend) ⇄ stores ⇄ SyncEngine ⇄ player
@@ -53,6 +56,7 @@ export class RoomSession {
         if (s === 'not_found') roomStore.set({ fatalError: 'A sala não existe mais.' })
       },
       onConnected: () => this.onConnected(),
+      onIdle: (idle) => this.onIdle(idle),
     })
     this.engine = new SyncEngine({
       clock: this.clock,
@@ -67,7 +71,7 @@ export class RoomSession {
         if (isSyncDebug()) playerStore.set({ metrics: status })
       },
       onPlayerError: (code) => this.onPlayerError(code),
-      isUserMuted: () => playerStore.get().muted,
+      isUserMuted: () => playerStore.get().muted || roomStore.get().idle,
       onNeedsGesture: (needed) => playerStore.set({ needsGesture: needed }),
     })
   }
@@ -78,6 +82,7 @@ export class RoomSession {
     this.engine.start()
     this.backend.start().catch((err: Error) => roomStore.set({ fatalError: err.message, connection: 'closed' }))
     setActiveSession(this)
+    for (const ev of ACTIVITY_EVENTS) window.addEventListener(ev, this.noteActivity, { passive: true, capture: true })
     storage.setLastRoom(this.roomId)
     void markActive()
     if (isSyncDebug()) (window as unknown as Record<string, unknown>).__echoroom = this
@@ -85,6 +90,7 @@ export class RoomSession {
 
   stop(): void {
     setActiveSession(null)
+    for (const ev of ACTIVITY_EVENTS) window.removeEventListener(ev, this.noteActivity, { capture: true })
     this.unsubStore?.()
     this.unsubStore = null
     if (this.resyncTimer) clearTimeout(this.resyncTimer)
@@ -158,7 +164,8 @@ export class RoomSession {
     const { volume, muted } = playerStore.get()
     try {
       p.setVolume(volume)
-      if (muted) p.mute()
+      // Ausente por inatividade: não toca som até voltar.
+      if (muted || roomStore.get().idle) p.mute()
       else p.unMute()
     } catch {
       /* player ainda carregando */
@@ -169,6 +176,22 @@ export class RoomSession {
 
   play = () => this.backend.command({ type: 'PLAY' })
   pause = () => this.backend.command({ type: 'PAUSE' })
+
+  // ---- inatividade ---------------------------------------------------------
+
+  private noteActivity = () => this.backend.noteActivity()
+
+  /** Clique em "Voltar à sala" depois da pausa por inatividade. */
+  resumeFromIdle = () => {
+    this.backend.resumeFromIdle()
+  }
+
+  private onIdle(idle: boolean): void {
+    roomStore.set({ idle })
+    this.applyVolume()
+    // Quem percebe primeiro pausa (a transação ignora se já estiver pausada).
+    if (idle) this.fire({ type: 'PAUSE', reason: 'idle' })
+  }
   seek = (position: number) => this.backend.command({ type: 'SEEK', position })
   restart = () => this.seek(0)
   skip = () =>
@@ -307,6 +330,9 @@ export class RoomSession {
 
   /** Música enviada pela extensão do Chrome (ou ?add= na URL). */
   addFromExternal = async (url: string, title?: string) => {
+    // Adicionar pela extensão é uso da sala (e traz de volta quem estava ausente).
+    this.resumeFromIdle()
+    this.backend.noteActivity()
     void countUsage('extension')
     const toastId = showToast(title ? `Adicionando "${title}"…` : 'Adicionando música da extensão…', 'info', 0)
     try {
