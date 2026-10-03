@@ -1,0 +1,44 @@
+/* Painel do usuário (canto inferior esquerdo, como no Discord) */
+.user-panel {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 60px;
+  padding: 0 10px 0 12px;
+  background: var(--bg-deeper);
+  border-top: 1px solid var(--line-soft);
+}
+.user-panel .presence {
+  border-color: var(--bg-deeper);
+}
+.user-text {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  line-height: 1.25;
+}
+.user-text strong {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.user-text span {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.user-leave {
+  width: 34px;
+  height: 34px;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+.user-leave:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--red);
+}

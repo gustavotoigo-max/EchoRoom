@@ -1,0 +1,52 @@
+/* ---- formulários --------------------------------------------------------- */
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+.field > span,
+.add-track > label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+input:not([type='range']) {
+  height: 42px;
+  width: 100%;
+  padding: 0 12px;
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  outline: none;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+input:not([type='range'])::placeholder {
+  color: var(--text-faint);
+}
+input:not([type='range']):hover {
+  border-color: #3a3c58;
+}
+input:not([type='range']):focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint);
+}
+input[readonly] {
+  color: var(--live);
+}
+.form-error {
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 600;
+}
+.hint {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.row {
+  display: flex;
+  gap: 8px;
+}
+.grow {
+  flex: 1;
+}

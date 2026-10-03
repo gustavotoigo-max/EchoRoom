@@ -1,0 +1,12 @@
+{
+  "name": "echoroom",
+  "private": true,
+  "description": "EchoRoom — salas para ouvir YouTube juntos, sincronizado.",
+  "workspaces": ["apps/web", "apps/api", "packages/shared"],
+  "scripts": {
+    "dev": "npm run dev -w apps/web",
+    "build": "npm run build -w apps/web",
+    "test": "npm test -w apps/web && npm test -w apps/api",
+    "deploy:api": "npm run deploy -w apps/api"
+  }
+}

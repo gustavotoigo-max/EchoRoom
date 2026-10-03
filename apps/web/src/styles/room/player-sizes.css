@@ -1,0 +1,107 @@
+/* Esconder vídeo (mini player) */
+.player-area {
+  flex: none;
+}
+.video-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 11, 17, 0.8);
+  backdrop-filter: blur(6px);
+  color: var(--text);
+  font: 600 13px/1 var(--font);
+  cursor: pointer;
+}
+.video-toggle:hover {
+  background: var(--surface-3);
+}
+.player-area.is-compact {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 28px;
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--line-soft);
+}
+.player-area.is-compact .player-frame {
+  width: 356px;
+  height: 200px;
+  min-height: 200px;
+  max-height: none;
+  aspect-ratio: auto;
+  flex: none;
+}
+.player-area.is-compact .player-unlock small,
+.player-area.is-compact .player-empty span {
+  display: none;
+}
+.player-area.is-compact .player-unlock {
+  font-size: 14px;
+}
+.player-area.is-compact .player-unlock i {
+  width: 48px;
+  height: 48px;
+}
+.player-compact-info {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  max-width: 40ch;
+}
+.player-compact-info strong {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+}
+.player-compact-info p {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.player-compact-info .btn {
+  margin-top: 4px;
+}
+
+/* Autoplay bloqueado pelo navegador */
+.player-unlock {
+  z-index: 2;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  justify-items: center;
+  background: rgba(10, 11, 17, 0.82);
+  border: 0;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+}
+.player-unlock i {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 10px var(--accent-tint), 0 0 40px rgba(124, 92, 255, 0.6);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    box-shadow: 0 0 0 16px rgba(124, 92, 255, 0.05), 0 0 48px rgba(124, 92, 255, 0.45);
+  }
+}
+.player-unlock small {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}

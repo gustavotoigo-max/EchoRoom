@@ -1,0 +1,93 @@
+/* Votação: aviso "Pular?" em cima do botão */
+.skip-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.vote-prompt {
+  position: absolute;
+  z-index: 5;
+  right: -8px;
+  bottom: calc(100% + 10px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 12px;
+  white-space: nowrap;
+  background: var(--bg-deeper);
+  border: 1px solid var(--accent);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 24px rgba(124, 92, 255, 0.3);
+  font-size: 13px;
+  animation: toast-in 0.18s ease-out;
+}
+.vote-prompt::after {
+  content: '';
+  position: absolute;
+  right: 24px;
+  top: 100%;
+  border: 7px solid transparent;
+  border-top-color: var(--accent);
+}
+.vote-prompt b {
+  color: var(--live);
+}
+.vote-prompt .btn {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+@media (max-width: 560px) {
+  .vote-prompt {
+    right: 50%;
+    transform: translateX(50%);
+    white-space: normal;
+    width: min(320px, calc(100vw - 32px));
+  }
+  .vote-prompt::after {
+    right: calc(50% - 7px);
+  }
+}
+
+/* Fila: alça de arrastar */
+.q-item.can-move {
+  grid-template-columns: 34px 56px minmax(0, 1fr) 28px;
+}
+.q-grip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: grab;
+  touch-action: none;
+}
+.q-grip svg {
+  opacity: 0.35;
+  transition: opacity 0.12s;
+}
+.q-item:hover .q-grip svg,
+.q-grip:focus-visible svg {
+  opacity: 1;
+}
+.q-grip:active {
+  cursor: grabbing;
+}
+.queue ol.is-dragging .q-item {
+  transition: transform 0.15s ease;
+  user-select: none;
+}
+.queue ol.is-dragging .q-item.is-dragged {
+  z-index: 5;
+  transition: none;
+  background: var(--surface-2);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+  outline: 1px solid var(--accent);
+}
+@media (hover: none) {
+  .q-grip svg {
+    opacity: 0.8;
+  }
+}

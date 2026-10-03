@@ -36,8 +36,8 @@ Endereço: `https://<usuário>.github.io/EchoRoom/`
   (`/rooms/{chave}/library`), ordenadas por mais tocadas ou recentes, com busca
   e adição em um clique.
 - **Login com Discord** (escopo `identify`: só nome e avatar), validado pelo
-  serviço de login em `auth-worker/` (Cloudflare Workers, grátis). Guia completo:
-  [`auth-worker/README.md`](auth-worker/README.md). Variáveis no GitHub:
+  serviço de login em `apps/api/` (Cloudflare Workers, grátis). Guia completo:
+  [`apps/api/README.md`](apps/api/README.md). Variáveis no GitHub:
   `DISCORD_CLIENT_ID` e `AUTH_URL`.
 - **Dono da sala:** criar sala exige Discord e pede nome + senha. Só o dono
   altera as configurações, remove/bloqueia pessoas e apaga sugestões.
@@ -55,18 +55,18 @@ Endereço: `https://<usuário>.github.io/EchoRoom/`
 - **Visual "Frequência":** estrutura no estilo do Discord (fila à esquerda,
   membros à direita, painel do usuário) com identidade própria (gradiente
   violeta → azul → ciano). O símbolo é provisório: fica em `BrandMark`
-  (`frontend/src/components/ui/Icons.tsx`) e em `frontend/public/favicon.svg`.
-- Temas: desativados por enquanto; o mecanismo está em `frontend/src/theme/`.
+  (`apps/web/src/components/ui/Icons.tsx`) e em `apps/web/public/favicon.svg`.
+- Temas: desativados por enquanto; o mecanismo está em `apps/web/src/theme/`.
 - Quem entra numa sala com música tocando recebe um aviso e começa do ponto atual.
 - Se o navegador bloquear o som (autoplay), aparece "Clique para ouvir junto".
-- **Extensão para Chrome** (`chrome-extension/`): botão flutuante no YouTube que
+- **Extensão para Chrome** (`apps/extension/`): botão flutuante no YouTube que
   manda a música para a sua última sala. O site publica o zip em
-  `/EchoRoom/echoroom-chrome.zip`. Instruções em `chrome-extension/README.md`.
+  `/EchoRoom/echoroom-chrome.zip`. Instruções em `apps/extension/README.md`.
 
 ## Rodando localmente
 
 ```powershell
-cd frontend
+cd apps/web
 copy .env.example .env.local   # cole a configuração do Firebase em VITE_FIREBASE_CONFIG
 npm install
 npm run dev
@@ -96,24 +96,34 @@ SyncEngine). Modo debug da sincronização: adicione `?debug` à URL da sala.
   segundo é reaplicado sobre o resultado do primeiro (ex.: dois "Próxima"
   pulam só uma música; vários "fim da música" avançam uma vez).
 - **Atraso dos comandos** (`commandLeadTimeMs`, padrão 600 ms) cobre a ida ao
-  Firebase e a volta para os outros. Ajuste em `frontend/src/sync/SyncConfig.ts`.
+  Firebase e a volta para os outros. Ajuste em `apps/web/src/sync/SyncConfig.ts`.
 - **Títulos** vêm do noembed.com; se falhar, o primeiro navegador que carregar
   o vídeo envia o título real.
 
 ## Estrutura
 
+Monorepo com npm workspaces:
+
 ```text
-database.rules.json            regras do Realtime Database (copiar no console)
-auth-worker/                   serviço de login (Cloudflare Worker) + guia de configuração
-.github/workflows/deploy.yml   build + deploy no GitHub Pages
-frontend/src/
-  config/firebase.ts           lê a configuração do Firebase
-  rooms/roomLogic.ts           regras da sala (play, pause, seek, fila, fim de faixa)
-  services/firebase/           app/auth, salas com senha, backend da sala (transações, presença, relógio)
-  services/roomSession.ts      liga Firebase ⇄ stores ⇄ SyncEngine ⇄ player
-  services/youtube/            PlayerAdapter, adaptador da IFrame API, metadados
-  sync/                        SyncConfig, ClockSync, Timeline, DriftCorrection, SyncEngine
-  stores/  components/  pages/  utils/
+apps/web/            site (React + TypeScript + Vite) — publicado no GitHub Pages
+  src/
+    config/          configuração do Firebase
+    rooms/           regras da sala (comandos, permissões, aleatório/repetir) — testadas
+    sync/            relógio, timeline, correção de atraso, motor de sincronização — testados
+    services/
+      firebase/      salas, perfil/convites, playlists, sugestões, login
+      youtube/       player, metadados, playlists e "parecidas" do YouTube
+      roomSession.ts liga Firebase ⇄ stores ⇄ sincronização ⇄ player
+      extensionBridge.ts, externalAdd.ts  conversa com a extensão do Chrome
+    components/      peças da interface, uma pasta por área (Player, Queue, Playlists…)
+    pages/           Landing, Home (/comecar), Room, Profile
+    stores/          estado (sala, player, avisos)
+    styles/          CSS em partes, importadas em ordem por styles/index.css
+  tests/             testes (vitest)
+apps/api/            backend (Cloudflare Worker): login com Discord, administração
+apps/extension/      extensão do Chrome (botão no YouTube)
+packages/shared/     tipos e constantes comuns a site e backend
+database.rules.json  regras do Realtime Database (copiar no console do Firebase)
 ```
 
 A versão anterior com backend FastAPI está no histórico do Git (commit `d2b75c4`).

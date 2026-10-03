@@ -1,0 +1,194 @@
+/* ---- página inicial ----------------------------------------------------- */
+
+.home {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(900px 520px at 85% -8%, rgba(124, 92, 255, 0.2), transparent 62%),
+    radial-gradient(700px 480px at -5% 30%, rgba(47, 224, 196, 0.07), transparent 60%),
+    var(--bg);
+}
+.home-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 80px 24px 72px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 420px);
+  gap: 64px;
+  align-items: start;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 30px;
+  padding: 0 12px;
+  margin-bottom: 24px;
+  background: var(--live-tint);
+  border: 1px solid rgba(47, 224, 196, 0.25);
+  color: var(--live);
+  font-size: 13px;
+  font-weight: 600;
+}
+.home-intro h1 {
+  font-size: clamp(38px, 5.2vw, 62px);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+  max-width: 13ch;
+}
+.home-intro h1 em {
+  font-style: normal;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.home-intro p {
+  margin-top: 20px;
+  max-width: 46ch;
+  color: var(--text-muted);
+  font-size: 17px;
+}
+
+/* Três pessoas, uma música: faixas lado a lado e um cursor comum. */
+.echo-lines {
+  --av: 28px;
+  position: relative;
+  margin-top: 44px;
+  max-width: 460px;
+  display: grid;
+  gap: 12px;
+  padding: 18px 18px;
+  background: rgba(22, 23, 36, 0.7);
+  border: 1px solid var(--line-soft);
+}
+.echo-row {
+  display: grid;
+  grid-template-columns: var(--av) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.echo-row b {
+  display: grid;
+  place-items: center;
+  width: var(--av);
+  height: var(--av);
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+/* "Onda" feita de barras; a parte já tocada recebe o gradiente. */
+.echo-row span {
+  position: relative;
+  height: 22px;
+  background: var(--surface-3);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='22'><path d='M0 9h4v4H0zM6 6h4v10H6zM12 3h4v16h-4zM18 7h4v8h-4zM24 1h4v20h-4zM30 5h4v12h-4zM36 8h4v6h-4zM42 2h4v18h-4zM48 6h4v10h-4zM54 4h4v14h-4zM60 9h4v4h-4zM66 3h4v16h-4zM72 6h4v10h-4zM78 1h4v20h-4zM84 7h4v8h-4zM90 4h4v14h-4zM96 8h4v6h-4zM102 2h4v18h-4zM108 6h4v10h-4zM114 9h4v4h-4z'/></svg>") 0 0 / 120px 22px repeat-x;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='22'><path d='M0 9h4v4H0zM6 6h4v10H6zM12 3h4v16h-4zM18 7h4v8h-4zM24 1h4v20h-4zM30 5h4v12h-4zM36 8h4v6h-4zM42 2h4v18h-4zM48 6h4v10h-4zM54 4h4v14h-4zM60 9h4v4h-4zM66 3h4v16h-4zM72 6h4v10h-4zM78 1h4v20h-4zM84 7h4v8h-4zM90 4h4v14h-4zM96 8h4v6h-4zM102 2h4v18h-4zM108 6h4v10h-4zM114 9h4v4h-4z'/></svg>") 0 0 / 120px 22px repeat-x;
+}
+.echo-row span::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 62%;
+  background: var(--grad);
+  background-size: calc(100% / 0.62) 100%;
+  animation: fill 1.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.echo-row:nth-child(2) span::after {
+  animation-delay: 0.08s;
+}
+.echo-row:nth-child(3) span::after {
+  animation-delay: 0.16s;
+}
+.echo-lines > i {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: calc(18px + var(--av) + 12px + (100% - 36px - var(--av) - 12px) * 0.62);
+  width: 2px;
+  background: var(--text);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
+  animation: appear 0.3s 1.3s both;
+}
+@keyframes fill {
+  from {
+    width: 0;
+  }
+}
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+}
+
+.home-panels {
+  display: grid;
+  gap: 16px;
+}
+.panel {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+}
+.panel::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: -1px;
+  height: 2px;
+  background: var(--grad);
+}
+.panel h2 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.panel-quiet {
+  background: rgba(22, 23, 36, 0.5);
+}
+.panel-quiet::before {
+  display: none;
+}
+.inline-field {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.inline-field .btn {
+  height: 42px;
+}
+
+.created .room-code {
+  font-family: var(--font-display);
+  font-size: 56px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.gate-main {
+  flex: 1;
+  display: grid;
+  place-items: start center;
+  padding: 96px 24px;
+}
+.gate {
+  width: 100%;
+  max-width: 420px;
+}
+.skeleton-panel {
+  height: 290px;
+}

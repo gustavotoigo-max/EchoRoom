@@ -1,0 +1,35 @@
+/* ==== aleatório / ciclar / repetir ======================================== */
+
+.np-controls .mode-btn {
+  width: 36px;
+  height: 36px;
+}
+.np-controls .mode-btn.is-on {
+  color: var(--live);
+  position: relative;
+}
+.np-controls .mode-btn.is-on::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--live);
+}
+.mode-tags {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.mode-tags span {
+  padding: 1px 6px;
+  background: var(--live-tint);
+  color: var(--live);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

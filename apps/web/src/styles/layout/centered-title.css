@@ -1,0 +1,22 @@
+/* Nome e código da sala centralizados na barra (telas largas) */
+@media (min-width: 1200px) {
+  .room-topbar .channel-name {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-50%);
+    max-width: 34vw;
+    justify-content: center;
+  }
+}
+@media (min-width: 901px) and (max-width: 1199px) {
+  .room-topbar .channel-name {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-50%);
+    max-width: 28vw;
+  }
+}

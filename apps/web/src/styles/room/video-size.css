@@ -1,0 +1,65 @@
+/* ==== tamanhos do vídeo ===================================================== */
+
+.size-picker {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  background: var(--bg-deep);
+}
+.size-picker button {
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: 600 12px/1 var(--font);
+  cursor: pointer;
+}
+.size-picker button + button {
+  border-left: 1px solid var(--line);
+}
+.size-picker button:hover {
+  color: var(--text);
+}
+.size-picker button.on {
+  background: var(--accent);
+  color: #fff;
+}
+.size-picker.is-overlay {
+  position: absolute;
+  z-index: 3;
+  top: 12px;
+  right: 12px;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(10, 11, 17, 0.78);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.player-frame:hover .size-picker.is-overlay,
+.size-picker.is-overlay:focus-within {
+  opacity: 1;
+}
+@media (hover: none) {
+  .size-picker.is-overlay {
+    opacity: 1;
+  }
+}
+
+/* Máximo: modo cinema — o vídeo ocupa a largura toda e as colunas laterais saem */
+@media (min-width: 901px) {
+  html.video-max .room-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas: 'main';
+  }
+  html.video-max .room-left,
+  html.video-max .room-right {
+    display: none;
+  }
+  html.video-max .player-frame {
+    max-height: calc(100vh - var(--topbar-h) - 150px);
+  }
+  html.video-max .toasts {
+    right: 16px;
+  }
+}

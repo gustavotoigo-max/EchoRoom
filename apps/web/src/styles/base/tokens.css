@@ -1,0 +1,102 @@
+/* EchoRoom — "Frequência": a estrutura familiar do Discord com identidade própria.
+   Fundo azul-noite quase preto, um gradiente violeta → azul → ciano como assinatura,
+   cantos retos nos cartões e botões, avatares redondos como no Discord. */
+
+:root {
+  --bg: #10111a;
+  --bg-deep: #0a0b11;
+  --bg-deeper: #07080c;
+  --surface: #161724;
+  --surface-2: #1e1f30;
+  --surface-3: #282a3e;
+  --line: #2c2e45;
+  --line-soft: #1b1c2a;
+
+  --text: #ecebf7;
+  --text-muted: #a3a4c2;
+  --text-faint: #6a6c8c;
+
+  --accent: #7c5cff;
+  --accent-hi: #9479ff;
+  --accent-ink: #ffffff;
+  --accent-tint: rgba(124, 92, 255, 0.14);
+  --live: #2fe0c4;
+  --live-tint: rgba(47, 224, 196, 0.12);
+  --sky: #5fa8ff;
+  --amber: #f0b54a;
+  --red: #ff5c7a;
+  --discord: #5865f2;
+
+  --grad: linear-gradient(90deg, #8b5cff 0%, #4c8dff 55%, #2fe0c4 100%);
+
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Sora', 'Inter', system-ui, sans-serif;
+  --left-w: 280px;
+  --right-w: 248px;
+  --topbar-h: 56px;
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-radius: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--sky);
+}
+
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-hi);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

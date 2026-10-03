@@ -1,0 +1,66 @@
+/* ---- sala ----------------------------------------------------------------- */
+
+.room {
+  height: 100%;
+  display: grid;
+  grid-template-rows: var(--topbar-h) minmax(0, 1fr);
+}
+.room-grid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: var(--left-w) minmax(0, 1fr) var(--right-w);
+  grid-template-areas: 'left main right';
+}
+.room-main {
+  grid-area: main;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.room-left,
+.room-right {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-deep);
+}
+.room-left {
+  grid-area: left;
+  border-right: 1px solid var(--line-soft);
+}
+.room-right {
+  grid-area: right;
+  border-left: 1px solid var(--line-soft);
+  overflow-y: auto;
+}
+
+/* Aviso de erro geral da sala */
+.room-banner {
+  padding: 10px 28px;
+  background: var(--surface);
+  border-left: 3px solid var(--red);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Tela de configuração pendente */
+.setup {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 72px 24px;
+  display: grid;
+  gap: 16px;
+}
+.setup h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.setup p {
+  color: var(--text-muted);
+}
+.setup code {
+  color: var(--live);
+}

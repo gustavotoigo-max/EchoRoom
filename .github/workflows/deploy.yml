@@ -20,9 +20,6 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
 
@@ -30,11 +27,11 @@ jobs:
         with:
           node-version: 20
 
-      - name: Instalar dependências
-        run: npm install --no-audit --no-fund
+      - name: Instalar dependências do site
+        run: npm install --workspace apps/web --no-audit --no-fund
 
-      - name: Testes da sincronização
-        run: npm test
+      - name: Testes do site (sala, sincronização, permissões)
+        run: npm test --workspace apps/web
 
       - name: Build
         env:
@@ -46,18 +43,19 @@ jobs:
           if [ -z "$VITE_FIREBASE_CONFIG" ]; then
             echo "::warning::Variável FIREBASE_CONFIG não definida. O site vai mostrar a tela de configuração."
           fi
-          npm run build
+          npm run build --workspace apps/web
+          cd apps/web
           # Links diretos como /EchoRoom/room/ABX72 caem no 404 do Pages: servimos o app nele também.
           cp dist/index.html dist/404.html
           touch dist/.nojekyll
           # Extensão do Chrome para download no próprio site.
-          (cd ../chrome-extension && zip -qr ../frontend/dist/echoroom-chrome.zip .)
+          (cd ../extension && zip -qr ../web/dist/echoroom-chrome.zip .)
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: frontend/dist
+          path: apps/web/dist
 
   deploy:
     needs: build

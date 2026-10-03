@@ -1,0 +1,118 @@
+/* Música vinda da extensão aguardando uma sala */
+.pending-banner {
+  width: calc(100% - 48px);
+  max-width: 1072px;
+  margin: 24px auto 0;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-left: 3px solid var(--accent);
+  font-weight: 600;
+}
+.pending-banner small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.home-extension {
+  margin-top: 28px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* Guia da extensão (página inicial) */
+.ext-guide {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px 72px;
+}
+.ext-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding-top: 40px;
+  border-top: 1px solid var(--line-soft);
+}
+.ext-head h2 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.ext-head p {
+  margin-top: 8px;
+  max-width: 62ch;
+  color: var(--text-muted);
+}
+.ext-head strong {
+  color: var(--text);
+}
+.ext-steps {
+  list-style: none;
+  counter-reset: step;
+  margin: 28px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+}
+.ext-steps li {
+  counter-increment: step;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 20px;
+  background: var(--surface);
+}
+.ext-steps li::before {
+  content: counter(step, decimal-leading-zero);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  justify-self: start;
+}
+.ext-steps strong {
+  font-size: 15px;
+}
+.ext-steps span {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.ext-steps em {
+  font-style: normal;
+  color: var(--text);
+  font-weight: 600;
+}
+.ext-steps code,
+.ext-note code {
+  color: var(--live);
+  font-size: 13px;
+}
+.ext-copy {
+  display: flex !important;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ext-copy .btn {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.ext-copy .btn span {
+  color: inherit;
+  font-size: inherit;
+}
+.ext-note {
+  margin-top: 16px;
+  color: var(--text-muted);
+  font-size: 14px;
+}

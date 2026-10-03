@@ -1,0 +1,168 @@
+/* Perfil */
+.profile-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 56px 24px 72px;
+}
+.profile-main > .gate {
+  margin: 40px auto 0;
+}
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.profile-head .avatar {
+  width: 88px;
+  height: 88px;
+  box-shadow: 0 0 0 4px var(--bg), 0 0 0 6px var(--accent);
+}
+.profile-head h1 {
+  font-size: clamp(26px, 4vw, 36px);
+  letter-spacing: -0.02em;
+}
+.profile-head p {
+  color: var(--text-muted);
+}
+.profile-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+.profile-block {
+  padding-top: 20px;
+}
+.profile-block .side-head {
+  padding-left: 0;
+}
+.room-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2px;
+}
+.room-card {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 20px;
+  background: var(--surface);
+  border-top: 2px solid var(--line);
+  transition: background-color 0.15s;
+}
+.room-card:hover {
+  background: var(--surface-2);
+}
+.room-card.is-owner {
+  border-top: 2px solid transparent;
+  border-image: var(--grad) 1;
+}
+.room-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.room-card h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.room-card p {
+  color: var(--text-faint);
+  font-size: 13px;
+}
+.room-card .mono-code {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.role-badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--surface-3);
+  color: var(--text-muted);
+}
+.role-badge.owner {
+  background: rgba(240, 181, 74, 0.14);
+  color: var(--amber);
+}
+.room-card-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.room-card-actions .btn {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+@media (max-width: 1199px) {
+  .channel-title {
+    max-width: 18ch;
+  }
+}
+@media (max-width: 900px) {
+  .room-topbar .user-chip,
+  .room-topbar .header-btn {
+    grid-area: auto;
+  }
+  .room-topbar {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-areas:
+      'brand gear chip invite'
+      'name name name status';
+  }
+  .room-topbar .header-btn {
+    grid-area: gear;
+  }
+  .room-topbar .user-chip {
+    grid-area: chip;
+  }
+  .room-topbar .invite-btn {
+    grid-area: invite;
+  }
+  .profile-head {
+    flex-wrap: wrap;
+  }
+  .profile-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+  .profile-main {
+    padding: 32px 16px 56px;
+  }
+}
+@media (max-width: 560px) {
+  .invite-btn span {
+    display: none;
+  }
+  .invite-btn {
+    width: 40px;
+    padding: 0;
+  }
+  .channel-code {
+    display: none;
+  }
+}
+.seg-full button {
+  padding: 0 6px;
+  white-space: nowrap;
+}

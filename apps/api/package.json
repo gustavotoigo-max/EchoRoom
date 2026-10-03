@@ -1,0 +1,7 @@
+{
+  "name": "@echoroom/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Backend do EchoRoom (Cloudflare Worker): login com Discord e administração."
+}

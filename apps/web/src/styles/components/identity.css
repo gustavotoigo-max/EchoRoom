@@ -1,0 +1,61 @@
+/* Identidade: Discord ou convidado */
+.identity {
+  display: grid;
+  gap: 12px;
+}
+.btn-discord {
+  height: 44px;
+  background: var(--discord);
+  color: #ffffff;
+}
+.btn-discord:hover:not(:disabled) {
+  background: #4752c4;
+}
+.identity-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 600;
+}
+.identity-or::before,
+.identity-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.identity-on {
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--discord);
+}
+.identity-text {
+  display: grid;
+  min-width: 0;
+}
+.identity-text strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.identity-text span {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.identity .link-btn {
+  font: 600 13px/1 var(--font);
+}
+.avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2);
+}
+.avatar-lg {
+  width: 40px;
+  height: 40px;
+}

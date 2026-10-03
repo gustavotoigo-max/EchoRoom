@@ -1,0 +1,10 @@
+{
+  "name": "@echoroom/shared",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Tipos e constantes usados pelo site e pelo backend (contratos da API).",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": { ".": "./src/index.ts" }
+}

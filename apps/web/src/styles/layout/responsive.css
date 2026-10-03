@@ -1,0 +1,212 @@
+/* ---- responsivo -------------------------------------------------------------- */
+
+/* Notebook / tablet deitado: duas colunas (membros em cima da fila, à direita) */
+@media (max-width: 1199px) {
+  :root {
+    --left-w: 300px;
+  }
+  .room-topbar {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .topbar-brand {
+    background: transparent;
+    border-right: 0;
+  }
+  .channel {
+    padding-left: 4px;
+  }
+  .channel-topic {
+    display: none;
+  }
+  .room-grid {
+    grid-template-columns: minmax(0, 1fr) var(--left-w);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      'main right'
+      'main left';
+  }
+  .room-left,
+  .room-right {
+    border-right: 0;
+    border-left: 1px solid var(--line-soft);
+  }
+  .room-right {
+    max-height: 40vh;
+  }
+  .toasts {
+    right: calc(var(--left-w) + 16px);
+  }
+  .sugg-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Celular e tablet em pé: uma coluna */
+@media (max-width: 900px) {
+  .home-main {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    padding: 40px 16px;
+  }
+  .topbar {
+    padding: 0 16px;
+  }
+  .room {
+    overflow-x: clip;
+    height: auto;
+    min-height: 100%;
+    grid-template-rows: auto 1fr;
+    align-content: start;
+  }
+  /* Cabeçalho em duas linhas: marca + convidar / sala + status */
+  .room-topbar {
+    height: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'brand invite'
+      'name status';
+    gap: 10px 12px;
+    padding: 10px 16px 12px;
+  }
+  .channel,
+  .topbar-room {
+    display: contents;
+  }
+  .topbar-brand {
+    grid-area: brand;
+    padding: 0;
+  }
+  .room-topbar .btn {
+    grid-area: invite;
+    justify-self: end;
+  }
+  .channel-name {
+    grid-area: name;
+    min-width: 0;
+  }
+  .room-topbar .status {
+    grid-area: status;
+    justify-self: end;
+    height: 28px;
+  }
+  /* Uma coluna: fila e participantes antes das sugestões */
+  .room-grid {
+    display: flex;
+    flex-direction: column;
+  }
+  .room-main {
+    display: contents;
+  }
+  .room-left {
+    order: 1;
+  }
+  .room-right {
+    order: 2;
+  }
+  .room-left,
+  .room-right {
+    border-left: 0;
+    border-top: 1px solid var(--line-soft);
+  }
+  .room-right {
+    max-height: none;
+    overflow: visible;
+  }
+  .user-panel {
+    display: none;
+  }
+  .player-frame {
+    max-height: none;
+  }
+  .now-playing,
+  .add-track {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .toasts {
+    top: auto;
+    right: 16px;
+    bottom: 16px;
+  }
+  .player-area.is-compact {
+    padding: 16px;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 1080px) {
+  .ext-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .ext-guide {
+    padding: 0 16px 48px;
+  }
+  .ext-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ext-steps {
+    grid-template-columns: 1fr;
+  }
+  .topnav {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .now-playing {
+    grid-template-columns: 1fr;
+  }
+  .np-controls {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .volume {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
+  }
+  .volume-slider {
+    width: 200px;
+  }
+  .player-area.is-compact {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .player-area.is-compact .player-frame {
+    width: 100%;
+  }
+  .player-compact-info {
+    max-width: none;
+  }
+  .video-toggle span {
+    display: none;
+  }
+  .video-toggle {
+    width: 34px;
+    padding: 0;
+    justify-content: center;
+  }
+  .channel-name .room-id-label {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .sugg-search {
+    flex-basis: 100%;
+  }
+  .sugg-item {
+    grid-template-columns: 56px minmax(0, 1fr) auto 22px;
+    gap: 8px;
+  }
+  .sugg-thumb,
+  .sugg-thumb img {
+    width: 56px;
+    height: 32px;
+  }
+}

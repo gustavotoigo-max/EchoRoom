@@ -1,0 +1,72 @@
+/* ---- botões ------------------------------------------------------------ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.12s, border-color 0.12s, color 0.12s, box-shadow 0.12s;
+}
+.btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hi);
+  box-shadow: 0 0 0 4px var(--accent-tint);
+}
+.btn-secondary {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--text);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface-3);
+}
+.btn.is-done {
+  background: var(--live-tint);
+  border-color: var(--live);
+  color: var(--live);
+  box-shadow: none;
+}
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 0.12s, color 0.12s;
+}
+.icon-btn:hover:not(:disabled) {
+  background: var(--surface-3);
+}
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sky);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

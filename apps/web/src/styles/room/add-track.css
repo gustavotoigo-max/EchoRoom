@@ -1,0 +1,30 @@
+/* Adicionar música */
+.add-track {
+  display: grid;
+  gap: 8px;
+  padding: 22px 28px 8px;
+}
+.add-track-row {
+  display: flex;
+  gap: 8px;
+}
+.add-track-row .btn {
+  height: 42px;
+}
+.add-feedback {
+  min-height: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.add-feedback.is-busy {
+  color: var(--sky);
+}
+.add-feedback.is-ok {
+  color: var(--live);
+}
+.add-feedback.is-error {
+  color: var(--red);
+}
+.add-feedback .link-btn {
+  margin-left: 8px;
+}

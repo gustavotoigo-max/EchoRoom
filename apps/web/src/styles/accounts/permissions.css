@@ -1,0 +1,26 @@
+/* Quem pode o quê */
+.perm-table {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+.perm-table div {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 9px 12px;
+  background: var(--surface);
+  font-size: 13px;
+}
+.perm-table dt {
+  color: var(--text-muted);
+}
+.perm-table dd {
+  margin: 0;
+  font-weight: 600;
+}
+@media (max-width: 900px) {
+  .video-bar {
+    padding: 6px 16px 4px;
+  }
+}

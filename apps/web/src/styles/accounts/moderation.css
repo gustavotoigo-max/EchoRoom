@@ -1,0 +1,42 @@
+/* Participantes: dono, convidado, menu do dono */
+.participants li {
+  position: relative;
+}
+.p-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.p-crown {
+  display: inline-grid;
+  color: var(--amber);
+}
+.p-guest {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.p-more {
+  flex: none;
+}
+.participants .menu {
+  top: calc(100% - 4px);
+}
+
+/* Votar para pular */
+.vote-btn {
+  position: relative;
+  width: auto;
+  padding: 0 10px;
+  gap: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+.vote-btn b {
+  font-size: 12px;
+  font-weight: 700;
+}
+.np-controls .vote-btn.is-voted {
+  background: var(--accent-tint);
+  border-color: var(--accent);
+  color: var(--text);
+}

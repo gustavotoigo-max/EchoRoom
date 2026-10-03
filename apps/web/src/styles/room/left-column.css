@@ -1,0 +1,178 @@
+/* ==== coluna esquerda: fila + sugestões ===================================== */
+
+.room-left .queue {
+  flex: 0 1 auto;
+  max-height: 46%;
+  min-height: 120px;
+}
+.q-now {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin: 0 8px 6px;
+  padding: 8px;
+  background: linear-gradient(90deg, rgba(124, 92, 255, 0.22), rgba(47, 224, 196, 0.08));
+  border-left: 2px solid var(--live);
+}
+.q-now-art {
+  position: relative;
+  width: 56px;
+  height: 32px;
+  background: var(--surface-2);
+}
+.q-now-art img {
+  display: block;
+  width: 56px;
+  height: 32px;
+  object-fit: cover;
+  opacity: 0.55;
+}
+.q-now-art .eq {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+.q-now .q-sub {
+  color: var(--live);
+}
+
+.room-left .suggestions {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border-top: 1px solid var(--line-soft);
+}
+.room-left .sugg-head {
+  padding: 16px 12px 8px 16px;
+  border-top: 0;
+  gap: 8px;
+}
+.room-left .sugg-head h3 {
+  width: 100%;
+}
+.room-left .sugg-head .seg-full {
+  width: 100%;
+}
+.room-left .sugg-head .seg-full button {
+  height: 28px;
+  font-size: 12px;
+  padding: 0 4px;
+}
+.room-left .sugg-head .seg-quiet button {
+  height: 26px;
+  padding: 0 6px;
+  font-size: 12px;
+}
+.room-left .sugg-search {
+  flex-basis: 100%;
+  min-width: 0;
+  height: 32px !important;
+}
+.room-left .suggestions > .sugg-list,
+.room-left .suggestions > .sugg-empty,
+.room-left .suggestions > .sugg-more {
+  margin-left: 8px;
+  margin-right: 8px;
+}
+.room-left .sugg-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  grid-template-columns: 1fr;
+  align-content: start;
+  gap: 0;
+  padding-bottom: 8px;
+}
+.room-left .sugg-empty {
+  padding: 4px 8px;
+  font-size: 13px;
+  color: var(--text-faint);
+}
+.room-left .sugg-item {
+  grid-template-columns: 48px minmax(0, 1fr) 24px 18px;
+  gap: 8px;
+  padding: 6px 4px 6px 6px;
+  background: transparent;
+}
+.room-left .sugg-item:hover {
+  background: var(--surface);
+}
+.room-left .sugg-related {
+  grid-template-columns: 48px minmax(0, 1fr) 24px;
+}
+.room-left .sugg-thumb,
+.room-left .sugg-thumb img {
+  width: 48px;
+  height: 27px;
+}
+.room-left .sugg-title {
+  font-size: 13px;
+}
+.room-left .sugg-sub {
+  font-size: 11px;
+}
+.room-left .sugg-add {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  gap: 0;
+  font-size: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 50%;
+}
+.room-left .sugg-add svg {
+  width: 13px;
+  height: 13px;
+}
+.room-left .sugg-item:hover .sugg-add:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+}
+/* Já na fila / tocando: vira só um sinal discreto */
+.room-left .sugg-add:disabled::before {
+  content: '✓';
+  font-size: 12px;
+  color: var(--live);
+}
+.room-left .sugg-item.is-current .sugg-add:disabled::before {
+  content: '';
+}
+.room-left .sugg-add span {
+  display: none;
+}
+.room-left .sugg-remove {
+  width: 18px;
+  font-size: 14px;
+}
+.room-left .sugg-more {
+  margin-bottom: 10px;
+  height: 30px;
+}
+/* Realce da música que está tocando */
+.sugg-item.is-current {
+  background: linear-gradient(90deg, rgba(124, 92, 255, 0.22), rgba(47, 224, 196, 0.06)) !important;
+  box-shadow: inset 2px 0 0 var(--live);
+}
+.sugg-item.is-current .sugg-title {
+  color: var(--text);
+}
+.sugg-playing {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 11, 17, 0.55);
+}
+.sugg-item.is-current .sugg-add:disabled {
+  opacity: 1;
+  color: var(--live);
+  border-color: transparent;
+  background: transparent;
+}
