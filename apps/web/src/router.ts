@@ -51,6 +51,13 @@ export function isStartPath(pathname: string): boolean {
   return /^\/comecar\/?$/.test(rel(pathname))
 }
 
+/** Painel do administrador. */
+export const ADMIN_PATH = '/admin'
+
+export function isAdminPath(pathname: string): boolean {
+  return /^\/admin\/?$/.test(rel(pathname))
+}
+
 export function isProfilePath(pathname: string): boolean {
   return /^\/perfil\/?$/.test(rel(pathname))
 }

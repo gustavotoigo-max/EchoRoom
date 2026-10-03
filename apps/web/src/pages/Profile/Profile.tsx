@@ -3,7 +3,7 @@ import { InviteCard } from '../../components/Invites/InviteCard'
 import { UserChip } from '../../components/Invites/UserChip'
 import { Brand } from '../../components/ui/Brand'
 import { CrownIcon, DiscordIcon } from '../../components/ui/Icons'
-import { appPath, navigate, START_PATH } from '../../router'
+import { ADMIN_PATH, appPath, navigate, START_PATH } from '../../router'
 import { authStore, discordEnabled, logoutDiscord, startDiscordLogin } from '../../services/discordAuth'
 import { inviteStore, leaveRoom, subscribeMyRooms, type MyRoom } from '../../services/firebase/social'
 import { useStore } from '../../stores/createStore'
@@ -80,6 +80,18 @@ export function Profile() {
                 <p>@{profile.username} · conectado com Discord</p>
               </div>
               <div className="profile-actions">
+                {profile.admin && (
+                  <a
+                    className="btn btn-secondary"
+                    href={appPath(ADMIN_PATH)}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      navigate(ADMIN_PATH)
+                    }}
+                  >
+                    Painel admin
+                  </a>
+                )}
                 <a
                   className="btn btn-primary"
                   href={appPath(START_PATH)}

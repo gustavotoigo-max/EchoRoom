@@ -5,7 +5,8 @@ import { Landing } from './pages/Landing/Landing'
 import { Room } from './pages/Room/Room'
 import { InvitePopup } from './components/Invites/InvitePopup'
 import { Profile } from './pages/Profile/Profile'
-import { isProfilePath, isStartPath, matchRoom, usePathname } from './router'
+import { Admin } from './pages/Admin/Admin'
+import { isAdminPath, isProfilePath, isStartPath, matchRoom, usePathname } from './router'
 
 export function App() {
   const path = usePathname()
@@ -17,6 +18,8 @@ export function App() {
     <Home />
   ) : isProfilePath(path) ? (
     <Profile />
+  ) : isAdminPath(path) ? (
+    <Admin />
   ) : (
     <Landing />
   )

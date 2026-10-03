@@ -1,67 +1,65 @@
-# Serviço de login do EchoRoom (Cloudflare Workers)
+# Backend do EchoRoom (Cloudflare Workers)
 
-O site é estático (GitHub Pages), então quem confirma o login do Discord é este
-pequeno serviço gratuito. Ele recebe o `code` que o Discord manda de volta,
-confere com o Discord usando o **Client Secret** (que só existe aqui) e devolve
-um token do Firebase. A partir daí o banco sabe com certeza quem é cada pessoa:
-é isso que protege o dono da sala, os perfis e os convites.
+O site é estático (GitHub Pages). Tudo que precisa de segredo ou de autoridade
+fica aqui, num Worker gratuito do Cloudflare:
 
-Pede ao Discord só o escopo `identify` (id, nome, usuário e avatar). Não guarda nada.
+| Rota | O que faz |
+|---|---|
+| `GET /` | Diagnóstico: mostra o que falta configurar (sem revelar segredos) |
+| `POST /discord` | Login: troca o `code` do Discord por um token do Firebase; confere suspensão e modo de acesso; registra o cadastro |
+| `/admin/...` | Administração (só para quem está em `ADMIN_UIDS`): visão geral, pessoas, salas, acesso, registro |
+| rotina diária | Totais do dia e limpeza de atividade antiga |
 
-## Configuração (uma vez, ~15 minutos)
+O backend usa a conta de serviço do Firebase para ler e escrever no banco como
+administrador. O site nunca recebe o Client Secret, a conta de serviço nem o
+token do Discord. A API de administração não devolve o conteúdo das salas.
 
-Você vai juntar três segredos e colar no Cloudflare. **Nenhum deles vai para o
-GitHub nem para o chat.**
+```text
+src/
+  index.ts        rotas e rotina diária
+  routes/login.ts login com Discord
+  routes/admin.ts administração
+  discord.ts      OAuth do Discord
+  google.ts       tokens do Firebase/Google (assinar, verificar)
+  crypto.ts       JWT RS256 com WebCrypto
+  db.ts           Realtime Database via REST
+  stats.ts        estatísticas de uso
+  env.ts, http.ts configuração e respostas
+tests/            testes com Discord, Google e banco simulados
+```
 
-### 1. Discord: Client Secret
+## Variáveis (Cloudflare → Workers → echoroom-auth → Settings → Variables and Secrets)
 
-1. https://discord.com/developers/applications → seu app → **OAuth2**.
-2. Em **Client Secret**, clique em **Reset Secret** e copie o valor (ele aparece uma vez só).
-3. Confira em **Redirects** que está exatamente `https://gustavotoigo-max.github.io/EchoRoom/`.
+| Nome | Tipo | Valor |
+|---|---|---|
+| `DISCORD_CLIENT_ID` | Text | Client ID do app do Discord |
+| `ALLOWED_ORIGIN` | Text | `https://gustavotoigo-max.github.io` |
+| `ADMIN_UIDS` | Text | seu ID no EchoRoom (aparece na página `/admin`), ex.: `discord_123…` — vários separados por vírgula |
+| `DISCORD_CLIENT_SECRET` | **Secret** | Client Secret do Discord |
+| `FIREBASE_SERVICE_ACCOUNT` | **Secret** | conteúdo inteiro do JSON da conta de serviço |
 
-### 2. Firebase: conta de serviço
+## Publicação automática (GitHub Actions)
 
-1. Console do Firebase → ⚙ **Configurações do projeto** → aba **Contas de serviço**.
-2. **Gerar nova chave privada** → **Gerar chave**. Baixa um arquivo `.json`.
-3. Guarde esse arquivo com cuidado: ele dá acesso total ao projeto.
+O workflow `.github/workflows/api.yml` testa e publica o backend sempre que
+algo em `apps/api` muda. Para ele publicar, crie uma vez:
 
-### 3. Cloudflare: criar o serviço
+1. **Token do Cloudflare:** painel do Cloudflare → ícone de perfil → **My Profile** →
+   **API Tokens** → **Create Token** → modelo **Edit Cloudflare Workers** →
+   **Continue to summary** → **Create Token**. Copie o token (aparece uma vez só).
+2. **ID da conta:** no painel, em **Workers & Pages**, à direita, **Account ID** → copiar.
+3. **GitHub:** repositório → **Settings** → **Secrets and variables** → **Actions** →
+   aba **Secrets** → **New repository secret**, duas vezes:
+   - `CLOUDFLARE_API_TOKEN` = o token do passo 1
+   - `CLOUDFLARE_ACCOUNT_ID` = o ID do passo 2
+4. **Actions** → **Deploy backend (Cloudflare)** → **Run workflow**.
 
-1. Crie uma conta grátis em https://dash.cloudflare.com (não pede cartão).
-2. Menu **Workers & Pages** (às vezes em **Compute**) → **Create** → **Create Worker**
-   (modelo "Hello World").
-3. Nome: `echoroom-auth` → **Deploy**.
-4. **Edit code**: apague tudo, cole o conteúdo de [`worker.js`](worker.js)
-   (no GitHub, abra o arquivo → botão **Raw** → copie tudo) → **Deploy**.
-5. Volte ao worker → **Settings** → **Variables and Secrets** → **Add**, uma de cada vez:
+O deploy mantém as variáveis e segredos do painel (`keep_vars = true`) e usa o
+mesmo worker (`echoroom-auth`), então o endereço não muda.
 
-   | Nome | Tipo | Valor |
-   |---|---|---|
-   | `DISCORD_CLIENT_ID` | Text | o Client ID do app do Discord |
-   | `ALLOWED_ORIGIN` | Text | `https://gustavotoigo-max.github.io` (sem barra no fim) |
-   | `DISCORD_CLIENT_SECRET` | **Secret** | o Client Secret do passo 1 |
-   | `FIREBASE_SERVICE_ACCOUNT` | **Secret** | o conteúdo inteiro do `.json` do passo 2 (abra no Bloco de Notas, Ctrl+A, Ctrl+C) |
+## Rodando localmente
 
-   Clique em **Deploy** / **Save** no fim.
-6. Abra o endereço do worker (algo como `https://echoroom-auth.SEU-NOME.workers.dev`).
-   Deve aparecer um texto com `"configured"` e **todos os itens `true`**.
-
-### 4. GitHub: avisar o site
-
-Repositório → **Settings** → **Secrets and variables** → **Actions** → aba
-**Variables** → **New repository variable**:
-
-- **Name:** `AUTH_URL`
-- **Value:** o endereço do worker, ex.: `https://echoroom-auth.SEU-NOME.workers.dev` (sem barra no fim)
-
-### 5. Firebase: regras novas
-
-Depois que o site novo for publicado: Realtime Database → **Regras** → apague
-tudo, cole o conteúdo de [`database.rules.json`](../database.rules.json) → **Publicar**.
-
-## Se algo der errado
-
-- Mensagem "O serviço de login ainda não foi configurado": falta alguma variável (veja o passo 3.6).
-- "não reconhece este site": `ALLOWED_ORIGIN` diferente de `https://gustavotoigo-max.github.io`.
-- "O Discord recusou o login": Client Secret errado ou o endereço de retorno do passo 1.3.
-- "conta de serviço errada": o JSON colado em `FIREBASE_SERVICE_ACCOUNT` é de outro projeto ou está incompleto.
+```bash
+npm install
+npm test -w apps/api      # testes
+npm run dev -w apps/api   # wrangler dev (precisa das variáveis num .dev.vars)
+```

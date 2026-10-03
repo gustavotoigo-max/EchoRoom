@@ -49,6 +49,11 @@ Endereço: `https://<usuário>.github.io/EchoRoom/`
 - **Convites:** de dentro da sala, busque quem já tem perfil pelo usuário do
   Discord. A pessoa recebe uma notificação (Aceitar/Recusar) e entra sem senha.
   O convite expira em 1 hora.
+- **Painel do administrador** (`/admin`): visão geral de uso (pessoas ativas,
+  cadastros, salas, músicas adicionadas, extensão), pessoas (suspender, reativar,
+  apagar cadastro), salas (trocar dono, encerrar — sem ver o conteúdo), acesso
+  (aberto ou por aprovação) e registro das ações. Só para quem está em
+  `ADMIN_UIDS` no backend.
 - **Convidados** (sem Discord) entram com link + senha, se o dono permitir.
 - **Páginas:** `/` apresentação, `/comecar` criar ou entrar numa sala,
   `/room/CODIGO` a sala.
