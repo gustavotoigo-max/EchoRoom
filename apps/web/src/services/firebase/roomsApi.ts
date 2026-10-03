@@ -2,6 +2,7 @@ import { get, ref, runTransaction, serverTimestamp, set, update } from 'firebase
 import { emptyRoom, toFirebase } from '../../rooms/roomLogic'
 import { DEFAULT_SETTINGS, type RoomSettings } from '../../types/room'
 import { describeDbError, ensureSignedIn, getDb, isDiscordUid, isPermissionDenied } from './app'
+import { countUsage } from './usage'
 import { deriveRoomKey } from './roomCrypto'
 
 /** Criação e entrada em salas (equivalente ao antigo POST /rooms e /join). */
@@ -59,6 +60,7 @@ export async function createRoom(name: string, password: string, ownerName: stri
           state: emptyRoom(roomId),
         }),
       )
+      void countUsage('roomsCreated')
       return { roomId, roomKey }
     }
     throw new RoomAccessError('Não foi possível gerar um código de sala livre. Tente de novo.', 'other')
@@ -75,6 +77,8 @@ export async function createRoom(name: string, password: string, ownerName: stri
 export async function explainAccessDenied(roomKey: string): Promise<string | null> {
   const uid = await ensureSignedIn()
   const db = getDb()
+  const suspended = await get(ref(db, `admin/suspended/${uid}`)).catch(() => null)
+  if (suspended?.exists()) return 'Sua conta foi suspensa pelo administrador do EchoRoom.'
   const banned = await get(ref(db, `rooms/${roomKey}/banned/${uid}`)).catch(() => null)
   if (banned?.exists()) return 'O dono da sala bloqueou a sua entrada.'
   if (!isDiscordUid(uid)) {

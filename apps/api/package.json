@@ -1,7 +1,22 @@
 {
   "name": "@echoroom/api",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
-  "description": "Backend do EchoRoom (Cloudflare Worker): login com Discord e administração."
+  "description": "Backend do EchoRoom (Cloudflare Worker): login com Discord e administração.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@echoroom/shared": "*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240909.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "wrangler": "^3.80.0"
+  }
 }

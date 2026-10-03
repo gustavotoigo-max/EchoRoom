@@ -7,6 +7,7 @@ import {
   subscribeMyPlaylists,
   type Playlist,
 } from './firebase/playlists'
+import { countUsage } from './firebase/usage'
 
 /**
  * Pedidos da extensão do Chrome que precisam do login do site:
@@ -84,6 +85,8 @@ async function handle(req: Request): Promise<Record<string, unknown>> {
     }
   }
   if (!added) return { ok: false, error: lastError || 'Essa música já está na playlist.' }
+  void countUsage('extension')
+  void countUsage('playlistSaves', added)
   return { ok: true, name: pl.name, added }
 }
 

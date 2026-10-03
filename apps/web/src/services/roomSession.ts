@@ -12,6 +12,7 @@ import { parseYouTubeLink } from '../utils/youtubeUrlParser'
 import { consumePendingAdd, setActiveSession } from './externalAdd'
 import { FirebaseRoomBackend } from './firebase/FirebaseRoomBackend'
 import { fixTrackTitle, recordPlaylist, recordTrack } from './firebase/library'
+import { countUsage, markActive } from './firebase/usage'
 import { fetchManyVideoMeta, fetchPlaylistTitle, fetchVideoMeta, thumbnailUrl } from './youtube/metadata'
 import { loadPlaylistVideoIds } from './youtube/playlist'
 import { describeYouTubeError, type LocalPlayerState, type PlayerAdapter } from './youtube/PlayerAdapter'
@@ -78,6 +79,7 @@ export class RoomSession {
     this.backend.start().catch((err: Error) => roomStore.set({ fatalError: err.message, connection: 'closed' }))
     setActiveSession(this)
     storage.setLastRoom(this.roomId)
+    void markActive()
     if (isSyncDebug()) (window as unknown as Record<string, unknown>).__echoroom = this
   }
 
@@ -229,6 +231,7 @@ export class RoomSession {
       item: this.makeItem(link.videoId, { ...meta, title, resolved: meta.resolved || !!opts.title }),
     })
     void recordTrack(this.backend.roomKey, link.videoId, title, meta.author, this.name)
+    void countUsage('adds')
     return { added: 1, skipped: 0, title }
   }
 
@@ -264,6 +267,7 @@ export class RoomSession {
     })
     const name = (await titlePromise) || `Playlist de ${metas[0]?.resolved ? metas[0].title : `${fullSize} músicas`}`
     void recordPlaylist(this.backend.roomKey, playlistId, name, fullSize, firstVideoId, this.name)
+    void countUsage('adds', ids.length)
     return { added: ids.length, skipped: total - ids.length, repeated, title: name }
   }
 
@@ -284,6 +288,7 @@ export class RoomSession {
     const items = take.map((t) => this.makeItem(t.videoId, { title: t.title, author: t.author ?? '', resolved: true }))
     if (items.length === 1) await this.backend.command({ type: 'TRACK_ADD', item: items[0] })
     else await this.backend.command({ type: 'TRACK_ADD_MANY', items })
+    void countUsage('adds', items.length)
     return { added: take.length, repeated, skipped: fresh.length - take.length }
   }
 
@@ -302,6 +307,7 @@ export class RoomSession {
 
   /** Música enviada pela extensão do Chrome (ou ?add= na URL). */
   addFromExternal = async (url: string, title?: string) => {
+    void countUsage('extension')
     const toastId = showToast(title ? `Adicionando "${title}"…` : 'Adicionando música da extensão…', 'info', 0)
     try {
       const res = await this.addTrack(url, { title })

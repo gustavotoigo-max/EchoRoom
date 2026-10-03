@@ -1,0 +1,39 @@
+# Publica o backend (apps/api) no Cloudflare Workers.
+# Requer, em Settings → Secrets and variables → Actions → Secrets:
+#   CLOUDFLARE_API_TOKEN   token com permissão "Edit Cloudflare Workers"
+#   CLOUDFLARE_ACCOUNT_ID  ID da conta do Cloudflare
+# Sem esses segredos o job só testa (não publica).
+name: Deploy backend (Cloudflare)
+
+on:
+  push:
+    branches: [main]
+    paths: ['apps/api/**', 'packages/shared/**', '.github/workflows/api.yml']
+  workflow_dispatch:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependências do backend
+        run: npm install --workspace apps/api --no-audit --no-fund
+
+      - name: Testes do backend
+        run: npm test --workspace apps/api
+
+      - name: Publicar no Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::Segredos do Cloudflare ausentes: backend testado, mas não publicado."
+            exit 0
+          fi
+          cd apps/api && npx wrangler deploy

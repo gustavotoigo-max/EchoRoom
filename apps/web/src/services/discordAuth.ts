@@ -17,6 +17,8 @@ import { currentUser, isDiscordUid, signInWithServerToken, signOutUser } from '.
 export interface DiscordProfile {
   /** uid no Firebase ("discord_<id>"). */
   uid: string
+  /** Administrador do site (definido no backend, em ADMIN_UIDS). */
+  admin?: boolean
   id: string
   name: string
   username: string
@@ -123,6 +125,7 @@ async function profileFromFirebase(): Promise<DiscordProfile | null> {
     name: String(claims.dn ?? 'Discord'),
     username: String(claims.un ?? ''),
     avatarUrl: String(claims.av ?? ''),
+    admin: claims.adm === true,
   }
 }
 
@@ -206,6 +209,10 @@ function loginErrorMessage(code?: string): string {
       return 'O serviço de login não reconhece este site (confira ALLOWED_ORIGIN no Cloudflare).'
     case 'discord_rejected':
       return 'O Discord recusou o login. Confira o Client Secret e o endereço de retorno.'
+    case 'suspended':
+      return 'Sua conta foi suspensa pelo administrador do EchoRoom.'
+    case 'pending':
+      return 'O EchoRoom está com acesso por aprovação. Seu pedido foi enviado: tente de novo quando o administrador aprovar.'
     default:
       return 'Não foi possível entrar com Discord. Tente de novo.'
   }

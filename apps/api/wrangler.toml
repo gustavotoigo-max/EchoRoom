@@ -1,0 +1,11 @@
+# Backend do EchoRoom no Cloudflare Workers.
+# O nome é o do worker que já existe (mantém o endereço e os segredos).
+name = "echoroom-auth"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+# As variáveis criadas no painel do Cloudflare continuam valendo a cada deploy.
+keep_vars = true
+
+# Rotina diária (03:10 UTC = 00:10 em Brasília): totais do dia e limpeza.
+[triggers]
+crons = ["10 3 * * *"]
