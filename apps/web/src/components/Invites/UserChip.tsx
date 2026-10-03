@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { appPath, navigate, PROFILE_PATH } from '../../router'
+import { appPath, PROFILE_PATH } from '../../router'
+import { goToProfile } from '../../services/profileOverlay'
 import { authStore } from '../../services/discordAuth'
 import { inviteStore } from '../../services/firebase/social'
 import { useStore } from '../../stores/createStore'
@@ -46,7 +47,7 @@ export function UserChip({ compact = false }: { compact?: boolean }) {
         href={appPath(PROFILE_PATH)}
         onClick={(e) => {
           e.preventDefault()
-          navigate(PROFILE_PATH)
+          goToProfile()
         }}
         title="Seu perfil"
       >

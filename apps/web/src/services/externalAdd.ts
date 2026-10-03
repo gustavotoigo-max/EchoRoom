@@ -35,6 +35,11 @@ export function setActiveSession(s: ActiveSessionLike | null): void {
   active = s
 }
 
+/** Há uma sala aberta nesta aba (a música está tocando aqui). */
+export function hasActiveSession(): boolean {
+  return active !== null
+}
+
 function readPending(): PendingAdd | null {
   try {
     const raw = sessionStorage.getItem(PENDING_KEY)

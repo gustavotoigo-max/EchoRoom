@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { navigate, PROFILE_PATH } from '../../router'
+import { goToProfile } from '../../services/profileOverlay'
 import { authStore } from '../../services/discordAuth'
 import { shareToRoom, unshareFromRoom, type Playlist } from '../../services/firebase/playlists'
 import { useRoomSession } from '../../services/RoomSessionContext'
@@ -59,7 +59,7 @@ export function SharePanel() {
         className="btn btn-secondary"
         onClick={() => {
           openPanel(null)
-          navigate(PROFILE_PATH)
+          goToProfile()
         }}
       >
         Criar ou editar no perfil

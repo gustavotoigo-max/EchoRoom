@@ -166,3 +166,119 @@
   padding: 0 6px;
   white-space: nowrap;
 }
+
+/* Perfil por cima da sala: o vídeo continua atrás, desfocado */
+.profile-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  background: rgba(8, 8, 16, 0.58);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25);
+  backdrop-filter: blur(22px) saturate(1.25);
+  animation: appear 0.18s;
+}
+.po-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 1040px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 16px 24px 0;
+}
+.po-back {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.po-now {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 6px 16px 6px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+}
+.po-play {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg-deep);
+}
+.po-play:hover:not(:disabled) {
+  box-shadow: 0 0 0 4px var(--accent-tint);
+}
+.po-now-text {
+  display: grid;
+  min-width: 0;
+}
+.po-now-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--live);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.po-now-text b {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.po-scroll {
+  flex: 1;
+  overflow-y: auto;
+  outline: none;
+}
+.po-main {
+  padding-top: 24px;
+}
+/* Cartões translúcidos sobre o fundo desfocado */
+.po-main .profile-head,
+.po-main .profile-block {
+  margin-bottom: 16px;
+  padding: 24px;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3);
+}
+.po-main .profile-head .avatar {
+  box-shadow: 0 0 0 4px var(--surface), 0 0 0 6px var(--accent);
+}
+.room-card.is-here {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+.here-tag {
+  color: var(--live);
+  font-weight: 600;
+}
+@media (max-width: 560px) {
+  .po-bar {
+    padding: 12px 16px 0;
+    gap: 10px;
+  }
+  .po-back span {
+    display: none;
+  }
+  .po-back {
+    padding: 0 12px;
+  }
+  .po-main .profile-head,
+  .po-main .profile-block {
+    padding: 16px;
+  }
+}
