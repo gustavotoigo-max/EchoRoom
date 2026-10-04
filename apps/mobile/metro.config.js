@@ -31,9 +31,9 @@ const overrideFor = new Map(Object.entries(OVERRIDES).map(([web, mobile]) => [pa
 const config = getDefaultConfig(ROOT)
 
 config.watchFolders = [WEB, SHARED]
-// Tudo (inclusive o que o código do site importa) vem do node_modules do app.
+// Pacotes importados pelo código do site também vêm do node_modules do app.
 config.resolver.nodeModulesPaths = [path.resolve(ROOT, 'node_modules')]
-config.resolver.disableHierarchicalLookup = true
+const APP_ORIGIN = path.join(ROOT, 'index.ts')
 // Firebase JS SDK no React Native (recomendação da Expo).
 config.resolver.sourceExts = [...config.resolver.sourceExts, 'cjs']
 config.resolver.unstable_enablePackageExports = false
@@ -52,6 +52,11 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     const swap = overrideFor.get(stripExt(target))
     if (swap) return { type: 'sourceFile', filePath: swap }
     return context.resolveRequest(context, target, platform)
+  }
+  // Pacote (react, firebase…) importado de um arquivo do site: resolve como se
+  // fosse importado pelo app, para nunca pegar uma cópia de fora (ex.: React do site).
+  if (context.originModulePath.startsWith(WEB + path.sep) || context.originModulePath.startsWith(SHARED + path.sep)) {
+    return context.resolveRequest({ ...context, originModulePath: APP_ORIGIN }, moduleName, platform)
   }
   return context.resolveRequest(context, moduleName, platform)
 }
