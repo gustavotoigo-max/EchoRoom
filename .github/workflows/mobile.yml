@@ -79,7 +79,7 @@ jobs:
 
       - name: Compilar APK
         working-directory: apps/mobile/android
-        run: /tmp/run.sh "Gradle" ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+        run: /tmp/run.sh "Gradle" ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64
 
       - name: Publicar APK
         env:
