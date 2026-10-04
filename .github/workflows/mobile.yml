@@ -66,6 +66,9 @@ jobs:
         run: |
           /tmp/run.sh "npm install" npm install --no-audit --no-fund
           /tmp/run.sh "expo install --fix" npx expo install --fix
+          # Módulos nativos do Expo precisam ser todos da mesma versão do SDK.
+          npm ls expo-modules-core expo-font expo-asset expo-constants 2>/dev/null || true
+          /tmp/run.sh "expo-doctor" npx expo-doctor || echo "::warning title=expo-doctor::veja o log"
 
       - name: Checar tipos (aviso)
         continue-on-error: true
