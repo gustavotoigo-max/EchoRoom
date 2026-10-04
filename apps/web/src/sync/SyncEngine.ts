@@ -462,7 +462,12 @@ export class SyncEngine {
   }
 
   private onVisibilityChange(): void {
-    if (document.visibilityState !== 'visible') return
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+    this.wake()
+  }
+
+  /** A tela voltou a ficar visível (aba ou app do celular): reconfere o relógio e a posição. */
+  wake(): void {
     this.clock.burst()
     const wait = this.cfg.clockBurstCount * this.cfg.clockBurstSpacingMs + 100
     this.timers.setTimeout(() => this.resync(), wait)

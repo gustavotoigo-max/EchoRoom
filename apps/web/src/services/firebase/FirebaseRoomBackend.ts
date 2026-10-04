@@ -146,7 +146,7 @@ export class FirebaseRoomBackend {
       onValue(ref(db, '.info/connected'), (snap) => {
         if (snap.val() === true) {
           this.everConnected = true
-          if (!this.idle) this.joinPresence()
+          if (!this.idle) this.registerPresence()
           this.setStatus('connected')
           this.handlers.onConnected()
         } else if (this.everConnected) {
@@ -158,14 +158,16 @@ export class FirebaseRoomBackend {
     // Aba fechada: sai da lista na hora (o onDisconnect do servidor é o reforço).
     const onHide = () => this.leavePresence()
     const onShow = (e: PageTransitionEvent) => {
-      if (e.persisted && !this.idle && this.status === 'connected') this.joinPresence()
+      if (e.persisted) this.joinPresence()
     }
-    window.addEventListener('pagehide', onHide)
-    window.addEventListener('pageshow', onShow)
-    this.unsubs.push(() => {
-      window.removeEventListener('pagehide', onHide)
-      window.removeEventListener('pageshow', onShow)
-    })
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('pagehide', onHide)
+      window.addEventListener('pageshow', onShow)
+      this.unsubs.push(() => {
+        window.removeEventListener('pagehide', onHide)
+        window.removeEventListener('pageshow', onShow)
+      })
+    }
 
     // Estimativa inicial do relógio (o Firebase calcula ao conectar).
     this.unsubs.push(
@@ -270,7 +272,13 @@ export class FirebaseRoomBackend {
     return ref(getDb(), `rooms/${this.roomKey}/participants/${this.participantId}`)
   }
 
-  private joinPresence(): void {
+  /** Volta para a lista (ex.: app do celular voltou para a frente). */
+  joinPresence(): void {
+    if (this.idle || this.status !== 'connected') return
+    this.registerPresence()
+  }
+
+  private registerPresence(): void {
     const me = this.meRef()
     const db = getDb()
     const base = `rooms/${this.roomKey}/participants/${this.participantId}`
@@ -287,7 +295,8 @@ export class FirebaseRoomBackend {
     }).catch(() => {})
   }
 
-  private leavePresence(): void {
+  /** Saiu da sala sem fechar a conexão (ex.: app do celular foi para segundo plano). */
+  leavePresence(): void {
     const db = getDb()
     const base = `rooms/${this.roomKey}/participants/${this.participantId}`
     void update(ref(db, base), { [`conns/${this.connId}`]: null, lastSeen: serverTimestamp() }).catch(() => {})
@@ -330,7 +339,7 @@ export class FirebaseRoomBackend {
     this.lastActivity = Date.now()
     if (!this.idle) return
     this.idle = false
-    if (this.status === 'connected') this.joinPresence()
+    if (this.status === 'connected') this.registerPresence()
     this.handlers.onIdle(false)
   }
 

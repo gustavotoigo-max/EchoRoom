@@ -61,8 +61,9 @@ export type SyncConfigType = typeof SyncConfig
 export function isSyncDebug(): boolean {
   try {
     return (
-      new URLSearchParams(window.location.search).has('debug') ||
-      window.localStorage.getItem('echoroom.debug') === '1'
+      typeof window !== 'undefined' &&
+      !!window.location &&
+      (new URLSearchParams(window.location.search).has('debug') || window.localStorage?.getItem('echoroom.debug') === '1')
     )
   } catch {
     return false

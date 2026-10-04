@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <meta name="robots" content="noindex" />
+    <title>EchoRoom · player</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #000;
+        overflow: hidden;
+      }
+      #p,
+      iframe {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="p"></div>
+    <script>
+      /*
+       * Player do YouTube para o app do celular.
+       *
+       * O app abre esta página numa WebView (um endereço https de verdade,
+       * que o YouTube aceita para vídeos incorporados) e conversa com ela:
+       *   app → página: window.__er.run({ c: 'load', id, t })  (via injectJavaScript)
+       *   página → app: ReactNativeWebView.postMessage(JSON)    (ready, state, error, tick)
+       * Quem decide o que tocar e quando é o app (SyncEngine); aqui só se executa.
+       */
+      ;(function () {
+        var bridge = window.ReactNativeWebView
+        function send(msg) {
+          if (bridge) bridge.postMessage(JSON.stringify(msg))
+        }
+
+        var player = null
+        var ready = false
+        var pending = []
+        var lastState = -1
+
+        function safe(fn, fallback) {
+          try {
+            return fn()
+          } catch (e) {
+            return fallback
+          }
+        }
+
+        function snapshot() {
+          return {
+            t: 'tick',
+            time: safe(function () { return player.getCurrentTime() }, 0),
+            dur: safe(function () { return player.getDuration() }, 0),
+            state: safe(function () { return player.getPlayerState() }, -1),
+            muted: safe(function () { return player.isMuted() }, false),
+            rate: safe(function () { return player.getPlaybackRate() }, 1),
+            title: safe(function () { return (player.getVideoData() || {}).title || null }, null),
+          }
+        }
+
+        function exec(cmd) {
+          var t = Math.max(0, Number(cmd.t) || 0)
+          switch (cmd.c) {
+            case 'load':
+              player.loadVideoById({ videoId: cmd.id, startSeconds: t })
+              break
+            case 'cue':
+              player.cueVideoById({ videoId: cmd.id, startSeconds: t })
+              break
+            case 'play':
+              player.playVideo()
+              break
+            case 'pause':
+              player.pauseVideo()
+              break
+            case 'stop':
+              player.stopVideo()
+              break
+            case 'seek':
+              player.seekTo(t, true)
+              break
+            case 'rate':
+              player.setPlaybackRate(Number(cmd.v) || 1)
+              break
+            case 'mute':
+              player.mute()
+              break
+            case 'unmute':
+              player.unMute()
+              break
+            case 'volume':
+              player.setVolume(Math.max(0, Math.min(100, Math.round(Number(cmd.v) || 0))))
+              break
+          }
+          // Responde na hora com o estado novo (o app extrapola o tempo entre ticks).
+          send(snapshot())
+        }
+
+        window.__er = {
+          run: function (cmd) {
+            if (!cmd || typeof cmd.c !== 'string') return
+            if (!ready) pending.push(cmd)
+            else safe(function () { exec(cmd) })
+          },
+        }
+
+        window.onYouTubeIframeAPIReady = function () {
+          player = new YT.Player('p', {
+            width: '100%',
+            height: '100%',
+            playerVars: {
+              playsinline: 1,
+              controls: 0,
+              disablekb: 1,
+              fs: 0,
+              rel: 0,
+              iv_load_policy: 3,
+              modestbranding: 1,
+              origin: location.origin,
+            },
+            events: {
+              onReady: function () {
+                ready = true
+                send({
+                  t: 'ready',
+                  rates: safe(function () { return player.getAvailablePlaybackRates() }, [1]),
+                })
+                var q = pending
+                pending = []
+                q.forEach(function (c) { safe(function () { exec(c) }) })
+              },
+              onStateChange: function (e) {
+                lastState = e.data
+                send({ t: 'state', s: e.data })
+                send(snapshot())
+              },
+              onPlaybackRateChange: function () {
+                send(snapshot())
+              },
+              onError: function (e) {
+                send({ t: 'error', code: e.data })
+              },
+            },
+          })
+        }
+
+        // Tempo atual para o app: 4x por segundo tocando, 1x parado.
+        var n = 0
+        setInterval(function () {
+          if (!ready) return
+          n++
+          if (lastState === 1 || lastState === 3 || n % 4 === 0) send(snapshot())
+        }, 250)
+
+        var s = document.createElement('script')
+        s.src = 'https://www.youtube.com/iframe_api'
+        s.onerror = function () {
+          send({ t: 'error', code: -1 })
+        }
+        document.head.appendChild(s)
+      })()
+    </script>
+  </body>
+</html>

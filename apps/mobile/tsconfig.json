@@ -1,0 +1,16 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "skipLibCheck": true,
+    "lib": ["DOM", "ESNext"],
+    "types": ["youtube"],
+    "baseUrl": ".",
+    "paths": {
+      "@web/*": ["../web/src/*"],
+      "@echoroom/shared": ["../../packages/shared/src/index.ts"],
+      "*": ["./node_modules/*", "./node_modules/@types/*"]
+    }
+  },
+  "include": ["index.ts", "src", "env.d.ts"]
+}

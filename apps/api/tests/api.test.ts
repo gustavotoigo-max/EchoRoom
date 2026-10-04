@@ -157,6 +157,39 @@ describe('login', () => {
     expect((await loginAs()).status).toBe(200)
   })
 
+  it('app do celular: sem origem, com o retorno do app', async () => {
+    const res = await worker.fetch(
+      new Request('https://api.test/discord', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: 'ok', redirectUri: 'https://api.test/discord/app' }),
+      }),
+      env,
+    )
+    expect(res.status).toBe(200)
+    // Sem origem e com retorno de outro lugar: recusado.
+    const bad = await worker.fetch(
+      new Request('https://api.test/discord', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: 'ok', redirectUri: 'https://evil.com/discord/app' }),
+      }),
+      env,
+    )
+    expect(bad.status).toBe(403)
+  })
+
+  it('página de retorno repassa só code e state para o app', async () => {
+    const res = await worker.fetch(new Request('https://api.test/discord/app?code=abc123&state=1-2-3&x=%3Cscript%3E'), env)
+    expect(res.status).toBe(200)
+    const html = await res.text()
+    expect(html).toContain('intent://auth?code=abc123&state=1-2-3#Intent;scheme=echoroom;package=com.echoroom.app;end')
+    expect(html).not.toContain('<script>alert')
+    expect(html.includes('x=')).toBe(false)
+    const evil = await (await worker.fetch(new Request('https://api.test/discord/app?code=%22%3E%3Cimg'), env)).text()
+    expect(evil).toContain('intent://auth?#Intent')
+  })
+
   it('recusa origem estranha e code inválido', async () => {
     expect((await call('POST', '/discord', { origin: 'https://evil.com', body: { code: 'ok', redirectUri: `${ORIGIN}/x` } })).status).toBe(403)
     expect((await loginAs('ruim')).status).toBe(401)

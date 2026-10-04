@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "EchoRoom",
+    "slug": "echoroom",
+    "version": "0.1.0",
+    "scheme": "echoroom",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0a0b11",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0b11"
+    },
+    "android": {
+      "package": "com.echoroom.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-fg.png",
+        "backgroundImage": "./assets/adaptive-bg.png",
+        "monochromeImage": "./assets/adaptive-mono.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": ["INTERNET"]
+    },
+    "plugins": []
+  }
+}

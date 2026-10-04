@@ -19,6 +19,8 @@ import { describeYouTubeError, type LocalPlayerState, type PlayerAdapter } from 
 
 /** Interações que contam como "alguém está usando a sala". */
 const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const
+/** No app do celular não há DOM: a tela avisa as interações chamando noteActivity(). */
+const hasDom = typeof window !== 'undefined' && typeof window.addEventListener === 'function'
 
 /**
  * Liga as peças de uma sessão de sala:
@@ -82,7 +84,7 @@ export class RoomSession {
     this.engine.start()
     this.backend.start().catch((err: Error) => roomStore.set({ fatalError: err.message, connection: 'closed' }))
     setActiveSession(this)
-    for (const ev of ACTIVITY_EVENTS) window.addEventListener(ev, this.noteActivity, { passive: true, capture: true })
+    if (hasDom) for (const ev of ACTIVITY_EVENTS) window.addEventListener(ev, this.noteActivity, { passive: true, capture: true })
     storage.setLastRoom(this.roomId)
     void markActive()
     if (isSyncDebug()) (window as unknown as Record<string, unknown>).__echoroom = this
@@ -90,7 +92,7 @@ export class RoomSession {
 
   stop(): void {
     setActiveSession(null)
-    for (const ev of ACTIVITY_EVENTS) window.removeEventListener(ev, this.noteActivity, { capture: true })
+    if (hasDom) for (const ev of ACTIVITY_EVENTS) window.removeEventListener(ev, this.noteActivity, { capture: true })
     this.unsubStore?.()
     this.unsubStore = null
     if (this.resyncTimer) clearTimeout(this.resyncTimer)
@@ -179,7 +181,8 @@ export class RoomSession {
 
   // ---- inatividade ---------------------------------------------------------
 
-  private noteActivity = () => this.backend.noteActivity()
+  /** Alguém mexeu na sala (clique, toque, tecla). */
+  noteActivity = () => this.backend.noteActivity()
 
   /** Clique em "Voltar à sala" depois da pausa por inatividade. */
   resumeFromIdle = () => {

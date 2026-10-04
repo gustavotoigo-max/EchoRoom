@@ -3,14 +3,15 @@ import { adminUids, allowedOrigins, readServiceAccount, type Env } from './env'
 import { verifyIdToken } from './google'
 import { corsHeaders, HttpError, json } from './http'
 import { adminRoute } from './routes/admin'
-import { login } from './routes/login'
+import { APP_CALLBACK_PATH, appCallback, login } from './routes/login'
 import { dailyRoutine } from './stats'
 
 /**
  * Backend do EchoRoom (Cloudflare Worker).
  *
  *   GET  /              diagnóstico (o que falta configurar)
- *   POST /discord       login com Discord → token do Firebase
+ *   POST /discord       login com Discord → token do Firebase (site e app)
+ *   GET  /discord/app   retorno do Discord para o app do celular (echoroom://auth)
  *   *    /admin/...     administração (exige login de um admin)
  *   cron (diário)       fotografia dos totais e limpeza de dados antigos
  */
@@ -23,6 +24,7 @@ export default {
       let res: Response
       if (request.method === 'GET' && path === '/') res = diagnostics(env)
       else if (request.method === 'POST' && (path === '/discord' || path === '/auth/discord')) res = await login(request, env)
+      else if (request.method === 'GET' && path === APP_CALLBACK_PATH) return appCallback(request)
       else if (path.startsWith('/admin/')) res = await admin(request, path, env)
       else throw new HttpError(404, 'not_found')
       for (const [k, v] of Object.entries(cors)) res.headers.set(k, v)
