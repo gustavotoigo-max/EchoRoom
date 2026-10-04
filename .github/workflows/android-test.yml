@@ -1,0 +1,53 @@
+# Abre o APK publicado num emulador Android e guarda o log e prints da tela
+# (release "android-test"), para achar erros que só aparecem no celular.
+name: Testar app no emulador
+
+on:
+  workflow_run:
+    workflows: ['Gerar app Android']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  smoke:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Ativar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Baixar APK
+        run: curl -sSL -o EchoRoom.apk "https://github.com/${{ github.repository }}/releases/download/android-latest/EchoRoom.apk"
+
+      - name: Abrir no emulador
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash .github/scripts/android-smoke-test.sh
+
+      - name: Publicar resultado
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=android-test
+          files=$(ls out/* 2>/dev/null)
+          [ -z "$files" ] && exit 0
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --prerelease --title "Teste do app no emulador" --notes "Log e prints do último teste automático." --target "$GITHUB_SHA"
+          fi
+          gh release upload "$tag" $files --clobber
+          echo "::notice title=Status::$(cat out/status.txt 2>/dev/null)"
