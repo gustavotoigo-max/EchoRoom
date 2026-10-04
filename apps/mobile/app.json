@@ -23,8 +23,13 @@
         "monochromeImage": "./assets/adaptive-mono.png"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": ["INTERNET"]
+      "permissions": [
+        "INTERNET"
+      ]
     },
-    "plugins": []
+    "plugins": [],
+    "experiments": {
+      "tsconfigPaths": false
+    }
   }
 }

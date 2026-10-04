@@ -1,4 +1,6 @@
 // Metro (empacotador do React Native) configurado para reaproveitar o código do site.
+// (Os "paths" do tsconfig.json valem só para a checagem de tipos: app.json desliga
+// experiments.tsconfigPaths e a resolução real fica toda aqui.)
 //
 // O app importa direto de apps/web/src (regras da sala, sincronização, Firebase)
 // com "@web/...". As poucas partes que dependem do navegador (localStorage,

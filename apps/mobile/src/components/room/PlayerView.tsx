@@ -27,7 +27,7 @@ export function PlayerView() {
   const session = useRoomSession()
   const pb = usePlayback()
   const [flash, setFlash] = useState<'play' | 'pause' | null>(null)
-  const flashTimer = useRef<ReturnType<typeof setTimeout>>()
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => () => clearTimeout(flashTimer.current), [])
 
   return (
