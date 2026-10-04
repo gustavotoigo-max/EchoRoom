@@ -9,7 +9,7 @@
     "paths": {
       "@web/*": ["../web/src/*"],
       "@echoroom/shared": ["../../packages/shared/src/index.ts"],
-      "*": ["./node_modules/*", "./node_modules/@types/*"]
+      "*": ["./node_modules/@types/*", "./node_modules/*"]
     }
   },
   "include": ["index.ts", "src", "env.d.ts"]
