@@ -70,13 +70,14 @@ export function discordRedirectUri(): string {
   return `${window.location.origin}${appPath('/')}`
 }
 
-export function startDiscordLogin(): void {
+/** Vai para o Discord. Depois do login, volta para `returnTo` (padrão: a página atual). */
+export function startDiscordLogin(returnTo?: string): void {
   if (!discordEnabled) return
   const state = crypto.getRandomValues(new Uint32Array(4)).join('-')
   try {
     sessionStorage.setItem(STATE_KEY, state)
     // Volta para a mesma página (ex.: a sala) depois do login.
-    sessionStorage.setItem(RETURN_KEY, window.location.pathname.replace(appPath('/'), '/') + window.location.hash)
+    sessionStorage.setItem(RETURN_KEY, returnTo ?? window.location.pathname.replace(appPath('/'), '/') + window.location.hash)
   } catch {
     /* sem sessionStorage: volta para o início */
   }
@@ -110,8 +111,15 @@ export function initDiscordAuth(): void {
   const params = new URLSearchParams(window.location.search)
   const code = params.get('code')
   const error = params.get('error')
-  if (code || error) void finishLogin(params)
-  else void restoreSession()
+  if (code || error) return void finishLogin(params)
+  // ?login=1 (botão "Entrar com Discord" da extensão): vai direto para o Discord.
+  if (params.has('login')) {
+    params.delete('login')
+    const rest = params.toString()
+    window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : ''))
+    if (!authStore.get().profile && discordEnabled) return startDiscordLogin()
+  }
+  void restoreSession()
 }
 
 /** Perfil a partir das claims do token (dn, un, av), que o serviço de login preencheu. */
@@ -195,6 +203,10 @@ async function finishLogin(params: URLSearchParams): Promise<void> {
     authStore.set({ profile, busy: false, ready: true })
     const { publishProfile } = await import('./firebase/social')
     void publishProfile(profile)
+    // Música da extensão esperando o login: segue para a sala.
+    const ext = await import('./externalAdd')
+    const pending = ext.pendingStore.get().pending
+    if (pending) ext.handleExternalAdd(pending, true)
   } catch (err) {
     authStore.set({ busy: false, ready: true, error: (err as Error).message || 'Não foi possível entrar com Discord.' })
     void restoreSession()

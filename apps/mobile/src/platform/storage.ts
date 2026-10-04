@@ -70,3 +70,35 @@ export const storage = {
   setRoomKey: (roomId: string, key: string) => write(roomKeyKey(roomId), key),
   clearRoomKey: (roomId: string) => write(roomKeyKey(roomId), null),
 }
+
+// ---- salas recentes (só no app: quem entra sem Discord não tem "Minhas salas") ----------
+
+const RECENT_KEY = 'echoroom.recentRooms'
+const MAX_RECENT = 8
+
+export interface RecentRoom {
+  roomId: string
+  name: string
+}
+
+export function getRecentRooms(): RecentRoom[] {
+  try {
+    const list = JSON.parse(read(RECENT_KEY) ?? '[]') as RecentRoom[]
+    return Array.isArray(list) ? list.filter((r) => r && typeof r.roomId === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+/** Sala aberta agora vai para o topo da lista (o nome é atualizado quando a sala carrega). */
+export function addRecentRoom(roomId: string, name?: string): void {
+  const id = roomId.toUpperCase()
+  const prev = getRecentRooms()
+  const old = prev.find((r) => r.roomId === id)
+  const next = [{ roomId: id, name: name ?? old?.name ?? '' }, ...prev.filter((r) => r.roomId !== id)].slice(0, MAX_RECENT)
+  write(RECENT_KEY, JSON.stringify(next))
+}
+
+export function forgetRecentRoom(roomId: string): void {
+  write(RECENT_KEY, JSON.stringify(getRecentRooms().filter((r) => r.roomId !== roomId.toUpperCase())))
+}

@@ -1,7 +1,7 @@
 import { appPath, navigate, START_PATH } from '../router'
 import { createStore } from '../stores/createStore'
 import { storage } from '../utils/storage'
-import { authStore } from './discordAuth'
+import { authStore, discordEnabled, startDiscordLogin } from './discordAuth'
 
 /**
  * Músicas que chegam de fora da página:
@@ -10,7 +10,8 @@ import { authStore } from './discordAuth'
  *
  * Se há uma sala aberta, a música entra na hora. Senão, fica pendente e o
  * site vai para a última sala usada (entrando sozinho se nome e senha já
- * estiverem salvos neste navegador).
+ * estiverem salvos neste navegador). Sem login e sem sala salva, vai direto
+ * para o login com Discord e continua depois dele.
  */
 
 export interface PendingAdd {
@@ -95,6 +96,11 @@ export function handleExternalAdd(add: PendingAdd, replace = false): void {
       /* ignora */
     }
     navigate(`/room/${last}`, replace)
+  } else if (!authStore.get().profile && discordEnabled) {
+    // Sem login e sem sala salva: primeiro o login. A música fica guardada e,
+    // na volta do Discord, segue para a última sala (ou para "Começar").
+    navigate(START_PATH, replace)
+    startDiscordLogin(START_PATH)
   } else {
     navigate(START_PATH, replace)
   }

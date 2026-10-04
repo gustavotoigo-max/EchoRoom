@@ -154,7 +154,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true
   }
   if (msg && msg.type === 'ECHOROOM_OPEN_LOGIN') {
-    chrome.tabs.create({ url: SITE + 'perfil', active: true }).then(() => sendResponse({ ok: true }))
+    // ?login=1: o site já abre o login do Discord e volta para o perfil.
+    chrome.tabs.create({ url: SITE + 'perfil?login=1', active: true }).then(() => sendResponse({ ok: true }))
     return true
   }
   return false

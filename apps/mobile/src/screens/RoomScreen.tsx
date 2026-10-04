@@ -15,6 +15,7 @@ import { NowPlaying } from '../components/room/NowPlaying'
 import { PlayerView } from '../components/room/PlayerView'
 import { Button, Icon, IconButton, Toasts } from '../components/ui'
 import { authStore } from '../platform/discordAuth'
+import { addRecentRoom, forgetRecentRoom } from '../platform/storage'
 import { colors, radius, space } from '../theme'
 
 type Tab = 'queue' | 'suggestions' | 'people'
@@ -62,12 +63,19 @@ export function RoomScreen({ roomId, roomKey, name, onLeave }: Props) {
     return () => sub.remove()
   }, [onLeave])
 
+  // Nome da sala na lista de recentes do início.
+  const roomName = useStore(roomStore, (s) => s.meta?.name ?? null)
+  useEffect(() => {
+    if (roomName) addRecentRoom(roomId, roomName)
+  }, [roomId, roomName])
+
   // Removido, bloqueado ou sala apagada: encerra com o motivo.
   useEffect(() => {
     const why = removed ?? (fatal === 'A sala não existe mais.' ? fatal : null)
     if (!why) return
     if (fatal === 'A sala não existe mais.') {
       storage.clearRoomKey(roomId)
+      forgetRecentRoom(roomId)
       void forgetMyRoom(roomId).catch(() => {})
     }
     setEnded(why)

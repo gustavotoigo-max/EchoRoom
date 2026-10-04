@@ -223,7 +223,7 @@
     const queue = `<button class="item queue" role="menuitem" data-act="queue"><b>▶</b><span>Fila da sala</span><small>tocar agora</small></button><div class="sep"></div>`
     let body = ''
     if (state.loading && !state.playlists) body = '<div class="loading">Carregando suas playlists…</div>'
-    else if (state.login) body = '<div class="note">Para ter playlists, entre com Discord no EchoRoom. <button data-act="login">Abrir o EchoRoom</button></div>'
+    else if (state.login) body = '<div class="note">Para ter playlists, entre com Discord no EchoRoom. <button data-act="login">Entrar com Discord</button></div>'
     else if (state.error && !state.playlists) body = `<div class="note">${esc(state.error)}</div>`
     else if (state.playlists && !state.playlists.length) body = '<div class="note">Você ainda não tem playlists. Crie uma abaixo.</div>'
     else
@@ -273,7 +273,11 @@
     try {
       const res = await chrome.runtime.sendMessage({ type: 'ECHOROOM_SAVE', url: t.url, title: t.title, ...target })
       if (res && res.ok) setLabel(`Salvo em ${res.name} ✓`, 'ok')
-      else setLabel(res && res.error === 'login' ? 'Entre com Discord no EchoRoom' : (res && res.error) || 'Não foi possível salvar', 'err')
+      else if (res && res.error === 'login') {
+        // Sem login: leva direto ao login do Discord no EchoRoom.
+        setLabel('Entre com Discord para salvar', 'err')
+        chrome.runtime.sendMessage({ type: 'ECHOROOM_OPEN_LOGIN' })
+      } else setLabel((res && res.error) || 'Não foi possível salvar', 'err')
     } catch {
       setLabel('Recarregue a página e tente de novo', 'err')
     }

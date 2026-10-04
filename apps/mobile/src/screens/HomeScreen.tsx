@@ -1,3 +1,4 @@
+import * as Clipboard from 'expo-clipboard'
 import { useEffect, useState } from 'react'
 import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -6,8 +7,9 @@ import { acceptInvite, declineInvite, expiresIn, inviteStore, leaveRoom, subscri
 import { useStore } from '@web/stores/createStore'
 import { parseRoomInput } from '@web/utils/format'
 import { storage } from '@web/utils/storage'
-import { Avatar, Button, Card, ErrorText, Eyebrow, Field, Icon, IconButton, Toasts } from '../components/ui'
-import { authStore, logoutDiscord, startDiscordLogin } from '../platform/discordAuth'
+import { Avatar, Button, Card, ErrorText, Eyebrow, Field, Icon, IconButton, Toasts, type IconName } from '../components/ui'
+import { authStore, logoutDiscord } from '../platform/discordAuth'
+import { addRecentRoom, getRecentRooms } from '../platform/storage'
 import { colors, radius, space } from '../theme'
 
 interface Props {
@@ -15,13 +17,13 @@ interface Props {
   onSignedOut: () => void
 }
 
-/** Início: convites, minhas salas, entrar com código e criar sala. */
+/** Início: entrar com convite (link ou código) e senha; salas recentes. */
 export function HomeScreen({ onOpenRoom, onSignedOut }: Props) {
   const profile = useStore(authStore, (s) => s.profile)
   const invites = useStore(inviteStore, (s) => s.invites)
   const [rooms, setRooms] = useState<MyRoom[] | null>(null)
   const [roomsError, setRoomsError] = useState(false)
-  const [panel, setPanel] = useState<'join' | 'create' | null>(null)
+  const [creating, setCreating] = useState(false)
   const displayName = profile?.name || storage.getName() || 'Convidado'
 
   useEffect(() => {
@@ -32,14 +34,15 @@ export function HomeScreen({ onOpenRoom, onSignedOut }: Props) {
 
   function open(roomId: string, key: string) {
     storage.setRoomKey(roomId, key)
+    addRecentRoom(roomId)
     onOpenRoom(roomId, key, displayName)
   }
 
   function signOut() {
-    Alert.alert('Sair', profile ? 'Sair da conta do Discord neste aparelho?' : 'Trocar de nome ou entrar com Discord?', [
+    Alert.alert(profile ? 'Sair' : 'Trocar de nome', profile ? 'Sair da conta do Discord neste aparelho?' : 'Voltar para a tela do nome?', [
       { text: 'Cancelar', style: 'cancel' },
       {
-        text: 'Sair',
+        text: profile ? 'Sair' : 'Trocar',
         style: 'destructive',
         onPress: async () => {
           if (profile) await logoutDiscord()
@@ -49,8 +52,7 @@ export function HomeScreen({ onOpenRoom, onSignedOut }: Props) {
     ])
   }
 
-  const lastRoom = !profile ? storage.getLastRoom() : null
-  const lastKey = lastRoom ? storage.getRoomKey(lastRoom) : null
+  const recent = getRecentRooms().filter((r) => storage.getRoomKey(r.roomId))
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
@@ -61,9 +63,9 @@ export function HomeScreen({ onOpenRoom, onSignedOut }: Props) {
             <Text style={s.hello} numberOfLines={1}>
               {displayName}
             </Text>
-            <Text style={s.sub}>{profile ? `@${profile.username} · Discord` : 'Convidado'}</Text>
+            <Text style={s.sub}>{profile ? `@${profile.username} · Discord` : 'Ouvindo como convidado'}</Text>
           </View>
-          <IconButton icon="log-out-outline" label="Sair" onPress={signOut} />
+          <IconButton icon={profile ? 'log-out-outline' : 'create-outline'} label={profile ? 'Sair' : 'Trocar de nome'} onPress={signOut} />
         </View>
 
         <ScrollView contentContainerStyle={s.wrap} keyboardShouldPersistTaps="handled">
@@ -76,26 +78,36 @@ export function HomeScreen({ onOpenRoom, onSignedOut }: Props) {
             </View>
           )}
 
-          <View style={s.row}>
-            <Button style={{ flex: 1 }} icon="enter-outline" title="Entrar" kind={panel === 'join' ? 'primary' : 'secondary'} onPress={() => setPanel(panel === 'join' ? null : 'join')} />
-            <Button style={{ flex: 1 }} icon="add" title="Criar sala" kind={panel === 'create' ? 'primary' : 'secondary'} onPress={() => setPanel(panel === 'create' ? null : 'create')} />
+          <View style={{ gap: space.sm }}>
+            <Eyebrow>Entrar numa sala</Eyebrow>
+            <JoinForm onJoined={open} />
           </View>
-          {panel === 'join' && <JoinForm onJoined={open} />}
-          {panel === 'create' && (profile ? <CreateForm ownerName={profile.name} onCreated={open} /> : <GuestCreate />)}
 
-          {profile ? (
+          {recent.length > 0 && (
+            <View style={{ gap: space.sm }}>
+              <Eyebrow>Salas recentes</Eyebrow>
+              {recent.map((r) => (
+                <RoomRow key={r.roomId} name={r.name || `Sala ${r.roomId}`} meta={r.roomId} icon="time-outline" onPress={() => open(r.roomId, storage.getRoomKey(r.roomId)!)} />
+              ))}
+            </View>
+          )}
+
+          {/* Contas do Discord já conectadas antes continuam funcionando no app. */}
+          {profile && (
             <View style={{ gap: space.sm }}>
               <Eyebrow>Minhas salas{rooms ? ` · ${rooms.length}` : ''}</Eyebrow>
               {roomsError ? (
                 <Text style={s.empty}>Não foi possível carregar suas salas.</Text>
               ) : rooms === null ? (
                 <View style={[s.roomCard, { height: 72, opacity: 0.4 }]} />
-              ) : rooms.length === 0 ? (
-                <Text style={s.empty}>As salas em que você entrar com Discord aparecem aqui. Crie uma ou entre com um código.</Text>
               ) : (
                 rooms.map((r) => (
-                  <Pressable
+                  <RoomRow
                     key={r.roomId}
+                    name={r.name}
+                    meta={`${r.roomId} · ${r.role === 'owner' ? 'dono' : 'membro'}`}
+                    icon={r.role === 'owner' ? 'star' : 'musical-notes'}
+                    owner={r.role === 'owner'}
                     onPress={() => open(r.roomId, r.key)}
                     onLongPress={() =>
                       r.role !== 'owner' &&
@@ -104,37 +116,48 @@ export function HomeScreen({ onOpenRoom, onSignedOut }: Props) {
                         { text: 'Sair da sala', style: 'destructive', onPress: () => void leaveRoom(r).catch(() => {}) },
                       ])
                     }
-                    style={({ pressed }) => [s.roomCard, pressed && { backgroundColor: colors.surface2 }]}
-                  >
-                    <View style={[s.roomIcon, r.role === 'owner' && { backgroundColor: 'rgba(240,181,74,0.14)' }]}>
-                      <Icon name={r.role === 'owner' ? 'star' : 'musical-notes'} size={18} color={r.role === 'owner' ? colors.amber : colors.accentHi} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.roomName} numberOfLines={1}>
-                        {r.name}
-                      </Text>
-                      <Text style={s.roomMeta}>
-                        {r.roomId} · {r.role === 'owner' ? 'dono' : 'membro'}
-                      </Text>
-                    </View>
-                    <Icon name="chevron-forward" size={18} color={colors.textFaint} />
-                  </Pressable>
+                  />
                 ))
               )}
+              <Button kind="secondary" icon="add" title={creating ? 'Fechar' : 'Criar sala'} onPress={() => setCreating(!creating)} />
+              {creating && <CreateForm ownerName={profile.name} onCreated={open} />}
             </View>
-          ) : (
-            <Card>
-              {lastRoom && lastKey ? (
-                <Button kind="secondary" icon="play" title={`Voltar à sala ${lastRoom}`} onPress={() => open(lastRoom, lastKey)} />
-              ) : null}
-              <Text style={s.empty}>Com Discord você cria salas, recebe convites e suas salas ficam salvas.</Text>
-              <Button kind="discord" icon="logo-discord" title="Entrar com Discord" onPress={() => void startDiscordLogin()} />
-            </Card>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
       <Toasts />
     </SafeAreaView>
+  )
+}
+
+function RoomRow({
+  name,
+  meta,
+  icon,
+  owner,
+  onPress,
+  onLongPress,
+}: {
+  name: string
+  meta: string
+  icon: IconName
+  owner?: boolean
+  onPress: () => void
+  onLongPress?: () => void
+}) {
+  return (
+    <Pressable onPress={onPress} onLongPress={onLongPress} style={({ pressed }) => [s.roomCard, pressed && { backgroundColor: colors.surface2 }]}>
+      <View style={[s.roomIcon, owner && { backgroundColor: 'rgba(240,181,74,0.14)' }]}>
+        <Icon name={icon} size={18} color={owner ? colors.amber : colors.accentHi} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={s.roomName} numberOfLines={1}>
+          {name}
+        </Text>
+        <Text style={s.roomMeta}>{meta}</Text>
+      </View>
+      <Icon name="chevron-forward" size={18} color={colors.textFaint} />
+    </Pressable>
   )
 }
 
@@ -182,6 +205,14 @@ function JoinForm({ onJoined }: { onJoined: (roomId: string, key: string) => voi
   const roomId = parseRoomInput(code)
   const savedKey = roomId ? storage.getRoomKey(roomId) : null
 
+  async function pasteInvite() {
+    const text = await Clipboard.getStringAsync().catch(() => '')
+    const id = parseRoomInput(text)
+    if (!id) return setError('Não achei um convite do EchoRoom na área de transferência. Copie o link que te mandaram.')
+    setCode(id)
+    setError(null)
+  }
+
   async function submit() {
     if (!roomId) return setError('Digite o código da sala (ou cole o link).')
     if (savedKey) return onJoined(roomId, savedKey)
@@ -199,7 +230,24 @@ function JoinForm({ onJoined }: { onJoined: (roomId: string, key: string) => voi
 
   return (
     <Card>
-      <Field label="Código ou link da sala" value={code} onChangeText={setCode} autoCapitalize="characters" autoCorrect={false} placeholder="Ex.: ABX72" />
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.sm }}>
+        <View style={{ flex: 1 }}>
+          <Field
+            label="Convite ou código da sala"
+            value={code}
+            onChangeText={(v) => {
+              // Colou o link (ou a mensagem inteira do convite): fica só o código.
+              const id = v.length > 12 ? parseRoomInput(v) : null
+              setCode(id ?? v)
+              setError(null)
+            }}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            placeholder="Ex.: ABX72"
+          />
+        </View>
+        <Button kind="secondary" icon="clipboard-outline" title="Colar" style={{ minHeight: 48 }} onPress={() => void pasteInvite()} />
+      </View>
       {!savedKey && (
         <Field label="Senha da sala" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" onSubmitEditing={submit} returnKeyType="go" />
       )}
@@ -233,15 +281,6 @@ function CreateForm({ ownerName, onCreated }: { ownerName: string; onCreated: (r
       <Field label="Senha (quem entrar vai precisar)" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" onSubmitEditing={submit} />
       <ErrorText>{error}</ErrorText>
       <Button title={busy ? 'Criando…' : 'Criar e entrar'} busy={busy} onPress={submit} />
-    </Card>
-  )
-}
-
-function GuestCreate() {
-  return (
-    <Card>
-      <Text style={s.empty}>Para criar uma sala, entre com Discord: o dono precisa de uma conta fixa para administrar a sala.</Text>
-      <Button kind="discord" icon="logo-discord" title="Entrar com Discord" onPress={() => void startDiscordLogin()} />
     </Card>
   )
 }
