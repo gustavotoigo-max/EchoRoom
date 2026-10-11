@@ -111,13 +111,43 @@
 .participants li .p-tag + .eq {
   margin-left: 0;
 }
+/* Convidados offline: foto escura e nome apagado */
 .is-away .p-avatar img,
 .is-away .p-avatar b {
-  opacity: 0.4;
+  filter: grayscale(1) brightness(0.38);
 }
 .is-away .presence {
   background: var(--text-faint);
 }
 .is-away .p-name {
   color: var(--text-faint);
+}
+.p-who {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  line-height: 1.25;
+}
+.p-seen {
+  color: var(--text-faint);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.p-online {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--live);
+  font-size: 11px;
+  font-weight: 700;
+}
+.p-online i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--live);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 22%, transparent);
 }

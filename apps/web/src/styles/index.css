@@ -30,4 +30,5 @@
 @import './room/play-modes.css';
 @import './room/left-column.css';
 @import './playlists/playlists.css';
+@import './playlists/manager.css';
 @import './layout/centered-title.css';

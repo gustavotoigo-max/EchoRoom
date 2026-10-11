@@ -13,7 +13,7 @@ export function InviteDialog() {
   const session = useRoomSession()
   const profile = useStore(authStore, (s) => s.profile)
   const roomName = useStore(roomStore, (s) => s.meta?.name ?? `Sala ${session.roomId}`)
-  const inRoom = useStore(roomStore, (s) => (s.room?.participants ?? []).map((p) => p.id).join(','))
+  const inRoom = useStore(roomStore, (s) => (s.room?.participants ?? []).filter((p) => p.connected).map((p) => p.id).join(','))
   const [q, setQ] = useState('')
   const [results, setResults] = useState<PublicProfile[] | null>(null)
   const [searching, setSearching] = useState(false)

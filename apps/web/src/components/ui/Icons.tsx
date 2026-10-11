@@ -188,3 +188,28 @@ export const BrandMark = ({ size = 24 }: { size?: number }) => (
     <path d="M18.5 6a12 12 0 0 1 0 20" fill="none" stroke="#fff" strokeOpacity="0.55" strokeWidth="2.6" />
   </svg>
 )
+export const TrashIcon = (p: P) => (
+  <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+  </svg>
+)
+export const DuplicateIcon = (p: P) => (
+  <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M9 9h11v11H9zM5 15H4V4h11v1" />
+  </svg>
+)
+export const ChevronUpIcon = (p: P) => (
+  <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2.2">
+    <path d="M6 15l6-6 6 6" />
+  </svg>
+)
+export const ChevronDownIcon = (p: P) => (
+  <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2.2">
+    <path d="M6 9l6 6 6-6" />
+  </svg>
+)
+export const PencilIcon = (p: P) => (
+  <svg {...base} {...p} fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" />
+  </svg>
+)

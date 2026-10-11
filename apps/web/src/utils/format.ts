@@ -45,3 +45,22 @@ export async function copyText(text: string): Promise<boolean> {
     return ok
   }
 }
+
+/** "agora", "há 5 min", "há 2 h", "ontem", "há 3 dias". */
+export function timeAgo(ms: number): string {
+  if (!ms) return ''
+  const min = Math.round((Date.now() - ms) / 60_000)
+  if (min < 1) return 'agora'
+  if (min < 60) return `há ${min} min`
+  const h = Math.round(min / 60)
+  if (h < 24) return `há ${h} h`
+  const d = Math.round(h / 24)
+  return d === 1 ? 'ontem' : `há ${d} dias`
+}
+
+/** Remove acentos e caixa (para buscas). */
+export const normalizeText = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()

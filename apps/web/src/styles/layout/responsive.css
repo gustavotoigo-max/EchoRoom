@@ -1,43 +1,12 @@
 /* ---- responsivo -------------------------------------------------------------- */
 
-/* Notebook / tablet deitado: duas colunas (membros em cima da fila, à direita) */
+/* Notebook / tablet deitado */
 @media (max-width: 1199px) {
-  :root {
-    --left-w: 300px;
-  }
-  .room-topbar {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-  .topbar-brand {
-    background: transparent;
-    border-right: 0;
-  }
   .channel {
     padding-left: 4px;
   }
   .channel-topic {
     display: none;
-  }
-  .room-grid {
-    grid-template-columns: minmax(0, 1fr) var(--left-w);
-    grid-template-rows: auto minmax(0, 1fr);
-    grid-template-areas:
-      'main right'
-      'main left';
-  }
-  .room-left,
-  .room-right {
-    border-right: 0;
-    border-left: 1px solid var(--line-soft);
-  }
-  .room-right {
-    max-height: 40vh;
-  }
-  .toasts {
-    right: calc(var(--left-w) + 16px);
-  }
-  .sugg-list {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -90,7 +59,7 @@
     justify-self: end;
     height: 28px;
   }
-  /* Uma coluna: fila e participantes antes das sugestões */
+  /* Uma coluna: convidados e playlists abaixo do player */
   .room-grid {
     display: flex;
     flex-direction: column;
@@ -98,19 +67,14 @@
   .room-main {
     display: contents;
   }
-  .room-left {
-    order: 1;
-  }
   .room-right {
     order: 2;
-  }
-  .room-left,
-  .room-right {
     border-left: 0;
     border-top: 1px solid var(--line-soft);
-  }
-  .room-right {
     max-height: none;
+    overflow: visible;
+  }
+  .side-scroll {
     overflow: visible;
   }
   .user-panel {

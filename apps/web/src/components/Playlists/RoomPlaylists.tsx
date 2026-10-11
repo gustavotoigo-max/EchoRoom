@@ -5,6 +5,7 @@ import { useRoomSession } from '../../services/RoomSessionContext'
 import { useStore } from '../../stores/createStore'
 import { showToast } from '../../stores/toastStore'
 import { openPanel } from '../RoomSettings/ui'
+import { openPlaylistManager } from '../PlaylistManager/store'
 import { ListIcon, PlayIcon, PlusIcon } from '../ui/Icons'
 import { playlistStore } from './store'
 
@@ -37,7 +38,7 @@ export function RoomPlaylists() {
   }, [profile])
 
   async function queueAll(pl: Playlist) {
-    if (!pl.tracks.length) return openPanel('playlist', { playlistId: pl.id })
+    if (!pl.tracks.length) return openPlaylistManager({ selectedId: pl.id })
     setBusy(pl.id)
     try {
       const res = await session.addKnownTracks(pl.tracks)
@@ -73,7 +74,7 @@ export function RoomPlaylists() {
         <ul>
           {lists.map((pl) => (
             <li key={pl.id} className="pl-row">
-              <button type="button" className="pl-open" onClick={() => openPanel('playlist', { playlistId: pl.id })} title={`Abrir "${pl.name}"`}>
+              <button type="button" className="pl-open" onClick={() => openPlaylistManager({ selectedId: pl.id })} title={`Abrir "${pl.name}"`}>
                 <span className={`pl-cover ${pl.kind}`}>
                   <ListIcon width={16} height={16} />
                 </span>

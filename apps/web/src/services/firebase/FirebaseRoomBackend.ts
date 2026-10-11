@@ -32,7 +32,7 @@ function safeAvatar(url: unknown): string | null {
 
 /** Presença e inatividade (tempos em ms). */
 export const PresenceConfig = {
-  /** Desconectados aparecem como "Desconectado" por este tempo e depois somem. */
+  /** Sem cadastro na sala, desconectados aparecem por este tempo e depois somem. */
   awayVisibleMs: 10 * 60_000,
   /** Cada aba aberta confirma que está viva neste intervalo… */
   heartbeatMs: 60_000,
@@ -53,6 +53,14 @@ interface ParticipantRecord {
   /** Última interação da pessoa com a sala. */
   activeAt?: number
   conns?: Record<string, boolean>
+}
+
+/** Cadastro em /rooms/{chave}/members: quem já entrou na sala, mesmo que não esteja aqui agora. */
+interface MemberRecord {
+  name?: string
+  avatar?: string | null
+  guest?: boolean
+  lastAt?: number
 }
 
 /**
@@ -79,6 +87,7 @@ export class FirebaseRoomBackend {
   private doc: RoomDoc | null = null
   private participants: Participant[] = []
   private participantRecords: Record<string, ParticipantRecord> = {}
+  private memberRecords: Record<string, MemberRecord> = {}
   private connId = Math.random().toString(36).slice(2, 10)
   private everConnected = false
   private generation = 0
@@ -201,6 +210,18 @@ export class FirebaseRoomBackend {
         this.participantRecords = (snap.val() as Record<string, ParticipantRecord>) ?? {}
         this.refreshParticipants()
       }),
+    )
+
+    // Convidados: todo mundo que já entrou (os desconectados aparecem apagados)
+    this.unsubs.push(
+      onValue(
+        ref(db, `${base}/members`),
+        (snap) => {
+          this.memberRecords = (snap.val() as Record<string, MemberRecord>) ?? {}
+          this.refreshParticipants()
+        },
+        () => {},
+      ),
     )
 
     // Nome e dono
@@ -466,19 +487,37 @@ export class FirebaseRoomBackend {
   private refreshParticipants(): void {
     const now = this.clock.serverNow()
     const list: Participant[] = []
-    for (const [id, p] of Object.entries(this.participantRecords)) {
+    const ids = new Set([...Object.keys(this.memberRecords), ...Object.keys(this.participantRecords)])
+    for (const id of ids) {
+      const p = this.participantRecords[id]
+      const m = this.memberRecords[id]
       // Conectado = tem aba aberta e ela confirmou presença há pouco
       // (uma aba congelada ou sem rede deixa de confirmar).
       const connected =
-        !!p.conns && Object.keys(p.conns).length > 0 && typeof p.beat === 'number' && now - p.beat < PresenceConfig.staleMs
-      const seen = Math.max(p.lastSeen ?? 0, p.beat ?? 0)
-      if (!connected && (!seen || now - seen > PresenceConfig.awayVisibleMs)) continue
-      list.push({ id, name: p.name || 'Convidado', connected, avatar: safeAvatar(p.avatar), guest: !isDiscordUid(id) })
+        !!p?.conns && Object.keys(p.conns).length > 0 && typeof p.beat === 'number' && now - p.beat < PresenceConfig.staleMs
+      const seen = Math.max(p?.lastSeen ?? 0, p?.beat ?? 0, m?.lastAt ?? 0)
+      // Quem está cadastrado na sala aparece sempre; sem cadastro, só por um tempo depois de sair.
+      if (!connected && !m && (!seen || now - seen > PresenceConfig.awayVisibleMs)) continue
+      list.push({
+        id,
+        name: p?.name || m?.name || 'Convidado',
+        connected,
+        avatar: safeAvatar(p?.avatar ?? m?.avatar),
+        guest: !isDiscordUid(id),
+        lastSeen: seen || undefined,
+      })
     }
-    list.sort((a, b) => Number(b.connected) - Number(a.connected) || a.name.localeCompare(b.name))
+    list.sort(
+      (a, b) =>
+        Number(b.connected) - Number(a.connected) ||
+        (a.connected ? a.name.localeCompare(b.name) : (b.lastSeen ?? 0) - (a.lastSeen ?? 0) || a.name.localeCompare(b.name)),
+    )
     const same =
       list.length === this.participants.length &&
-      list.every((p, i) => p.id === this.participants[i].id && p.connected === this.participants[i].connected && p.name === this.participants[i].name && p.avatar === this.participants[i].avatar)
+      list.every((p, i) => {
+        const q = this.participants[i]
+        return p.id === q.id && p.connected === q.connected && p.name === q.name && p.avatar === q.avatar && (p.connected || p.lastSeen === q.lastSeen)
+      })
     if (same) return
     this.participants = list
     const room = roomStore.get().room

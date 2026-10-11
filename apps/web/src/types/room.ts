@@ -25,6 +25,8 @@ export interface Participant {
   avatar?: string | null
   /** Entrou sem Discord. */
   guest?: boolean
+  /** Última vez que esteve na sala (hora do servidor, ms). */
+  lastSeen?: number
 }
 
 /** Dados fixos da sala, em /rooms/{chave}/meta. */

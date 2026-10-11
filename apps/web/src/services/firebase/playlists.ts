@@ -108,7 +108,19 @@ export async function createRoomPlaylist(
   me: { name: string; avatar: string | null },
   first?: TrackInput,
 ): Promise<string> {
+  return createRoomPlaylistWith(roomKey, name, me, first ? [first] : [])
+}
+
+/** Cria uma playlist da sala já com músicas (duplicar, salvar a fila…). */
+export async function createRoomPlaylistWith(
+  roomKey: string,
+  name: string,
+  me: { name: string; avatar: string | null },
+  tracks: TrackInput[],
+): Promise<string> {
   const uid = await ensureSignedIn()
+  const seen = new Set<string>()
+  const unique = tracks.filter((t) => !seen.has(t.videoId) && seen.add(t.videoId)).slice(0, MAX_PLAYLIST_TRACKS)
   const r = push(ref(getDb(), `rooms/${roomKey}/playlists`))
   await set(
     r,
@@ -119,7 +131,9 @@ export async function createRoomPlaylist(
       createdByName: me.name.slice(0, 32),
       createdByAvatar: me.avatar ?? '',
       updatedAt: serverTimestamp(),
-      tracks: first ? { t0: trackRecord(first) } : undefined,
+      tracks: unique.length
+        ? Object.fromEntries(unique.map((t, i) => [`t${i}`, { ...trackRecord(t), at: i + 1 }]))
+        : undefined,
     }),
   )
   return r.key!
@@ -134,6 +148,23 @@ export async function addToRoomPlaylist(roomKey: string, pl: Playlist, t: TrackI
 
 export async function removeFromRoomPlaylist(roomKey: string, pl: Playlist, trackId: string): Promise<void> {
   await remove(ref(getDb(), `rooms/${roomKey}/playlists/${pl.id}/tracks/${trackId}`))
+}
+
+/** Tira várias músicas de uma vez (quem criou ou o dono da sala). */
+export async function removeTracksFromRoomPlaylist(roomKey: string, pl: Playlist, trackIds: string[]): Promise<void> {
+  if (!trackIds.length) return
+  await update(ref(getDb(), `rooms/${roomKey}/playlists/${pl.id}`), {
+    ...Object.fromEntries(trackIds.map((id) => [`tracks/${id}`, null])),
+    updatedAt: serverTimestamp(),
+  })
+}
+
+/** Nova ordem das músicas (ids na ordem desejada). */
+export async function reorderRoomPlaylist(roomKey: string, pl: Playlist, orderedIds: string[]): Promise<void> {
+  await update(ref(getDb(), `rooms/${roomKey}/playlists/${pl.id}`), {
+    ...Object.fromEntries(orderedIds.map((id, i) => [`tracks/${id}/at`, i + 1])),
+    updatedAt: serverTimestamp(),
+  })
 }
 
 export async function renameRoomPlaylist(roomKey: string, pl: Playlist, name: string): Promise<void> {

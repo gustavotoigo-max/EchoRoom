@@ -1,0 +1,347 @@
+/* ==== Gerenciar playlists (janela por cima da sala, no modelo do perfil) ==== */
+
+/* Botão abaixo do campo de adicionar música */
+.pm-open {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+}
+.pm-open-count {
+  min-width: 20px;
+  padding: 1px 6px;
+  font-size: 11px;
+  background: var(--accent-tint);
+  color: var(--accent-hi);
+}
+
+.pm-main {
+  max-width: 1180px;
+}
+.pm-head {
+  flex-wrap: wrap;
+}
+.pm-head-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  color: #fff;
+  background: var(--grad, linear-gradient(135deg, #8b5cff, #2fe0c4));
+  box-shadow: 0 0 0 4px var(--surface), 0 0 0 6px var(--accent);
+}
+.pm-head-text {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+.pm-head-text .role-badge {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.pm-tabs {
+  margin-left: auto;
+  align-self: center;
+}
+.pm-tabs button {
+  height: 38px;
+  padding: 0 18px;
+}
+
+/* Lista à esquerda, playlist escolhida à direita */
+.pm-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.pm-list {
+  display: grid;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+}
+.pm-save-queue {
+  justify-self: start;
+  font-size: 13px;
+}
+.pm-save-queue:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.pm-search {
+  width: 100%;
+  height: 36px;
+}
+.pm-filter {
+  flex-wrap: wrap;
+}
+.pm-filter button {
+  padding: 0 8px;
+}
+.pm-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  max-height: 56vh;
+  overflow-y: auto;
+}
+.pm-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border: 0;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+.pm-item:hover {
+  background: var(--surface-3);
+}
+.pm-item.is-on {
+  background: linear-gradient(90deg, rgba(124, 92, 255, 0.24), rgba(47, 224, 196, 0.06));
+  box-shadow: inset 2px 0 0 var(--live);
+}
+.pm-mosaic {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  color: #fff;
+  background: linear-gradient(135deg, #8b5cff, #4c8dff);
+}
+.pm-mosaic.personal {
+  background: linear-gradient(135deg, #ff5c7a, #8b5cff);
+}
+.pm-mosaic:has(img:only-child) {
+  grid-template-columns: 1fr;
+}
+.pm-mosaic img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pm-mosaic svg {
+  grid-column: 1 / -1;
+}
+
+.pm-detail {
+  min-width: 0;
+}
+.pm-empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 48px 16px;
+  color: var(--text-faint);
+  text-align: center;
+}
+.pm-editor {
+  display: grid;
+  gap: 14px;
+}
+.pm-editor-head {
+  display: grid;
+  gap: 8px;
+}
+.pm-editor-head .pl-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 24px;
+}
+.pm-rename {
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+.pm-actions {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pm-actions .btn {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.pm-add .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pm-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.pm-tools .pm-search {
+  flex: 1;
+  min-width: 180px;
+  width: auto;
+}
+.pm-pick-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pm-remove-picked,
+.pm-delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  font-size: 13px;
+}
+.pm-confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  border-left: 3px solid var(--red);
+  font-size: 14px;
+  font-weight: 600;
+}
+.pm-confirm .btn {
+  height: 32px;
+}
+
+.pm-tracks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.pm-track {
+  display: grid;
+  grid-template-columns: 18px 24px 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  background: var(--surface-2);
+}
+.pm-track:hover {
+  background: var(--surface-3);
+}
+.pm-track.is-picked {
+  box-shadow: inset 2px 0 0 var(--red);
+}
+.pm-pos {
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+.pm-track img {
+  width: 64px;
+  height: 36px;
+  object-fit: cover;
+  background: var(--surface-3);
+}
+.pm-track-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pm-track-actions .icon-btn {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+.pm-track-actions .icon-btn:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface);
+}
+.pm-track-actions .pm-del:hover:not(:disabled) {
+  color: var(--red);
+}
+.pm-queue-one {
+  height: 28px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+.pm-danger {
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
+/* Aba Fila */
+.pm-queue .queue ol {
+  max-height: none;
+}
+.pm-queue .side-head {
+  padding-left: 0;
+}
+
+@media (max-width: 900px) {
+  .pm-grid {
+    grid-template-columns: 1fr;
+  }
+  .pm-list {
+    position: static;
+  }
+  .pm-items {
+    max-height: 260px;
+  }
+  .pm-tabs {
+    margin-left: 0;
+  }
+}
+@media (max-width: 560px) {
+  .pm-head-icon {
+    width: 52px;
+    height: 52px;
+  }
+  .pm-track {
+    grid-template-columns: 18px 48px minmax(0, 1fr);
+  }
+  .pm-pos {
+    display: none;
+  }
+  .pm-track img {
+    width: 48px;
+    height: 27px;
+  }
+  .pm-track-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-end;
+  }
+}
+
+.pm-editor input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}

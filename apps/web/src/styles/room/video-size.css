@@ -52,7 +52,6 @@
     grid-template-rows: none;
     grid-template-areas: 'main';
   }
-  html.video-max .room-left,
   html.video-max .room-right {
     display: none;
   }

@@ -54,7 +54,7 @@ export function ProfileOverlay() {
 }
 
 /** O que está tocando na sala, com play/pausa, enquanto o perfil está aberto. */
-function MiniPlayer() {
+export function MiniPlayer() {
   const track = useStore(roomStore, (s) => s.room?.currentTrack ?? null)
   const roomName = useStore(roomStore, (s) => s.meta?.name ?? '')
   const playing = useStore(roomStore, (s) => s.room?.playbackState === 'playing')

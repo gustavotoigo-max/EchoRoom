@@ -3,7 +3,9 @@ import { useRoomSession } from '../../services/RoomSessionContext'
 import { useStore } from '../../stores/createStore'
 import { roomStore, selectIsOwner } from '../../stores/roomStore'
 import { parseYouTubeLink } from '../../utils/youtubeUrlParser'
-import { PlusIcon } from '../ui/Icons'
+import { openPlaylistManager } from '../PlaylistManager/store'
+import { playlistStore } from '../Playlists/store'
+import { ListIcon, PlusIcon } from '../ui/Icons'
 
 type Feedback =
   | { kind: 'busy' | 'ok' | 'error'; text: string; offerPlaylist?: string }
@@ -19,6 +21,7 @@ export function AddTrack() {
   const [value, setValue] = useState('')
   const [feedback, setFeedback] = useState<Feedback>(null)
   const locked = useStore(roomStore, (s) => s.settings.adding === 'owner' && !selectIsOwner(s))
+  const playlistCount = useStore(playlistStore, (s) => s.room?.length ?? null)
   const timer = useRef<ReturnType<typeof setTimeout>>()
   useEffect(() => () => clearTimeout(timer.current), [])
 
@@ -96,6 +99,11 @@ export function AddTrack() {
           </button>
         )}
       </p>
+      <button type="button" className="btn btn-secondary pm-open" onClick={() => openPlaylistManager()}>
+        <ListIcon width={16} height={16} />
+        <span>Gerenciar playlists</span>
+        {playlistCount ? <b className="pm-open-count">{playlistCount}</b> : null}
+      </button>
     </form>
   )
 }
