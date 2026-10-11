@@ -1,5 +1,8 @@
 /* ==== playlists (coluna direita) ============================================ */
 
+.room-right .participants {
+  flex: none;
+}
 .playlists {
   border-top: 1px solid var(--line-soft);
   padding-bottom: 12px;
@@ -229,3 +232,16 @@
   background: var(--surface-3);
 }
 
+@media (max-width: 1199px) {
+  .room-right {
+    max-height: none;
+  }
+}
+@media (max-width: 900px) {
+  .room-left .queue {
+    max-height: none;
+  }
+  .room-left .sugg-list {
+    max-height: 420px;
+  }
+}

@@ -1,4 +1,4 @@
-/* Fila (aba "Fila" do Gerenciar playlists) */
+/* Fila ("A seguir", na coluna esquerda e na aba Fila do Gerenciar playlists) */
 .queue {
   flex: 1;
 }

@@ -51,7 +51,7 @@
 .room-topbar {
   padding: 0;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: var(--left-w) minmax(0, 1fr);
   gap: 0;
 }
 .topbar-brand {
@@ -59,6 +59,8 @@
   display: flex;
   align-items: center;
   padding: 0 20px;
+  background: var(--bg-deeper);
+  border-right: 1px solid var(--line-soft);
 }
 .channel {
   min-width: 0;

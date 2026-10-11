@@ -1,4 +1,12 @@
-/* ==== fila: música tocando agora (aba "Fila" do Gerenciar playlists) ======== */
+/* ==== coluna esquerda: fila ("A seguir") ==================================== */
+
+.room-left .queue {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 8px;
+}
 
 .q-now {
   display: grid;

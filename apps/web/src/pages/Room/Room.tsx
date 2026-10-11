@@ -7,6 +7,7 @@ import { Participants } from '../../components/Participants/Participants'
 import { PlaylistManager } from '../../components/PlaylistManager/PlaylistManager'
 import { RoomPlaylists } from '../../components/Playlists/RoomPlaylists'
 import { PlayerPanel } from '../../components/Player/PlayerPanel'
+import { Queue } from '../../components/Queue/Queue'
 import { RoomHeader } from '../../components/RoomHeader/RoomHeader'
 import { RoomSettingsPanel } from '../../components/RoomSettings/RoomSettings'
 import { UserChip } from '../../components/Invites/UserChip'
@@ -130,6 +131,10 @@ function RoomView({ roomId, roomKey, name }: { roomId: string; roomKey: string; 
       <div className="room">
         <RoomHeader roomId={roomId} />
         <main className="room-grid">
+          <aside className="room-left" aria-label="Fila">
+            <Queue />
+            <UserPanel />
+          </aside>
           <div className="room-main">
             <FatalBanner />
             <PlayerPanel />
@@ -137,11 +142,8 @@ function RoomView({ roomId, roomKey, name }: { roomId: string; roomKey: string; 
             <AddTrack />
           </div>
           <aside className="room-right" aria-label="Convidados e playlists">
-            <div className="side-scroll">
-              <Participants />
-              <RoomPlaylists />
-            </div>
-            <UserPanel />
+            <Participants />
+            <RoomPlaylists />
           </aside>
         </main>
         <Toasts />

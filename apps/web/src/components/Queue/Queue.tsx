@@ -89,7 +89,7 @@ export function Queue() {
   return (
     <section className="side-block queue" aria-label="Fila">
       <header className="side-head">
-        <h3>Fila</h3>
+        <h3>A seguir</h3>
         <span className="count">{queue ? queue.length : ''}</span>
         {(shuffle || repeat !== 'off') && (
           <span className="mode-tags">

@@ -8,8 +8,8 @@
 .room-grid {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--right-w);
-  grid-template-areas: 'main right';
+  grid-template-columns: var(--left-w) minmax(0, 1fr) var(--right-w);
+  grid-template-areas: 'left main right';
 }
 .room-main {
   grid-area: main;
@@ -18,21 +18,20 @@
   display: flex;
   flex-direction: column;
 }
+.room-left,
 .room-right {
   min-height: 0;
   display: flex;
   flex-direction: column;
   background: var(--bg-deep);
 }
-/* Coluna da direita: convidados e playlists rolam; o painel do usuário fica embaixo */
+.room-left {
+  grid-area: left;
+  border-right: 1px solid var(--line-soft);
+}
 .room-right {
   grid-area: right;
   border-left: 1px solid var(--line-soft);
-  overflow: hidden;
-}
-.side-scroll {
-  flex: 1;
-  min-height: 0;
   overflow-y: auto;
 }
 
