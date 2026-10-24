@@ -4,6 +4,8 @@ import { formatTime } from '../../utils/format'
 
 interface Props {
   duration: number | null
+  /** Transmissão ao vivo: sem barra de posição. */
+  live?: boolean
   trackId: string | null
   disabled: boolean
 }
@@ -14,7 +16,7 @@ const TICK_MS = 250
  * Barra de progresso. Mostra a posição da timeline oficial da sala
  * (mesma para todos). Atualiza só este componente, 4× por segundo.
  */
-export function ProgressBar({ duration, trackId, disabled }: Props) {
+export function ProgressBar({ duration, live, trackId, disabled }: Props) {
   const session = useRoomSession()
   const [pos, setPos] = useState(0)
   const [drag, setDrag] = useState<number | null>(null)
@@ -36,6 +38,25 @@ export function ProgressBar({ duration, trackId, disabled }: Props) {
   const max = duration && duration > 0 ? duration : 0
   const shown = drag ?? pendingSeek ?? pos
   const pct = max ? Math.min(100, (shown / max) * 100) : 0
+
+  if (live) {
+    return (
+      <div className="progress progress-live">
+        <span className="live-badge">AO VIVO</span>
+        <input
+          type="range"
+          className="progress-range"
+          min={0}
+          max={1}
+          value={1}
+          disabled
+          readOnly
+          aria-label="Transmissão ao vivo"
+          style={{ ['--pct' as string]: '100%' }}
+        />
+      </div>
+    )
+  }
 
   async function commit(value: number) {
     setDrag(null)
