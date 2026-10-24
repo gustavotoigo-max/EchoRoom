@@ -32,6 +32,14 @@ Endereço: `https://<usuário>.github.io/EchoRoom/`
   API); entram até o limite da fila (200).
 - Vídeos indisponíveis (removidos, privados ou sem incorporação) são pulados
   automaticamente.
+- **Playlists da biblioteca:** cole o link de uma playlist do YouTube ou do
+  YouTube Music (no perfil ou na sala) e ela vira uma playlist sua, com a
+  origem guardada. Na sala, "Adicionar playlists minhas" marca várias de uma
+  vez; a coluna da direita agrupa as playlists por quem trouxe. Clicar abre as
+  músicas no lugar, com Play por música, Play/Pausa/Parar e
+  Aleatório/Sequencial (embaralha só aquela playlist; o aleatório embaixo do
+  vídeo sorteia na fila inteira). Por padrão a playlist entra no fim da fila;
+  o dono pode trocar para "substitui a fila" nas configurações.
 - **Sugestões** de cada sala: músicas e playlists que já tocaram ficam salvas
   (`/rooms/{chave}/library`), ordenadas por mais tocadas ou recentes, com busca
   e adição em um clique.

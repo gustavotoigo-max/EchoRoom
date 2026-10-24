@@ -80,8 +80,12 @@ export function Controls() {
             type="button"
             className={`icon-btn mode-btn ${shuffle ? 'is-on' : ''}`}
             aria-pressed={shuffle}
-            aria-label="Aleatório"
-            title={modesAllowed ? (shuffle ? 'Aleatório ligado' : 'Aleatório') : 'Nesta sala, só o dono muda o aleatório'}
+            aria-label="Aleatório da fila"
+            title={
+              modesAllowed
+                ? `${shuffle ? 'Aleatório da fila ligado' : 'Aleatório da fila'}: sorteia a próxima entre todas as músicas da fila, de todas as playlists`
+                : 'Nesta sala, só o dono muda o aleatório'
+            }
             disabled={!loaded || !connected || !modesAllowed}
             onClick={() => run(() => session.setModes({ shuffle: !shuffle }))}
           >

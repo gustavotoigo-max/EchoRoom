@@ -178,6 +178,8 @@ export class RoomSession {
 
   play = () => this.backend.command({ type: 'PLAY' })
   pause = () => this.backend.command({ type: 'PAUSE' })
+  /** Para e volta ao início da música atual. */
+  stopPlayback = () => this.backend.command({ type: 'STOP' })
 
   // ---- inatividade ---------------------------------------------------------
 
@@ -303,6 +305,7 @@ export class RoomSession {
    */
   addKnownTracks = async (
     tracks: { videoId: string; title: string; author?: string }[],
+    fromPlaylist?: string,
   ): Promise<{ added: number; repeated: number; skipped: number }> => {
     const room = roomStore.get().room
     const fresh = room ? withoutDuplicates(room, tracks) : tracks
@@ -311,11 +314,34 @@ export class RoomSession {
     const capacity = room ? queueCapacity(room) : fresh.length
     if (capacity <= 0) throw new CommandError('A fila atingiu o limite de músicas.')
     const take = fresh.slice(0, capacity)
-    const items = take.map((t) => this.makeItem(t.videoId, { title: t.title, author: t.author ?? '', resolved: true }))
+    const items = take.map((t) => ({ ...this.makeItem(t.videoId, { title: t.title, author: t.author ?? '', resolved: true }), fromPlaylist }))
     if (items.length === 1) await this.backend.command({ type: 'TRACK_ADD', item: items[0] })
     else await this.backend.command({ type: 'TRACK_ADD_MANY', items })
     void countUsage('adds', items.length)
     return { added: take.length, repeated, skipped: fresh.length - take.length }
+  }
+
+  /**
+   * Toca uma playlist do EchoRoom, a partir de `startAt` (id da música) ou do
+   * começo. Aleatório embaralha só as músicas desta playlist (a que foi
+   * clicada continua primeiro). Conforme a sala: entra no fim da fila (padrão)
+   * ou substitui a fila.
+   */
+  playPlaylist = async (
+    pl: { id: string; tracks: { id: string; videoId: string; title: string; author?: string }[] },
+    opts: { startAt?: string; shuffle?: boolean } = {},
+  ): Promise<{ mode: 'append' | 'replace'; added: number; repeated: number; skipped: number }> => {
+    const from = opts.startAt ? Math.max(0, pl.tracks.findIndex((t) => t.id === opts.startAt)) : 0
+    let list = pl.tracks.slice(from)
+    if (opts.shuffle) list = opts.startAt ? [list[0], ...shuffled(list.slice(1))] : shuffled(list)
+    if (!list.length) throw new CommandError('A playlist está vazia.')
+    if (roomStore.get().settings.playlistPlay !== 'replace') return { mode: 'append', ...(await this.addKnownTracks(list, pl.id)) }
+    const items = list
+      .slice(0, SyncConfig.maxQueueSize + 1)
+      .map((t) => ({ ...this.makeItem(t.videoId, { title: t.title, author: t.author ?? '', resolved: true }), fromPlaylist: pl.id }))
+    await this.backend.command({ type: 'QUEUE_REPLACE', items })
+    void countUsage('adds', items.length)
+    return { mode: 'replace', added: items.length, repeated: 0, skipped: list.length - items.length }
   }
 
   private makeItem(videoId: string, meta: { title: string; author: string; resolved: boolean }): QueueItem {
@@ -406,4 +432,13 @@ export class RoomSession {
       if (roomStore.get().room?.currentTrack?.id === itemId) this.fire({ type: 'TRACK_SKIP', currentItemId: itemId, reason: 'error' })
     }, 2500)
   }
+}
+
+function shuffled<T>(list: T[]): T[] {
+  const out = [...list]
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[out[i], out[j]] = [out[j], out[i]]
+  }
+  return out
 }

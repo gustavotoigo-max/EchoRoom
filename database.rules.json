@@ -115,6 +115,9 @@
           "modes": {
             ".validate": "newData.val() == 'all' || newData.val() == 'owner' || newData.val() == 'off'"
           },
+          "playlistPlay": {
+            ".validate": "newData.val() == 'append' || newData.val() == 'replace'"
+          },
           "$other": {
             ".validate": false
           }

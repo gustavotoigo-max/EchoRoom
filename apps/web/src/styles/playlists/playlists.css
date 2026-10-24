@@ -90,6 +90,149 @@
   text-align: left;
 }
 
+/* Grupos (da sala / de cada pessoa) e playlist aberta no lugar */
+.playlists ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pl-group + .pl-group {
+  margin-top: 6px;
+}
+.pl-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 2px;
+  padding: 0 8px;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.pl-group-head img {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+.pl-open > svg {
+  flex: none;
+  color: var(--text-faint);
+}
+.pl-item.is-active .pl-text strong {
+  color: var(--live);
+}
+.pl-item.is-open > .pl-row {
+  background: var(--surface);
+}
+.pl-body {
+  padding: 4px 6px 8px;
+  background: var(--surface);
+}
+.pl-cmds {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.pl-cmds .icon-btn {
+  width: 30px;
+  height: 30px;
+}
+.pl-cmds .icon-btn.is-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.pl-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+.pl-mode.is-on {
+  color: var(--live);
+}
+.pl-state {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+.pl-manage {
+  margin-left: auto;
+  font-size: 12px;
+}
+.pl-empty {
+  margin: 8px 2px 0;
+}
+.pl-songs {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.pl-songs li {
+  display: grid;
+  grid-template-columns: 20px 40px minmax(0, 1fr) 26px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 2px;
+}
+.pl-songs li:hover {
+  background: var(--surface-2);
+}
+.pl-songs li.is-now .pl-text strong {
+  color: var(--live);
+}
+.pl-songs img {
+  width: 40px;
+  height: 23px;
+  object-fit: cover;
+  background: var(--surface-2);
+}
+.pl-num {
+  color: var(--text-faint);
+  font-size: 11px;
+  text-align: right;
+}
+.pl-song-play {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+}
+.pl-songs li:hover .pl-song-play:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Adicionar playlists à sala: marcar várias */
+.save-list button .share-check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--line);
+  color: #fff;
+}
+.save-list button.is-on .share-check {
+  background: var(--live);
+  border-color: var(--live);
+}
+.pl-import {
+  max-width: 520px;
+}
+.my-pl-new + .pl-import {
+  margin-bottom: 12px;
+}
+
 /* Painéis de playlist */
 .pl-title {
   font-family: var(--font-display);

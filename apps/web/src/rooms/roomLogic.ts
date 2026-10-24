@@ -19,9 +19,11 @@ export class CommandError extends Error {}
 export type RoomCommand =
   | { type: 'PLAY' }
   | { type: 'PAUSE'; reason?: 'user' | 'idle' }
+  | { type: 'STOP' }
   | { type: 'SEEK'; position: number }
   | { type: 'TRACK_ADD'; item: QueueItem }
   | { type: 'TRACK_ADD_MANY'; items: QueueItem[] }
+  | { type: 'QUEUE_REPLACE'; items: QueueItem[] }
   | { type: 'TRACK_REMOVE'; itemId: string }
   | { type: 'TRACK_MOVE'; itemId: string; toIndex: number }
   | { type: 'TRACK_SKIP'; currentItemId: string | null; reason?: 'user' | 'vote' | 'error' }
@@ -149,6 +151,7 @@ function checkPermission(doc: RoomDoc, cmd: RoomCommand, actor: CommandActor): v
       if (controlsLocked) throw new CommandError('Nesta sala, só o dono controla a reprodução.')
       return
     case 'PLAY':
+    case 'STOP':
     case 'SEEK':
       if (controlsLocked) throw new CommandError('Nesta sala, só o dono controla a reprodução.')
       return
@@ -176,6 +179,13 @@ function checkPermission(doc: RoomDoc, cmd: RoomCommand, actor: CommandActor): v
       }
       return
     }
+    case 'QUEUE_REPLACE':
+      // Troca a fila de todo mundo: só quando o dono escolheu esse modo.
+      if (settings.playlistPlay !== 'replace') throw new CommandError('Nesta sala, a playlist entra no fim da fila.')
+      if (controlsLocked) throw new CommandError('Nesta sala, só o dono controla a reprodução.')
+      if (settings.adding === 'owner') throw new CommandError('Nesta sala, só o dono adiciona músicas.')
+      if (settings.maxPerUser > 0) cmd.items = cmd.items.slice(0, settings.maxPerUser + 1)
+      return
     case 'TRACK_REMOVE': {
       const item = doc.queue.find((q) => q.id === cmd.itemId)
       if (item && item.addedByUid !== actor.uid) {
@@ -211,6 +221,17 @@ function run(doc: RoomDoc, cmd: RoomCommand, now: number, lead: number): boolean
       doc.playbackState = 'paused'
       doc.startedAt = null
       doc.executeAt = at
+      return true
+    }
+
+    case 'STOP': {
+      // Para e volta ao início da música (Play recomeça do zero).
+      if (!doc.currentTrack) return false
+      if (doc.playbackState !== 'playing' && doc.position === 0) return false
+      doc.playbackState = 'paused'
+      doc.position = 0
+      doc.startedAt = null
+      doc.executeAt = now + lead
       return true
     }
 
@@ -252,6 +273,17 @@ function run(doc: RoomDoc, cmd: RoomCommand, now: number, lead: number): boolean
         startTrack(doc, now)
       }
       doc.queue.push(...items)
+      return true
+    }
+
+    case 'QUEUE_REPLACE': {
+      // Tocar uma playlist no lugar da fila: a primeira começa já, o resto vira a fila.
+      const seen = new Set<string>()
+      const items = cmd.items.filter((i) => !seen.has(i.videoId) && seen.add(i.videoId)).slice(0, SyncConfig.maxQueueSize + 1)
+      if (!items.length) throw new CommandError('A playlist está vazia.')
+      doc.currentTrack = items.shift()!
+      doc.queue = items
+      startTrack(doc, now)
       return true
     }
 

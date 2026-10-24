@@ -11,7 +11,7 @@ const TITLES: Record<RoomPanel, string> = {
   invite: 'Convidar para a sala',
   playlist: 'Playlist',
   save: 'Salvar em playlist',
-  share: 'Sugerir playlist',
+  share: 'Adicionar playlists à sala',
   newPlaylist: 'Nova playlist',
 }
 

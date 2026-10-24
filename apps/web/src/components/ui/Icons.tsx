@@ -13,6 +13,11 @@ export const PauseIcon = (p: P) => (
     <path d="M6 4.5h4.5v15H6zM13.5 4.5H18v15h-4.5z" fill="currentColor" />
   </svg>
 )
+export const StopIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M6 6h12v12H6z" fill="currentColor" />
+  </svg>
+)
 export const NextIcon = (p: P) => (
   <svg {...base} {...p}>
     <path d="M4.5 5v14l10-7zM16 5h3.5v14H16z" fill="currentColor" />

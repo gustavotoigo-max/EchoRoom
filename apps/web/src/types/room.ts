@@ -14,6 +14,8 @@ export interface QueueItem {
   addedByUid?: string
   /** false enquanto o título é provisório (ex.: "youtu.be/ID"). */
   titleResolved?: boolean
+  /** Id da playlist do EchoRoom de onde a música veio (lista da sala marca a faixa ativa). */
+  fromPlaylist?: string
 }
 
 export interface Participant {
@@ -57,6 +59,8 @@ export interface RoomSettings {
   allowGuests: boolean
   /** Quem usa aleatório / ciclar / repetir. */
   modes: 'all' | 'owner' | 'off'
+  /** Tocar uma playlist: põe no fim da fila (padrão) ou substitui a fila. */
+  playlistPlay: 'append' | 'replace'
 }
 
 export const DEFAULT_SETTINGS: RoomSettings = {
@@ -68,6 +72,7 @@ export const DEFAULT_SETTINGS: RoomSettings = {
   maxPerUser: 0,
   allowGuests: true,
   modes: 'all',
+  playlistPlay: 'append',
 }
 
 export function normalizeSettings(raw: unknown): RoomSettings {
@@ -83,6 +88,7 @@ export function normalizeSettings(raw: unknown): RoomSettings {
     maxPerUser: Number.isInteger(max) && max >= 0 && max <= 50 ? max : 0,
     allowGuests: r.allowGuests !== false,
     modes: r.modes === 'owner' || r.modes === 'off' ? r.modes : 'all',
+    playlistPlay: r.playlistPlay === 'replace' ? 'replace' : 'append',
   }
 }
 
