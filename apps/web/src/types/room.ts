@@ -9,6 +9,8 @@ export interface QueueItem {
   author: string
   thumbnail: string
   duration?: number | null
+  /** Transmissão ao vivo: sem duração, sem avançar/voltar; todos tocam no ao vivo. */
+  live?: boolean
   addedBy: string
   /** uid de quem adicionou (permissões: quem adicionou pode remover). */
   addedByUid?: string

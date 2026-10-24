@@ -28,7 +28,7 @@ export type RoomCommand =
   | { type: 'TRACK_MOVE'; itemId: string; toIndex: number }
   | { type: 'TRACK_SKIP'; currentItemId: string | null; reason?: 'user' | 'vote' | 'error' }
   | { type: 'TRACK_ENDED'; itemId: string }
-  | { type: 'TRACK_META'; itemId: string; title: string | null; duration: number | null }
+  | { type: 'TRACK_META'; itemId: string; title: string | null; duration: number | null; live?: boolean }
   | { type: 'SET_MODES'; shuffle?: boolean; repeat?: RepeatMode }
 
 const sec = (ms: number) => ms / 1000
@@ -237,6 +237,7 @@ function run(doc: RoomDoc, cmd: RoomCommand, now: number, lead: number): boolean
 
     case 'SEEK': {
       if (!doc.currentTrack) throw new CommandError('Nenhuma música tocando.')
+      if (doc.currentTrack.live) throw new CommandError('Transmissão ao vivo: não dá para avançar nem voltar.')
       let pos = Number(cmd.position)
       if (!Number.isFinite(pos)) throw new CommandError('Posição inválida.')
       pos = Math.max(0, dur ? Math.min(pos, Math.max(0, dur - 0.25)) : pos)
@@ -340,8 +341,14 @@ function run(doc: RoomDoc, cmd: RoomCommand, now: number, lead: number): boolean
       const item = items.find((q) => q.id === cmd.itemId)
       if (!item) return false
       let changed = false
+      if (cmd.live === true && !item.live) {
+        // Ao vivo: a "duração" do player só cresce; guardá-la faria a sala encerrar a transmissão.
+        item.live = true
+        delete item.duration
+        changed = true
+      }
       const d = Number(cmd.duration)
-      if (!item.duration && d > 0 && d < 86_400) {
+      if (!item.live && !item.duration && d > 0 && d < 86_400) {
         item.duration = d
         changed = true
       }

@@ -26,6 +26,8 @@ export interface PlayerAdapter {
   /** Volume local de 0 a 100 (só deste navegador). */
   setVolume(volume: number): void
   getTitle(): string | null
+  /** True se o vídeo carregado é uma transmissão ao vivo. */
+  isLive?(): boolean
 }
 
 /** Códigos de estado da YouTube IFrame API. */

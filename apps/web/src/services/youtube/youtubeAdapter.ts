@@ -11,8 +11,9 @@ export function createYouTubeAdapter(player: YT.Player): PlayerAdapter {
   }
 
   return {
-    load: (videoId, startSeconds) => player.loadVideoById({ videoId, startSeconds: Math.max(0, startSeconds) }),
-    cue: (videoId, startSeconds) => player.cueVideoById({ videoId, startSeconds: Math.max(0, startSeconds) }),
+    // Sem startSeconds quando é 0: numa transmissão ao vivo o player começa no ao vivo, não no início do DVR.
+    load: (videoId, startSeconds) => player.loadVideoById(startSeconds > 0 ? { videoId, startSeconds } : { videoId }),
+    cue: (videoId, startSeconds) => player.cueVideoById(startSeconds > 0 ? { videoId, startSeconds } : { videoId }),
     play: () => player.playVideo(),
     pause: () => player.pauseVideo(),
     stop: () => player.stopVideo(),
@@ -26,7 +27,12 @@ export function createYouTubeAdapter(player: YT.Player): PlayerAdapter {
     unMute: () => player.unMute(),
     isMuted: () => safe(() => player.isMuted(), false),
     setVolume: (volume) => player.setVolume(Math.max(0, Math.min(100, Math.round(volume)))),
-    getTitle: () =>
-      safe(() => (player as unknown as { getVideoData(): { title?: string } }).getVideoData()?.title || null, null),
+    getTitle: () => safe(() => videoData(player)?.title || null, null),
+    isLive: () => safe(() => videoData(player)?.isLive === true, false),
   }
+}
+
+/** getVideoData() existe no player, mas não está nos tipos da IFrame API. */
+function videoData(player: YT.Player): { title?: string; isLive?: boolean } | undefined {
+  return (player as unknown as { getVideoData(): { title?: string; isLive?: boolean } }).getVideoData()
 }

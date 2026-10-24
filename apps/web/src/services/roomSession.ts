@@ -63,8 +63,8 @@ export class RoomSession {
     this.engine = new SyncEngine({
       clock: this.clock,
       onTrackEnded: (itemId) => this.fire({ type: 'TRACK_ENDED', itemId }),
-      onTrackMeta: (itemId, title, duration) => {
-        this.fire({ type: 'TRACK_META', itemId, title, duration })
+      onTrackMeta: (itemId, title, duration, live) => {
+        this.fire({ type: 'TRACK_META', itemId, title, duration, live })
         const videoId = roomStore.get().room?.currentTrack?.videoId
         if (title && videoId) void fixTrackTitle(this.backend.roomKey, videoId, title)
       },

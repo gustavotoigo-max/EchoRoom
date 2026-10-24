@@ -124,6 +124,24 @@ class FakePlayer implements PlayerAdapter {
   }
 }
 
+/** Transmissão ao vivo: o tempo do player é desde o início da live, não da sala. */
+class FakeLivePlayer extends FakePlayer {
+  edge = 5000
+  tick(dtMs: number) {
+    this.edge += dtMs / 1000
+    super.tick(dtMs)
+  }
+  load(videoId: string) {
+    super.load(videoId, this.edge)
+  }
+  getDuration() {
+    return this.edge
+  }
+  isLive() {
+    return true
+  }
+}
+
 function room(partial: Partial<RoomState>): RoomState {
   return {
     roomId: 'ABX72',
@@ -247,6 +265,56 @@ describe('DriftCorrection', () => {
   })
   it('modo forçado corrige direto', () => {
     expect(new DriftCorrection().decide(-500, 0, rates, true).type).toBe('seek')
+  })
+})
+
+describe('SyncEngine ao vivo', () => {
+  function liveClient(vt: VirtualTime) {
+    const clock = new ClockSync(() => {}, () => vt.now)
+    clock.addSample({ rtt: 40, offset: 0, timestamp: vt.now })
+    const player = new FakeLivePlayer()
+    const meta: unknown[][] = []
+    const engine = new SyncEngine({
+      clock,
+      now: () => vt.now,
+      timers: vt.timers,
+      onTrackEnded: () => {},
+      onTrackMeta: (...args) => meta.push(args),
+      onStatus: () => {},
+    })
+    player.onState = (s) => engine.handlePlayerState(s)
+    engine.start()
+    engine.attachPlayer(player)
+    return { player, engine, meta }
+  }
+
+  it('não puxa a live para a posição da sala e avisa que é ao vivo', () => {
+    const vt = new VirtualTime()
+    const c = liveClient(vt)
+    const start = serverSec(vt) + 0.5
+    c.engine.applyState(room({ playbackState: 'playing', position: 0, startedAt: start, executeAt: start }))
+    vt.advance(10_000, (dt) => c.player.tick(dt))
+    expect(c.player.state).toBe('playing')
+    expect(c.player.seeks.every((s) => s > 1000)).toBe(true)
+    expect(c.player.time).toBeGreaterThan(5000)
+    expect(c.meta[0]).toEqual(['i1', 'Seven Nation Army', null, true])
+  })
+
+  it('pausa e, ao voltar a tocar, pula para o ao vivo', () => {
+    const vt = new VirtualTime()
+    const c = liveClient(vt)
+    const track = { id: 'i1', videoId: 'dQw4w9WgXcQ', title: 't', author: '', thumbnail: '', addedBy: 'Gus', live: true }
+    const t0 = serverSec(vt)
+    c.engine.applyState(room({ currentTrack: track, playbackState: 'playing', startedAt: t0, executeAt: t0 }))
+    vt.advance(2000, (dt) => c.player.tick(dt))
+    c.engine.applyState(room({ currentTrack: track, playbackState: 'paused', position: 2, executeAt: serverSec(vt), stateVersion: 2 }))
+    vt.advance(30_000, (dt) => c.player.tick(dt))
+    expect(c.player.state).toBe('paused')
+    const t1 = serverSec(vt)
+    c.engine.applyState(room({ currentTrack: track, playbackState: 'playing', position: 2, startedAt: t1, executeAt: t1, stateVersion: 3 }))
+    vt.advance(1000, (dt) => c.player.tick(dt))
+    expect(c.player.state).toBe('playing')
+    expect(c.player.edge - c.player.time).toBeLessThan(1.5)
   })
 })
 
