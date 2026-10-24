@@ -60,6 +60,9 @@ export const SyncConfig = {
   adFreezeMs: 1500,
   /** Anúncio que não sai depois disso: recarrega o vídeo na posição da sala. */
   adStuckReloadMs: 90_000,
+
+  /** Ao vivo: mais atrás que isso ao perceber a live = volta para o ao vivo (uma vez). */
+  liveBehindMaxSec: 15,
 } as const
 
 export type SyncConfigType = typeof SyncConfig

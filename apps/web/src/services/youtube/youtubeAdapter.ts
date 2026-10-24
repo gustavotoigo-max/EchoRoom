@@ -28,11 +28,16 @@ export function createYouTubeAdapter(player: YT.Player): PlayerAdapter {
     isMuted: () => safe(() => player.isMuted(), false),
     setVolume: (volume) => player.setVolume(Math.max(0, Math.min(100, Math.round(volume)))),
     getTitle: () => safe(() => videoData(player)?.title || null, null),
-    isLive: () => safe(() => videoData(player)?.isLive === true, false),
+    isLive: () =>
+      safe(() => {
+        const d = videoData(player)
+        return d?.isLive === true || d?.isWindowedLive === true
+      }, false),
   }
 }
 
 /** getVideoData() existe no player, mas não está nos tipos da IFrame API. */
-function videoData(player: YT.Player): { title?: string; isLive?: boolean } | undefined {
-  return (player as unknown as { getVideoData(): { title?: string; isLive?: boolean } }).getVideoData()
+type VideoData = { title?: string; isLive?: boolean; isWindowedLive?: boolean }
+function videoData(player: YT.Player): VideoData | undefined {
+  return (player as unknown as { getVideoData(): VideoData }).getVideoData()
 }

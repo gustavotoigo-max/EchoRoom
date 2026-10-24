@@ -78,6 +78,10 @@ export class SyncEngine {
   private endedSentFor: string | null = null
   private endedSentAt = 0
   private metaSentFor = new Set<string>()
+  /** Ao vivo percebido pela duração que cresce (quando o player não informa isLive). */
+  private liveDetectedFor: string | null = null
+  private liveCaughtUpFor: string | null = null
+  private durationSample: { id: string; duration: number; at: number } | null = null
   private lastCorrection: CorrectionType = 'none'
   private notPlayingSince: number | null = null
   private needsGesture = false
@@ -326,6 +330,7 @@ export class SyncEngine {
       return
     }
 
+    this.sampleDuration(state, nowMs)
     if (this.isLive()) {
       this.reconcileLive(state, local, nowMs)
       return
@@ -529,19 +534,59 @@ export class SyncEngine {
     }
     this.notPlayingSince = null
     this.setNeedsGesture(false)
+    const track = state.currentTrack!
+    if (!track.live && !this.metaSentFor.has(`${track.id}:live`)) {
+      this.metaSentFor.add(`${track.id}:live`)
+      this.deps.onTrackMeta(track.id, player.getTitle(), null, true)
+    }
+    // Uma vez por transmissão: se ficou para trás (ex.: correção de vídeo comum antes de
+    // perceber a live), volta para o ao vivo. Depois disso o player fica por conta do YouTube.
+    if (this.liveCaughtUpFor !== track.id) {
+      this.liveCaughtUpFor = track.id
+      if (player.getDuration() - player.getCurrentTime() > this.cfg.liveBehindMaxSec) this.seekLiveEdge(true)
+    }
     this.setUi(this.isUnstable() ? 'unstable' : 'synced')
   }
 
   /** Pula para o ponto mais recente da transmissão (getDuration cresce com o ao vivo). */
-  private seekLiveEdge(): void {
+  private seekLiveEdge(evenPlaying = false): void {
     const player = this.player!
-    if (player.getState() !== 'paused') return // cued/unstarted: play() já começa no ao vivo
+    const local = player.getState()
+    // cued/unstarted: play() já começa no ao vivo
+    if (local !== 'paused' && !(evenPlaying && local === 'playing')) return
     const edge = player.getDuration()
     if (edge > 0) player.seek(edge)
   }
 
   private isLive(): boolean {
-    return !!this.state?.currentTrack?.live || !!this.player?.isLive?.()
+    const track = this.state?.currentTrack
+    if (!track) return false
+    return !!track.live || this.liveDetectedFor === track.id || !!this.player?.isLive?.()
+  }
+
+  /**
+   * Num vídeo comum a duração é fixa; numa transmissão ao vivo ela cresce junto
+   * com o relógio (aos saltos, a cada pedaço baixado). Crescer mais de 1,5 s em
+   * 3 s basta para tratar como live, mesmo se o player não informar isLive.
+   */
+  private sampleDuration(state: RoomState, nowMs: number): void {
+    const track = state.currentTrack
+    if (!track || track.live || this.liveDetectedFor === track.id) return
+    const duration = this.player!.getDuration()
+    const prev = this.durationSample
+    if (!prev || prev.id !== track.id || !(duration > 0) || !(prev.duration > 0)) {
+      this.durationSample = { id: track.id, duration, at: nowMs }
+      return
+    }
+    const elapsed = (nowMs - prev.at) / 1000
+    if (elapsed < 3) return
+    const grew = duration - prev.duration
+    if (grew > 1.5 && grew < elapsed + 5) {
+      this.liveDetectedFor = track.id
+      this.log('transmissão ao vivo detectada pela duração', { duration })
+    } else {
+      this.durationSample = { id: track.id, duration, at: nowMs }
+    }
   }
 
   /** Chamado após um clique do usuário (libera o autoplay). */
@@ -577,11 +622,8 @@ export class SyncEngine {
   private sendMetaOnce(): void {
     const track = this.state?.currentTrack
     if (!track || !this.player || this.metaSentFor.has(track.id)) return
-    if (this.player.isLive?.()) {
-      this.metaSentFor.add(track.id)
-      if (!track.live) this.deps.onTrackMeta(track.id, this.player.getTitle(), null, true)
-      return
-    }
+    if (this.isLive()) return // reconcileLive avisa a sala
+
     const duration = this.player.getDuration()
     if (!duration) return
     this.metaSentFor.add(track.id)

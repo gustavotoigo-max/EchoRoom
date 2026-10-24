@@ -127,6 +127,8 @@ class FakePlayer implements PlayerAdapter {
 /** Transmissão ao vivo: o tempo do player é desde o início da live, não da sala. */
 class FakeLivePlayer extends FakePlayer {
   edge = 5000
+  /** false: como um player que não informa isLive (detecção pela duração). */
+  reportsLive = true
   tick(dtMs: number) {
     this.edge += dtMs / 1000
     super.tick(dtMs)
@@ -138,7 +140,7 @@ class FakeLivePlayer extends FakePlayer {
     return this.edge
   }
   isLive() {
-    return true
+    return this.reportsLive
   }
 }
 
@@ -269,10 +271,11 @@ describe('DriftCorrection', () => {
 })
 
 describe('SyncEngine ao vivo', () => {
-  function liveClient(vt: VirtualTime) {
+  function liveClient(vt: VirtualTime, reportsLive = true) {
     const clock = new ClockSync(() => {}, () => vt.now)
     clock.addSample({ rtt: 40, offset: 0, timestamp: vt.now })
     const player = new FakeLivePlayer()
+    player.reportsLive = reportsLive
     const meta: unknown[][] = []
     const engine = new SyncEngine({
       clock,
@@ -298,6 +301,19 @@ describe('SyncEngine ao vivo', () => {
     expect(c.player.seeks.every((s) => s > 1000)).toBe(true)
     expect(c.player.time).toBeGreaterThan(5000)
     expect(c.meta[0]).toEqual(['i1', 'Seven Nation Army', null, true])
+  })
+
+  it('sem isLive do player: percebe a live pela duração e para de corrigir', () => {
+    const vt = new VirtualTime()
+    const c = liveClient(vt, false)
+    const t0 = serverSec(vt)
+    c.engine.applyState(room({ currentTrack: { id: 'i1', videoId: 'dQw4w9WgXcQ', title: 't', author: '', thumbnail: '', addedBy: 'Gus' }, playbackState: 'playing', startedAt: t0, executeAt: t0 }))
+    vt.advance(10_000, (dt) => c.player.tick(dt))
+    const seeksAfterDetect = c.player.seeks.length
+    vt.advance(60_000, (dt) => c.player.tick(dt))
+    expect(c.player.seeks.length).toBe(seeksAfterDetect) // nenhum seek depois de perceber
+    expect(c.player.edge - c.player.time).toBeLessThan(15)
+    expect(c.meta.at(-1)).toEqual(['i1', 'Seven Nation Army', null, true])
   })
 
   it('pausa e, ao voltar a tocar, pula para o ao vivo', () => {
