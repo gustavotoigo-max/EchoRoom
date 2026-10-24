@@ -54,6 +54,12 @@ export const SyncConfig = {
 
   /** Reenvio de TRACK_ENDED se o servidor ainda não avançou. */
   trackEndedRetryMs: 3000,
+
+  // Anúncios do YouTube (só para quem não tem Premium nem bloqueador)
+  /** "Tocando" com o tempo do vídeo parado por esse tempo = anúncio na frente da música. */
+  adFreezeMs: 1500,
+  /** Anúncio que não sai depois disso: recarrega o vídeo na posição da sala. */
+  adStuckReloadMs: 90_000,
 } as const
 
 export type SyncConfigType = typeof SyncConfig

@@ -413,6 +413,56 @@ describe('SyncEngine', () => {
   })
 })
 
+describe('SyncEngine: anúncios do YouTube', () => {
+  it('não mexe no player durante o anúncio e corrige a posição quando a música volta', () => {
+    const vt = new VirtualTime()
+    const a = makeClient(vt, 0)
+    const start = serverSec(vt)
+    a.engine.applyState(room({ playbackState: 'playing', position: 0, startedAt: start, executeAt: start }))
+    vt.advance(2000, (dt) => a.player.tick(dt))
+    const seeksBefore = a.player.seeks.length
+
+    // Anúncio: o player diz "tocando", mas o tempo da música não anda.
+    const frozenAt = a.player.time
+    vt.advance(15_000)
+    expect(a.statuses.at(-1)!.ui).toBe('ad')
+    expect(a.player.seeks.length).toBe(seeksBefore)
+    expect(a.player.state).toBe('playing')
+    expect(a.player.time).toBe(frozenAt)
+
+    // Fim do anúncio: a música volta a andar e o engine alcança a sala.
+    vt.advance(1500, (dt) => a.player.tick(dt))
+    expect(a.statuses.at(-1)!.ui).not.toBe('ad')
+    expect(Math.abs(a.player.time - (serverSec(vt) - start))).toBeLessThan(0.15)
+  })
+
+  it('anúncio travado: recarrega o vídeo na posição da sala', () => {
+    const vt = new VirtualTime()
+    const a = makeClient(vt, 0)
+    const start = serverSec(vt)
+    a.engine.applyState(room({ playbackState: 'playing', position: 0, startedAt: start, executeAt: start }))
+    vt.advance(2000, (dt) => a.player.tick(dt))
+    vt.advance(SyncConfig.adStuckReloadMs + 3000)
+    vt.advance(1000, (dt) => a.player.tick(dt))
+    expect(Math.abs(a.player.time - (serverSec(vt) - start))).toBeLessThan(0.15)
+  })
+
+  it('pausa longa da sala não é confundida com anúncio', () => {
+    const vt = new VirtualTime()
+    const a = makeClient(vt, 0)
+    const start = serverSec(vt)
+    a.engine.applyState(room({ playbackState: 'playing', position: 0, startedAt: start, executeAt: start, stateVersion: 1 }))
+    vt.advance(3000, (dt) => a.player.tick(dt))
+    const pos = a.player.time
+    a.engine.applyState(room({ playbackState: 'paused', position: pos, executeAt: serverSec(vt), stateVersion: 2 }))
+    vt.advance(10_000, (dt) => a.player.tick(dt))
+    const t = serverSec(vt)
+    a.engine.applyState(room({ playbackState: 'playing', position: pos, startedAt: t, executeAt: t, stateVersion: 3 }))
+    vt.advance(800, (dt) => a.player.tick(dt))
+    expect(a.statuses.some((s, i) => i > 0 && s.ui === 'ad')).toBe(false)
+  })
+})
+
 describe('youtubeUrlParser', () => {
   it('aceita os formatos suportados', () => {
     const id = 'dQw4w9WgXcQ'

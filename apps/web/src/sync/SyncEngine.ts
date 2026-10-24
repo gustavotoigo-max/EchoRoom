@@ -16,7 +16,7 @@ import { getExpectedPosition as timelineExpected, isStartPending } from './Timel
  *   → loop local mede drift e corrige com histerese
  */
 
-export type SyncUiState = 'waiting' | 'syncing' | 'synced' | 'adjusting' | 'buffering' | 'unstable'
+export type SyncUiState = 'waiting' | 'syncing' | 'synced' | 'adjusting' | 'buffering' | 'unstable' | 'ad'
 
 export interface SyncStatus {
   rtt: number
@@ -81,6 +81,11 @@ export class SyncEngine {
   private lastCorrection: CorrectionType = 'none'
   private notPlayingSince: number | null = null
   private needsGesture = false
+  /** Anúncio do YouTube na frente da música: o engine não mexe no player. */
+  private adSince: number | null = null
+  private frozenAt: number | null = null
+  private frozenSince = 0
+  private lastAdCheck = 0
   private ui: SyncUiState = 'waiting'
   private drift = 0
   private visibilityHandler = () => this.onVisibilityChange()
@@ -188,7 +193,7 @@ export class SyncEngine {
     }
 
     if (s === 'playing') {
-      this.sendMetaOnce()
+      if (this.adSince == null) this.sendMetaOnce()
       if (this.wasBuffering || this.forceNext) {
         this.timers.setTimeout(() => this.reconcile(true), 0)
       }
@@ -213,6 +218,7 @@ export class SyncEngine {
     this.correction.reset()
     this.endedSentFor = null
     this.prerolling = false
+    this.resetAd()
     this.restoreMute()
 
     const serverNow = this.clock.serverNowSec()
@@ -371,8 +377,12 @@ export class SyncEngine {
     }
 
     if (local !== 'playing') {
+      this.resetAd()
       // pausado/cued/ended fora de hora: volta para a timeline.
-      if (Math.abs(player.getCurrentTime() - expected) * 1000 > this.cfg.ignoreDriftMs) {
+      // 'unstarted' só recebe play(): pode ser um anúncio começando, e seek no
+      // meio do anúncio deixa a tela dele travada. A posição é corrigida assim que tocar.
+      if (local === 'unstarted') this.forceNext = true
+      else if (Math.abs(player.getCurrentTime() - expected) * 1000 > this.cfg.ignoreDriftMs) {
         player.seek(expected)
         this.correction.noteSeek(nowMs)
       }
@@ -387,8 +397,10 @@ export class SyncEngine {
 
     this.notPlayingSince = null
     this.setNeedsGesture(false)
+    const adEnded = this.adSince != null
+    if (this.watchForAd(player, state, nowMs)) return
     this.drift = (player.getCurrentTime() - expected) * 1000
-    const forced = force || this.forceNext || this.wasBuffering
+    const forced = force || this.forceNext || this.wasBuffering || adEnded
     this.forceNext = false
     this.wasBuffering = false
     const decision = this.correction.decide(this.drift, nowMs, player.getAvailablePlaybackRates(), forced)
@@ -424,6 +436,55 @@ export class SyncEngine {
         correctionType: decision.type,
       })
     }
+  }
+
+  /**
+   * Anúncio do YouTube: a IFrame API não avisa quando ele começa ou termina.
+   * Durante o anúncio o player diz "tocando", mas o tempo da música fica
+   * parado. Nesse período o engine não
+   * faz seek/pause: mexer no player no meio do anúncio deixa a tela dele
+   * travada sobre o vídeo. Quando a música volta a andar, corrige a posição.
+   * Retorna true enquanto houver anúncio.
+   */
+  private watchForAd(player: PlayerAdapter, state: RoomState, nowMs: number): boolean {
+    const time = player.getCurrentTime()
+    // Só conta tempo parado em ciclos seguidos "tocando" (pausa, buffering etc. zeram).
+    const gap = nowMs - this.lastAdCheck > this.cfg.localCheckIntervalMs * 2.5
+    this.lastAdCheck = nowMs
+    if (gap && this.adSince == null) this.frozenAt = null
+    if (this.frozenAt == null || Math.abs(time - this.frozenAt) > 0.05) {
+      this.frozenAt = time
+      this.frozenSince = nowMs
+    }
+    const frozen = nowMs - this.frozenSince >= this.cfg.adFreezeMs
+
+    if (!frozen) {
+      if (this.adSince != null) this.log('anúncio terminou')
+      this.adSince = null
+      return false
+    }
+
+    if (this.adSince == null) {
+      this.adSince = nowMs
+      this.log('anúncio na frente da música', { time })
+    } else if (nowMs - this.adSince > this.cfg.adStuckReloadMs && state.currentTrack) {
+      // Tela do anúncio travada: recarrega o vídeo na posição da sala.
+      this.log('anúncio travado: recarregando o vídeo')
+      this.resetAd()
+      player.load(state.currentTrack.videoId, this.getExpectedPosition(state))
+      this.forceNext = true
+      this.setUi('syncing')
+      return true
+    }
+    this.drift = 0
+    this.lastCorrection = 'none'
+    this.setUi('ad')
+    return true
+  }
+
+  private resetAd(): void {
+    this.adSince = null
+    this.frozenAt = null
   }
 
   /**
@@ -488,8 +549,8 @@ export class SyncEngine {
     this.notPlayingSince = null
     this.setNeedsGesture(false)
     if (this.player && this.state?.playbackState === 'playing') {
+      // Sem seek na timeline: se for um anúncio, o seek trava a tela dele. O próximo ciclo corrige.
       if (this.isLive()) this.seekLiveEdge()
-      else this.player.seek(this.getExpectedPosition())
       this.player.play()
     }
     this.forceNext = true

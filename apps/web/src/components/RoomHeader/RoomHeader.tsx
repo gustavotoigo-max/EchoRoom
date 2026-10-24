@@ -33,6 +33,8 @@ export function describeStatus(conn: ConnectionStatus, sync: SyncUiState): { lab
       return { label: 'Carregando vídeo…', tone: 'work' }
     case 'unstable':
       return { label: 'Conexão instável', tone: 'warn' }
+    case 'ad':
+      return { label: 'Anúncio do YouTube…', tone: 'work' }
     default:
       return { label: 'Conectado', tone: 'idle' }
   }

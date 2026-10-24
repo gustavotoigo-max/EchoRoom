@@ -87,7 +87,9 @@ export function PlayerPanel() {
     if (!hidden) toggleFullscreen()
   }
 
-  const overlay = hasTrack && !needsGesture && !error
+  // Anúncio do YouTube: tira nossos controles da frente para o "Pular anúncio" funcionar.
+  const ad = useStore(playerStore, (s) => s.sync === 'ad')
+  const overlay = hasTrack && !needsGesture && !error && !ad
 
   return (
     <div className={`player-stage ${fullscreen ? 'is-fullscreen' : ''}`} ref={stageRef}>
@@ -96,7 +98,7 @@ export function PlayerPanel() {
         <YouTubePlayer onReady={onReady} onStateChange={onState} onError={onError} />
         {/* Cobre o iframe: os comandos passam pela sala (clique = play/pausa, duplo clique = tela cheia). */}
         <div
-          className={`player-shield ${overlay && !playback.disabled ? 'is-clickable' : ''}`}
+          className={`player-shield ${overlay && !playback.disabled ? 'is-clickable' : ''} ${ad ? 'is-ad' : ''}`}
           aria-hidden="true"
           onClick={overlay ? onVideoClick : undefined}
           onDoubleClick={overlay ? onVideoDoubleClick : undefined}
@@ -151,6 +153,7 @@ export function PlayerPanel() {
             {error}
           </div>
         )}
+        {ad && <div className="player-ad-note">Anúncio do YouTube. A música volta sincronizada logo depois.</div>}
         {!hidden && !fullscreen && <SizePicker size={size} overlay />}
       </div>
 
