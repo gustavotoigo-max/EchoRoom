@@ -19,6 +19,7 @@ const env: Env = {
   FIREBASE_SERVICE_ACCOUNT: JSON.stringify(SA),
   ALLOWED_ORIGIN: ORIGIN,
   ADMIN_UIDS: ADMIN,
+  GOOGLE_CLIENT_ID: 'gclient.apps.googleusercontent.com',
 }
 
 const b64u = (b: Buffer | string) => Buffer.from(b).toString('base64url')
@@ -356,7 +357,7 @@ describe('contas por e-mail', () => {
     const res = await emailLogin('Edddddddddddddddddddddddddd1')
     expect(((await res.json()) as { profile: { uid: string } }).profile.uid).toBe('discord_222222222222222222')
     const info = (await (await call('GET', '/account', { token: ana })).json()) as { methods: { discord: unknown; email: boolean } }
-    expect(info.methods).toEqual({ discord: { username: 'ana.lima' }, email: true })
+    expect(info.methods).toEqual({ discord: { username: 'ana.lima' }, email: true, google: null })
   })
 
   it('conta por e-mail vincula o Discord; Discord com conta própria é recusado', async () => {
@@ -394,5 +395,78 @@ describe('contas por e-mail', () => {
     const html = await res.text()
     expect(html).toContain('intent://email?apiKey=k1&oobCode=c-2&mode=signIn#Intent')
     expect(html.includes('x=')).toBe(false)
+  })
+})
+
+describe('login com Google', () => {
+  beforeEach(() => {
+    tree = {}
+  })
+  /** ID token do "Fazer login com o Google". */
+  const googleCred = (sub: string, opts: { aud?: string; name?: string } = {}) => {
+    const now = Math.floor(Date.now() / 1000)
+    const head = b64u(JSON.stringify({ alg: 'RS256', kid: 'k1', typ: 'JWT' }))
+    const body = b64u(
+      JSON.stringify({
+        iss: 'https://accounts.google.com',
+        aud: opts.aud ?? env.GOOGLE_CLIENT_ID,
+        sub,
+        email: 'mesmo@gmail.com',
+        name: opts.name ?? 'Gabi Google',
+        picture: 'https://lh3.googleusercontent.com/a/abc=s96-c',
+        iat: now,
+        exp: now + 3600,
+      }),
+    )
+    const sig = createSign('RSA-SHA256').update(`${head}.${body}`).sign(firebaseKeys.privateKey)
+    return `${head}.${body}.${b64u(sig)}`
+  }
+  const google = (sub: string, body: Record<string, unknown> = {}, token?: string) =>
+    call('POST', '/google', { token, body: { credential: googleCred(sub), ...body } })
+  const errorOf = async (res: Response) => ((await res.json()) as { error?: string }).error
+
+  it('conta nova vira acct_g_<sub>, com a foto do Google', async () => {
+    expect(await errorOf(await google('100000000000000000001'))).toBe('needs_profile')
+    const res = await google('100000000000000000001', { username: 'gabi' })
+    expect(res.status).toBe(200)
+    const data = (await res.json()) as { firebaseToken: string; profile: { uid: string; name: string } }
+    expect(data.profile.uid).toBe('acct_g_100000000000000000001')
+    expect(data.profile.name).toBe('Gabi Google')
+    expect(claimsOf(data.firebaseToken).av).toBe('https://lh3.googleusercontent.com/a/abc=s96-c')
+    expect((await google('100000000000000000001')).status).toBe(200)
+  })
+
+  it('recusa token de outro Client ID', async () => {
+    const res = await call('POST', '/google', { body: { credential: googleCred('100000000000000000002', { aud: 'outro' }) } })
+    expect(await errorOf(res)).toBe('google_rejected')
+  })
+
+  it('conta do Discord vincula o Google e entra por ele; nunca junta pelo e-mail', async () => {
+    await loginAs()
+    const ana = idToken('discord_222222222222222222')
+    expect((await google('100000000000000000003', { link: true }, ana)).status).toBe(200)
+    const res = await google('100000000000000000003')
+    expect(((await res.json()) as { profile: { uid: string } }).profile.uid).toBe('discord_222222222222222222')
+    const info = (await (await call('GET', '/account', { token: ana })).json()) as { methods: unknown }
+    expect(info.methods).toEqual({ discord: { username: 'ana.lima' }, email: false, google: { name: 'Gabi Google' } })
+    // Outra conta Google com o mesmo e-mail continua sendo outra conta.
+    expect(await errorOf(await google('100000000000000000004'))).toBe('needs_profile')
+  })
+
+  it('Google com conta própria não vai para outra; desvincular o próprio Google', async () => {
+    await google('100000000000000000005', { username: 'gabi5' })
+    await loginAs()
+    const ana = idToken('discord_222222222222222222')
+    expect(await errorOf(await google('100000000000000000005', { link: true }, ana))).toBe('google_in_use')
+    const gabi = idToken('acct_g_100000000000000000005')
+    expect(await errorOf(await call('POST', '/unlink', { token: gabi, body: { provider: 'google' } }))).toBe('last_method')
+    // O Discord da Ana já tem conta própria: o vínculo é recusado.
+    const link = await call('POST', '/discord', { token: gabi, body: { code: 'ok', redirectUri: `${ORIGIN}/EchoRoom/`, link: true } })
+    expect(await errorOf(link)).toBe('discord_in_use')
+    // Com um e-mail vinculado, o próprio Google pode sair; depois ele não entra mais.
+    const emailTok = idToken('Ehhhhhhhhhhhhhhhhhhhhhhhhhh1', { extra: { email_verified: true, firebase: { sign_in_provider: 'password' } } })
+    expect((await call('POST', '/link/email', { token: gabi, body: { idToken: emailTok } })).status).toBe(200)
+    expect((await call('POST', '/unlink', { token: gabi, body: { provider: 'google' } })).status).toBe(200)
+    expect(await errorOf(await google('100000000000000000005'))).toBe('unlinked')
   })
 })

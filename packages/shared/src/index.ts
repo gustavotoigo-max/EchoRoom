@@ -14,8 +14,10 @@ export const CLAIMS = {
 export const DISCORD_UID_PREFIX = 'discord_'
 /** Prefixo do uid das contas criadas por e-mail (ID interno, independente do provedor). */
 export const ACCOUNT_UID_PREFIX = 'acct_'
+/** Prefixo das contas criadas pelo login com Google (também começa com acct_). */
+export const GOOGLE_UID_PREFIX = 'acct_g_'
 
-/** true para quem tem conta EchoRoom (Discord ou e-mail); o resto é convidado. */
+/** true para quem tem conta EchoRoom (Discord, e-mail ou Google); o resto é convidado. */
 export const isAccountUid = (uid: string | null | undefined) =>
   !!uid && (uid.startsWith(DISCORD_UID_PREFIX) || uid.startsWith(ACCOUNT_UID_PREFIX))
 
@@ -42,6 +44,8 @@ export type LoginError =
   | 'unlinked'
   | 'discord_in_use'
   | 'email_in_use'
+  | 'google_rejected'
+  | 'google_in_use'
   | 'last_method'
   | 'unauthenticated'
 
@@ -49,6 +53,7 @@ export type LoginError =
 export interface AccountMethods {
   discord: { username: string } | null
   email: boolean
+  google: { name: string } | null
 }
 
 /** Cadastro aberto (qualquer um entra com Discord) ou só com aprovação do admin. */

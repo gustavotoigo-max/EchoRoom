@@ -35,6 +35,7 @@ tests/            testes com Discord, Google e banco simulados
 | `DISCORD_CLIENT_ID` | Text | Client ID do app do Discord |
 | `ALLOWED_ORIGIN` | Text | `https://gustavotoigo-max.github.io` |
 | `ADMIN_UIDS` | Text | seu ID no EchoRoom (aparece na página `/admin`), ex.: `discord_123…` — vários separados por vírgula |
+| `GOOGLE_CLIENT_ID` | Text | Client ID do Google (OAuth "Aplicativo da Web"), o mesmo da variável do GitHub. Sem ele, o login com Google fica desligado |
 | `DISCORD_CLIENT_SECRET` | **Secret** | Client Secret do Discord |
 | `FIREBASE_SERVICE_ACCOUNT` | **Secret** | conteúdo inteiro do JSON da conta de serviço |
 

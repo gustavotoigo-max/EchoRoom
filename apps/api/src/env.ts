@@ -9,6 +9,8 @@ export interface Env {
   ALLOWED_ORIGIN: string
   /** uids dos administradores, separados por vírgula (ex.: discord_123…). */
   ADMIN_UIDS?: string
+  /** Client ID do Google (OAuth, tipo "Aplicativo da Web"); sem ele o login com Google fica desligado. */
+  GOOGLE_CLIENT_ID?: string
   /** Opcional: endereço do Realtime Database (padrão: https://<projeto>-default-rtdb.firebaseio.com). */
   FIREBASE_DATABASE_URL?: string
 }

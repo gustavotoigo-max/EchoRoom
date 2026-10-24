@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { USERNAME_RE } from '@echoroom/shared'
 import { cancelEmail, confirmEmail, emailStore, submitNewAccount } from '../../services/emailAuth'
 import { useStore } from '../../stores/createStore'
@@ -9,7 +9,7 @@ import { CloseIcon } from '../ui/Icons'
  * confirmar o e-mail (link aberto em outro navegador) e criar a conta.
  */
 export function EmailDialog() {
-  const { step, error, email } = useStore(emailStore, (s) => s)
+  const { step, error, email, suggestName } = useStore(emailStore, (s) => s)
   const [name, setName] = useState('')
   const [username, setUsername] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -18,6 +18,10 @@ export function EmailDialog() {
   if (step === 'askEmail' || step === 'profile') last.current = step
   else if (step !== 'working') last.current = null
   const shown = last.current
+  // Conta nova pelo Google: o nome da conta Google já vem preenchido.
+  useEffect(() => {
+    if (shown === 'profile' && suggestName) setName((n) => n || suggestName)
+  }, [shown, suggestName])
   if (!shown) return null
   const working = step === 'working'
 

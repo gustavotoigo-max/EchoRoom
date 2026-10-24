@@ -60,7 +60,7 @@
   height: 40px;
 }
 
-/* Entrar na conta: Discord ou link por e-mail */
+/* Entrar na conta: Google, Discord ou link por e-mail */
 .login-buttons {
   display: grid;
   gap: 8px;
@@ -71,6 +71,13 @@
 .login-buttons.is-compact > .btn {
   height: 36px;
   justify-self: start;
+}
+.google-btn {
+  min-height: 44px;
+  color-scheme: light;
+}
+.google-btn.is-link {
+  min-height: 40px;
 }
 .email-form input {
   min-width: 0;

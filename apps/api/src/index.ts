@@ -4,6 +4,7 @@ import { verifyIdToken } from './google'
 import { corsHeaders, HttpError, json } from './http'
 import { adminRoute } from './routes/admin'
 import { accountInfo, emailAppCallback, emailLogin, linkEmail, unlink } from './routes/email'
+import { googleLogin } from './routes/google'
 import { APP_CALLBACK_PATH, appCallback, login } from './routes/login'
 import { dailyRoutine } from './stats'
 
@@ -12,6 +13,7 @@ import { dailyRoutine } from './stats'
  *
  *   GET  /              diagnóstico (o que falta configurar)
  *   POST /discord       login com Discord → token do Firebase (site e app); link:true vincula
+ *   POST /google      login com Google (ID token) → token da conta; link:true vincula
  *   POST /email         login por e-mail (token do usuário de e-mail) → token da conta
  *   GET  /email/app     link do e-mail aberto no celular → app (echoroom://email)
  *   POST /link/email    vincula um e-mail à conta de quem está logado
@@ -31,6 +33,7 @@ export default {
       if (request.method === 'GET' && path === '/') res = diagnostics(env)
       else if (request.method === 'POST' && (path === '/discord' || path === '/auth/discord')) res = await login(request, env)
       else if (request.method === 'GET' && path === APP_CALLBACK_PATH) return appCallback(request)
+      else if (request.method === 'POST' && path === '/google') res = await googleLogin(request, env)
       else if (request.method === 'POST' && path === '/email') res = await emailLogin(request, env)
       else if (request.method === 'GET' && path === '/email/app') return emailAppCallback(request)
       else if (request.method === 'POST' && path === '/link/email') res = await linkEmail(request, env)
@@ -63,6 +66,7 @@ function diagnostics(env: Env): Response {
       FIREBASE_SERVICE_ACCOUNT: !!readServiceAccount(env),
       ALLOWED_ORIGIN: allowedOrigins(env).length > 0,
       ADMIN_UIDS: adminUids(env).length > 0,
+      GOOGLE_CLIENT_ID: !!env.GOOGLE_CLIENT_ID,
     },
   })
 }

@@ -282,6 +282,10 @@ export function loginErrorMessage(code?: string): string {
       return 'Esse Discord já está ligado a outra conta do EchoRoom.'
     case 'email_in_use':
       return 'Esse e-mail já está ligado a outra conta do EchoRoom.'
+    case 'google_in_use':
+      return 'Essa conta Google já está ligada a outra conta do EchoRoom.'
+    case 'google_rejected':
+      return 'O Google não confirmou o login. Tente de novo.'
     case 'username_taken':
       return 'Esse nome de usuário já está em uso. Escolha outro.'
     case 'bad_profile':

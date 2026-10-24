@@ -27,7 +27,7 @@ import { explainAccessDenied } from './roomsApi'
 
 /** Só aceita avatares do CDN do Discord ou o avatar de inicial das contas por e-mail (SVG embutido). */
 function safeAvatar(url: unknown): string | null {
-  return typeof url === 'string' && (/^https:\/\/cdn\.discordapp\.com\//.test(url) || /^data:image\/svg\+xml,/.test(url)) ? url : null
+  return typeof url === 'string' && (/^https:\/\/(cdn\.discordapp\.com|lh3\.googleusercontent\.com)\//.test(url) || /^data:image\/svg\+xml,/.test(url)) ? url : null
 }
 
 /** Presença e inatividade (tempos em ms). */
