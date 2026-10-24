@@ -6,8 +6,10 @@ import type {
   AdminUserDetail,
   AuditEntry,
 } from '@echoroom/shared'
+import { ownMethod, type AccountRecord } from '../accounts'
 import { mapLimit, type Db } from '../db'
-import { adminUids, type Env } from '../env'
+import { adminUids, readServiceAccount, type Env } from '../env'
+import { deleteAuthUsers } from '../google'
 import { HttpError, json, readJson } from '../http'
 import { activityByDay, lastDays, onlineNow, overview, type UserRecord } from '../stats'
 
@@ -86,12 +88,16 @@ async function unsuspend(ctx: Ctx, uid: string): Promise<void> {
   await audit(ctx, 'reativar', uid)
 }
 
-/** Apaga os dados da pessoa (perfil, salas da lista, playlists, convites, cadastro). */
+/**
+ * Apaga os dados da pessoa (perfil, salas da lista, playlists, convites,
+ * cadastro, formas de entrar) e os usuários dela no Firebase Authentication.
+ */
 async function deleteUser(ctx: Ctx, uid: string): Promise<void> {
   if (adminUids(ctx.env).includes(uid)) throw new HttpError(400, 'cannot_delete_admin')
-  const [rooms, playlists] = await Promise.all([
+  const [rooms, playlists, rec] = await Promise.all([
     ctx.db.get<Record<string, { key?: string; role?: string }>>(`users/${uid}/rooms`),
     ctx.db.get<Record<string, { sharedIn?: Record<string, string> }>>(`users/${uid}/playlists`),
+    ctx.db.get<AccountRecord>(`admin/users/${uid}`),
   ])
   const patch: Record<string, null | string> = {
     [`users/${uid}`]: null,
@@ -101,6 +107,17 @@ async function deleteUser(ctx: Ctx, uid: string): Promise<void> {
     [`admin/requests/${uid}`]: null,
     [`admin/approved/${uid}`]: null,
   }
+  // Formas de entrar: soltam para poderem criar ou entrar em outra conta depois.
+  const own = ownMethod(uid)
+  patch[`admin/identities/${own.provider}/${own.id}`] = null
+  const links = rec?.links ?? {}
+  if (links.discord) patch[`admin/identities/discord/${links.discord.id}`] = null
+  if (links.email) patch[`admin/identities/email/${links.email.uid}`] = null
+  if (links.google) patch[`admin/identities/google/${links.google.sub}`] = null
+  // Usuários no Firebase Authentication: a própria conta e o usuário do e-mail (link de acesso).
+  const authUids = [uid]
+  if (own.provider === 'email') authUids.push(own.id)
+  if (links.email) authUids.push(links.email.uid)
   for (const r of Object.values(rooms ?? {})) {
     if (!r.key || !/^[0-9a-f]{64}$/.test(r.key)) continue
     patch[`rooms/${r.key}/members/${uid}`] = null
@@ -120,7 +137,16 @@ async function deleteUser(ctx: Ctx, uid: string): Promise<void> {
     }
   }
   await ctx.db.update('', patch)
-  await audit(ctx, 'apagar cadastro', uid)
+  // Melhor esforço: se o Authentication falhar, o cadastro já foi apagado do banco.
+  const sa = readServiceAccount(ctx.env)
+  let authNote = ''
+  try {
+    if (sa) await deleteAuthUsers(sa, authUids)
+  } catch (err) {
+    console.error('apagar cadastro: Authentication', err)
+    authNote = 'Authentication não apagado'
+  }
+  await audit(ctx, 'apagar cadastro', uid, authNote)
 }
 
 // ---- salas ------------------------------------------------------------------------

@@ -11,7 +11,8 @@ import type { ServiceAccount } from './env'
 const IDENTITY_AUD = 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit'
 const OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const SECURETOKEN_JWKS = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'
-const DB_SCOPES = 'https://www.googleapis.com/auth/firebase.database https://www.googleapis.com/auth/userinfo.email'
+// cloud-platform: apagar usuários do Firebase Authentication (painel de admin).
+const DB_SCOPES = 'https://www.googleapis.com/auth/firebase.database https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/cloud-platform'
 
 const nowSec = () => Math.floor(Date.now() / 1000)
 
@@ -40,6 +41,17 @@ export async function serviceAccessToken(sa: ServiceAccount): Promise<string> {
   const data = (await res.json()) as { access_token: string; expires_in: number }
   access = { token: data.access_token, exp: iat + (data.expires_in || 3600), email: sa.client_email }
   return access.token
+}
+
+/** Apaga usuários do Firebase Authentication (os que não existem são ignorados). */
+export async function deleteAuthUsers(sa: ServiceAccount, uids: string[]): Promise<void> {
+  if (!uids.length) return
+  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/projects/${sa.project_id}/accounts:batchDelete`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${await serviceAccessToken(sa)}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ localIds: uids, force: true }),
+  })
+  if (!res.ok) throw new Error(`Firebase Authentication recusou apagar os usuários (${res.status}).`)
 }
 
 let jwks: { keys: Jwk[]; exp: number } | null = null
