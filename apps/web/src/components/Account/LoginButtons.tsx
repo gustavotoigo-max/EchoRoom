@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { authStore, discordEnabled, emailEnabled, startDiscordLogin } from '../../services/discordAuth'
 import { emailStore, sendEmailLink } from '../../services/emailAuth'
 import { useStore } from '../../stores/createStore'
@@ -11,9 +11,10 @@ export function LoginButtons({ compact }: { compact?: boolean }) {
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState('')
 
-  function submit(e: FormEvent) {
-    e.preventDefault()
-    void sendEmailLink(value)
+  // Sem <form>: este bloco fica dentro dos formulários de criar e entrar na sala,
+  // e um formulário dentro de outro enviava o de fora (a página recarregava).
+  function submit() {
+    if (value.trim() && email.step !== 'working') void sendEmailLink(value)
   }
 
   return (
@@ -34,21 +35,26 @@ export function LoginButtons({ compact }: { compact?: boolean }) {
             </button>
           </div>
         ) : open ? (
-          <form className="inline-field email-form" onSubmit={submit}>
+          <div className="inline-field email-form">
             <input
               type="email"
               value={value}
               onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return
+                e.preventDefault()
+                submit()
+              }}
               placeholder="seu@email.com"
               aria-label="Seu e-mail"
               autoComplete="email"
               autoFocus
               disabled={email.step === 'working'}
             />
-            <button type="submit" className="btn btn-primary" disabled={email.step === 'working' || !value.trim()}>
+            <button type="button" className="btn btn-primary" onClick={submit} disabled={email.step === 'working' || !value.trim()}>
               {email.step === 'working' ? 'Enviando…' : 'Receber link'}
             </button>
-          </form>
+          </div>
         ) : (
           <button type="button" className="btn btn-secondary" onClick={() => setOpen(true)}>
             Entrar com e-mail
