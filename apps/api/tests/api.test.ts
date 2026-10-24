@@ -23,11 +23,11 @@ const env: Env = {
 
 const b64u = (b: Buffer | string) => Buffer.from(b).toString('base64url')
 /** Token de login do Firebase (o que o site manda para a API de admin). */
-function idToken(uid: string, opts: { aud?: string; exp?: number } = {}) {
+function idToken(uid: string, opts: { aud?: string; exp?: number; extra?: Record<string, unknown> } = {}) {
   const now = Math.floor(Date.now() / 1000)
   const head = b64u(JSON.stringify({ alg: 'RS256', kid: 'k1', typ: 'JWT' }))
   const body = b64u(
-    JSON.stringify({ aud: opts.aud ?? SA.project_id, iss: `https://securetoken.google.com/${opts.aud ?? SA.project_id}`, sub: uid, iat: now, exp: opts.exp ?? now + 3600, dn: 'Gustavo' }),
+    JSON.stringify({ aud: opts.aud ?? SA.project_id, iss: `https://securetoken.google.com/${opts.aud ?? SA.project_id}`, sub: uid, iat: now, exp: opts.exp ?? now + 3600, dn: 'Gustavo', ...opts.extra }),
   )
   const sig = createSign('RSA-SHA256').update(`${head}.${body}`).sign(firebaseKeys.privateKey)
   return `${head}.${body}.${b64u(sig)}`
@@ -299,5 +299,100 @@ describe('admin', () => {
     const today = new Date().toISOString().slice(0, 10)
     expect((getAt(['admin', 'stats', 'daily', today]) as any).usersTotal).toBe(2)
     expect(getAt(['activity', '2020-01-01'])).toBe(null)
+  })
+})
+
+describe('contas por e-mail', () => {
+  beforeEach(() => {
+    tree = {}
+  })
+  /** Token do usuário de e-mail do Firebase (entrou pelo link). */
+  const emailToken = (uid: string, verified = true) =>
+    idToken(uid, { extra: { email: `${uid}@x.com`, email_verified: verified, firebase: { sign_in_provider: 'password' } } })
+  const emailLogin = (uid: string, body: Record<string, unknown> = {}) => call('POST', '/email', { body: { idToken: emailToken(uid), ...body } })
+  const errorOf = async (res: Response) => ((await res.json()) as { error?: string }).error
+  const discordLink = (token: string) =>
+    call('POST', '/discord', { token, body: { code: 'ok', redirectUri: `${ORIGIN}/EchoRoom/`, link: true } })
+
+  it('conta nova pede nome e usuário e vira acct_<uid>', async () => {
+    expect(await errorOf(await emailLogin('Eaaaaaaaaaaaaaaaaaaaaaaaaaa1'))).toBe('needs_profile')
+    expect(await errorOf(await emailLogin('Eaaaaaaaaaaaaaaaaaaaaaaaaaa1', { name: 'Bia', username: 'Não Vale' }))).toBe('bad_profile')
+    const res = await emailLogin('Eaaaaaaaaaaaaaaaaaaaaaaaaaa1', { name: 'Bia', username: '@Bia.Souza' })
+    expect(res.status).toBe(200)
+    const data = (await res.json()) as { firebaseToken: string; profile: { uid: string } }
+    expect(data.profile.uid).toBe('acct_Eaaaaaaaaaaaaaaaaaaaaaaaaaa1')
+    const claims = claimsOf(data.firebaseToken)
+    expect(claims.un).toBe('bia.souza')
+    expect(String(claims.av).startsWith('data:image/svg+xml,')).toBe(true)
+    // Na próxima vez entra direto, sem pedir o perfil.
+    expect((await emailLogin('Eaaaaaaaaaaaaaaaaaaaaaaaaaa1')).status).toBe(200)
+  })
+
+  it('recusa e-mail não confirmado e usuário repetido', async () => {
+    const bad = await call('POST', '/email', { body: { idToken: emailToken('Ebbbbbbbbbbbbbbbbbbbbbbbbbb1', false) } })
+    expect(await errorOf(bad)).toBe('email_unverified')
+    setAt(['admin', 'users', 'discord_222222222222222222'], { name: 'Ana', username: 'ana.lima' })
+    expect(await errorOf(await emailLogin('Ebbbbbbbbbbbbbbbbbbbbbbbbbb1', { name: 'Ana 2', username: 'ana.lima' }))).toBe('username_taken')
+  })
+
+  it('limite de 90 contas: a nova vira pedido; aprovada, entra', async () => {
+    for (let i = 0; i < 90; i++) setAt(['admin', 'users', `discord_${String(i).padStart(18, '0')}`], { name: `p${i}`, username: `p${i}` })
+    const res = await emailLogin('Ecccccccccccccccccccccccccc1', { name: 'Caio', username: 'caio' })
+    expect(res.status).toBe(403)
+    expect(await errorOf(res)).toBe('full')
+    expect(!!getAt(['admin', 'requests', 'acct_Ecccccccccccccccccccccccccc1'])).toBe(true)
+    // Quem já tem conta continua entrando.
+    expect((await loginAs()).status).toBe(403) // Ana ainda não tem conta: também não cabe
+    setAt(['admin', 'users', 'discord_222222222222222222'], { name: 'Ana', username: 'ana.lima' })
+    expect((await loginAs()).status).toBe(200)
+    setAt(['admin', 'approved', 'acct_Ecccccccccccccccccccccccccc1'], true)
+    expect((await emailLogin('Ecccccccccccccccccccccccccc1', { name: 'Caio', username: 'caio' })).status).toBe(200)
+  })
+
+  it('conta antiga do Discord vincula e-mail e entra por ele na mesma conta', async () => {
+    await loginAs()
+    const ana = idToken('discord_222222222222222222')
+    expect((await call('POST', '/link/email', { token: ana, body: { idToken: emailToken('Edddddddddddddddddddddddddd1') } })).status).toBe(200)
+    const res = await emailLogin('Edddddddddddddddddddddddddd1')
+    expect(((await res.json()) as { profile: { uid: string } }).profile.uid).toBe('discord_222222222222222222')
+    const info = (await (await call('GET', '/account', { token: ana })).json()) as { methods: { discord: unknown; email: boolean } }
+    expect(info.methods).toEqual({ discord: { username: 'ana.lima' }, email: true })
+  })
+
+  it('conta por e-mail vincula o Discord; Discord com conta própria é recusado', async () => {
+    await emailLogin('Eeeeeeeeeeeeeeeeeeeeeeeeeee1', { name: 'Edu', username: 'edu' })
+    const edu = idToken('acct_Eeeeeeeeeeeeeeeeeeeeeeeeeee1')
+    expect((await discordLink(edu)).status).toBe(200)
+    const res = await loginAs()
+    const data = (await res.json()) as { firebaseToken: string }
+    expect(JSON.parse(Buffer.from(data.firebaseToken.split('.')[1], 'base64url').toString()).uid).toBe('acct_Eeeeeeeeeeeeeeeeeeeeeeeeeee1')
+    expect(claimsOf(data.firebaseToken).dn).toBe('Edu')
+    // Outra conta tentando o mesmo Discord.
+    await emailLogin('Efffffffffffffffffffffffffff', { name: 'Fê', username: 'fe' })
+    expect(await errorOf(await discordLink(idToken('acct_Efffffffffffffffffffffffffff')))).toBe('discord_in_use')
+  })
+
+  it('desvincular: nunca a última forma; depois o Discord desvinculado não entra', async () => {
+    await loginAs()
+    const ana = idToken('discord_222222222222222222')
+    expect(await errorOf(await call('POST', '/unlink', { token: ana, body: { provider: 'discord' } }))).toBe('last_method')
+    await call('POST', '/link/email', { token: ana, body: { idToken: emailToken('Egggggggggggggggggggggggggg1') } })
+    expect((await call('POST', '/unlink', { token: ana, body: { provider: 'discord' } })).status).toBe(200)
+    expect(await errorOf(await loginAs())).toBe('unlinked')
+    // Vincular de novo (logado pelo e-mail) volta a valer.
+    expect((await discordLink(ana)).status).toBe(200)
+    expect((await loginAs()).status).toBe(200)
+  })
+
+  it('exige login para vincular e ver a conta; convidado não vale', async () => {
+    expect((await call('GET', '/account')).status).toBe(401)
+    expect((await call('GET', '/account', { token: idToken('guestAAAAAAAAAAAAAAAAAAAAAAAAAA') })).status).toBe(401)
+  })
+
+  it('página do celular repassa só os parâmetros do link', async () => {
+    const res = await worker.fetch(new Request('https://api.test/email/app?apiKey=k1&oobCode=c-2&mode=signIn&x=%3Cb%3E'), env)
+    const html = await res.text()
+    expect(html).toContain('intent://email?apiKey=k1&oobCode=c-2&mode=signIn#Intent')
+    expect(html.includes('x=')).toBe(false)
   })
 })

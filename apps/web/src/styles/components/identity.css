@@ -59,3 +59,71 @@
   width: 40px;
   height: 40px;
 }
+
+/* Entrar na conta: Discord ou link por e-mail */
+.login-buttons {
+  display: grid;
+  gap: 8px;
+}
+.login-buttons > .btn {
+  height: 44px;
+}
+.login-buttons.is-compact > .btn {
+  height: 36px;
+  justify-self: start;
+}
+.email-form input {
+  min-width: 0;
+}
+.email-sent {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--live-tint);
+  border-left: 3px solid var(--live);
+  font-size: 13px;
+}
+.email-sent span {
+  color: var(--text-muted);
+}
+.email-sent .link-btn {
+  justify-self: start;
+  font-size: 13px;
+}
+
+/* Perfil: formas de entrar */
+.login-methods {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  max-width: 520px;
+}
+.login-methods li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--surface);
+}
+.login-methods li.lm-form {
+  grid-template-columns: 1fr;
+}
+.lm-icon {
+  font-weight: 700;
+  text-align: center;
+  color: var(--text-muted);
+}
+.lm-text {
+  display: grid;
+  min-width: 0;
+}
+.lm-text small {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.login-methods .btn {
+  height: 32px;
+}

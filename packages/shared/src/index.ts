@@ -10,8 +10,20 @@ export const CLAIMS = {
   admin: 'adm',
 } as const
 
-/** Prefixo do uid de quem entra com Discord. */
+/** Prefixo do uid das contas antigas, criadas pelo login com Discord. */
 export const DISCORD_UID_PREFIX = 'discord_'
+/** Prefixo do uid das contas criadas por e-mail (ID interno, independente do provedor). */
+export const ACCOUNT_UID_PREFIX = 'acct_'
+
+/** true para quem tem conta EchoRoom (Discord ou e-mail); o resto é convidado. */
+export const isAccountUid = (uid: string | null | undefined) =>
+  !!uid && (uid.startsWith(DISCORD_UID_PREFIX) || uid.startsWith(ACCOUNT_UID_PREFIX))
+
+/** Máximo de contas no site (margem abaixo do limite do Google para apps não verificados). */
+export const MAX_ACCOUNTS = 90
+
+/** Nome de usuário das contas por e-mail (o Discord usa o mesmo formato). */
+export const USERNAME_RE = /^[a-z0-9_.]{2,32}$/
 
 /** Erros que o login pode devolver ao site. */
 export type LoginError =
@@ -22,6 +34,22 @@ export type LoginError =
   | 'suspended'
   | 'pending'
   | 'bad_request'
+  | 'full'
+  | 'needs_profile'
+  | 'username_taken'
+  | 'bad_profile'
+  | 'email_unverified'
+  | 'unlinked'
+  | 'discord_in_use'
+  | 'email_in_use'
+  | 'last_method'
+  | 'unauthenticated'
+
+/** Formas de entrar numa conta (GET /account). */
+export interface AccountMethods {
+  discord: { username: string } | null
+  email: boolean
+}
 
 /** Cadastro aberto (qualquer um entra com Discord) ou só com aprovação do admin. */
 export type AccessMode = 'open' | 'approval'

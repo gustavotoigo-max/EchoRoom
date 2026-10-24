@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AccessMode, AdminOverview, AdminRequest, AdminRoom, AdminUser, AdminUserDetail, AuditEntry } from '@echoroom/shared'
 import { UserChip } from '../../components/Invites/UserChip'
 import { Brand } from '../../components/ui/Brand'
-import { DiscordIcon } from '../../components/ui/Icons'
 import { Toasts } from '../../components/ui/Toasts'
 import { adminApi, adminErrorMessage, AdminApiError } from '../../services/adminApi'
-import { authStore, discordEnabled, startDiscordLogin } from '../../services/discordAuth'
+import { authStore } from '../../services/discordAuth'
+import { LoginButtons } from '../../components/Account/LoginButtons'
 import { useStore } from '../../stores/createStore'
 import { showToast } from '../../stores/toastStore'
 import { ColumnChart } from './ColumnChart'
@@ -62,12 +62,8 @@ export function Admin() {
         ) : !profile ? (
           <div className="panel gate">
             <h2>Painel do administrador</h2>
-            <p className="hint">Entre com Discord para continuar.</p>
-            {discordEnabled && (
-              <button type="button" className="btn btn-discord" onClick={startDiscordLogin}>
-                <DiscordIcon width={20} height={20} /> Entrar com Discord
-              </button>
-            )}
+            <p className="hint">Entre na sua conta para continuar.</p>
+            <LoginButtons />
           </div>
         ) : state === 'checking' ? (
           <p className="hint">Conferindo acesso…</p>
@@ -79,7 +75,7 @@ export function Admin() {
               <>
                 <p className="hint">
                   Para virar administrador, coloque o seu ID na variável <code>ADMIN_UIDS</code> do backend (Cloudflare) e
-                  entre com Discord de novo:
+                  entre na conta de novo:
                 </p>
                 <code className="adm-uid">{profile.uid}</code>
               </>

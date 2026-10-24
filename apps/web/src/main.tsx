@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { authStore, initDiscordAuth } from './services/discordAuth'
+import { initEmailAuth } from './services/emailAuth'
 import { watchInvites } from './services/firebase/social'
 import { markActive } from './services/firebase/usage'
 import { initExternalAdd } from './services/externalAdd'
@@ -9,10 +10,11 @@ import { initExtensionBridge } from './services/extensionBridge'
 import './styles/index.css'
 
 initDiscordAuth()
+initEmailAuth()
 initExternalAdd()
 initExtensionBridge()
 
-// Convites chegam em qualquer página para quem entrou com Discord.
+// Convites chegam em qualquer página para quem tem conta.
 const syncInvites = () => {
   const { profile, ready } = authStore.get()
   if (ready) watchInvites(profile?.uid ?? null)

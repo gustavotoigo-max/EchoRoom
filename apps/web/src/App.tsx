@@ -4,6 +4,8 @@ import { Home } from './pages/Home/Home'
 import { Landing } from './pages/Landing/Landing'
 import { Room } from './pages/Room/Room'
 import { InvitePopup } from './components/Invites/InvitePopup'
+import { EmailDialog } from './components/Account/EmailDialog'
+import { Toasts } from './components/ui/Toasts'
 import { Profile } from './pages/Profile/Profile'
 import { Admin } from './pages/Admin/Admin'
 import { isAdminPath, isProfilePath, isStartPath, matchRoom, usePathname } from './router'
@@ -27,6 +29,9 @@ export function App() {
     <>
       {page}
       <InvitePopup />
+      <EmailDialog />
+      {/* Sala, perfil e admin já mostram os avisos; aqui, as outras páginas (ex.: volta do link do e-mail). */}
+      {!roomId && !isProfilePath(path) && !isAdminPath(path) && <Toasts />}
     </>
   )
 }

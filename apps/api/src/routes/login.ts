@@ -1,20 +1,28 @@
-import { CLAIMS, DISCORD_UID_PREFIX, type AccessMode } from '@echoroom/shared'
 import { Db } from '../db'
-import { discordProfileFromCode } from '../discord'
-import { adminUids, allowedOrigins, readServiceAccount, type Env } from '../env'
-import { createCustomToken } from '../google'
+import { discordProfileFromCode, type DiscordUser } from '../discord'
+import { allowedOrigins, readServiceAccount, type Env } from '../env'
 import { HttpError, json, readJson } from '../http'
-import type { UserRecord } from '../stats'
+import {
+  accountFor,
+  accountToken,
+  caller,
+  checkAccess,
+  defaultUid,
+  recordLogin,
+  type AccountProfile,
+  type AccountRecord,
+} from '../accounts'
 
 /**
  * POST /discord — troca o `code` do Discord por um token do Firebase.
- * Confere suspensão e o modo de acesso, e registra o login (cadastro do admin).
+ * Confere suspensão, modo de acesso e limite de contas, e registra o login.
+ * Com `link: true` (e o token de quem está logado), vincula o Discord à conta.
  */
 export async function login(request: Request, env: Env): Promise<Response> {
   const origin = request.headers.get('Origin') || ''
   const origins = allowedOrigins(env)
 
-  const body = await readJson<{ code?: unknown; redirectUri?: unknown }>(request)
+  const body = await readJson<{ code?: unknown; redirectUri?: unknown; link?: unknown }>(request)
   const code = typeof body.code === 'string' ? body.code : ''
   const redirectUri = typeof body.redirectUri === 'string' ? body.redirectUri : ''
   // O app do celular não tem "origem": vale quando o retorno foi a página de
@@ -28,45 +36,43 @@ export async function login(request: Request, env: Env): Promise<Response> {
   if (!env.DISCORD_CLIENT_ID || !env.DISCORD_CLIENT_SECRET || !sa) throw new HttpError(500, 'not_configured')
 
   const profile = await discordProfileFromCode(env, code, redirectUri)
-  const uid = `${DISCORD_UID_PREFIX}${profile.id}`
-  const isAdmin = adminUids(env).includes(uid)
-
-  // Suspensão e modo de acesso. Se o banco falhar, o login segue (as regras do
-  // banco continuam bloqueando quem estiver suspenso).
   const db = new Db(sa, env)
+  if (body.link === true) return linkDiscord(request, env, db, profile)
+
+  const own = defaultUid('discord', profile.id)
+  let uid = own
+  let claims: AccountProfile = { name: profile.name, username: profile.username, avatar: profile.avatarUrl }
+  // Se o banco falhar, o login segue (as regras do banco continuam bloqueando quem estiver suspenso).
   try {
-    const [suspended, config] = await Promise.all([
-      db.get(`admin/suspended/${uid}`),
-      db.get<{ access?: AccessMode }>('admin/config'),
-    ])
-    if (suspended && !isAdmin) throw new HttpError(403, 'suspended')
-    if (config?.access === 'approval' && !isAdmin && !(await db.get(`admin/approved/${uid}`))) {
-      await db.set(`admin/requests/${uid}`, { name: profile.name, username: profile.username, avatar: profile.avatarUrl, at: Date.now() })
-      throw new HttpError(403, 'pending')
-    }
-    const prev = await db.get<UserRecord>(`admin/users/${uid}`)
-    const now = Date.now()
-    await db.set(`admin/users/${uid}`, {
-      name: profile.name,
-      username: profile.username,
-      avatar: profile.avatarUrl,
-      firstAt: prev?.firstAt ?? now,
-      lastLoginAt: now,
-      logins: (prev?.logins ?? 0) + 1,
-    })
+    uid = (await accountFor(db, 'discord', profile.id)) ?? own
+    const prev = await db.get<AccountRecord>(`admin/users/${uid}`)
+    // Discord vinculado a uma conta por e-mail: valem o nome e o usuário da conta.
+    if (uid !== own && prev) claims = { name: prev.name || claims.name, username: prev.username || claims.username, avatar: prev.avatar || claims.avatar }
+    await checkAccess(db, env, uid, !prev, claims)
+    await recordLogin(db, uid, prev, claims)
   } catch (err) {
     if (err instanceof HttpError) throw err
     console.error('login: banco indisponível', err)
   }
 
-  const firebaseToken = await createCustomToken(sa, uid, {
-    [CLAIMS.displayName]: profile.name,
-    [CLAIMS.username]: profile.username.toLowerCase(),
-    [CLAIMS.avatar]: profile.avatarUrl,
-    ...(isAdmin ? { [CLAIMS.admin]: true } : {}),
-  })
+  const firebaseToken = await accountToken(env, sa, uid, claims)
   // O token do Discord não é guardado nem devolvido.
   return json({ firebaseToken, profile })
+}
+
+/** Vincula o Discord à conta de quem está logado (nunca junta duas contas que já existem). */
+async function linkDiscord(request: Request, env: Env, db: Db, profile: DiscordUser): Promise<Response> {
+  const { uid } = await caller(request, env)
+  const own = defaultUid('discord', profile.id)
+  const mapped = await db.get<string | false>(`admin/identities/discord/${profile.id}`)
+  if (typeof mapped === 'string' && mapped !== uid) throw new HttpError(409, 'discord_in_use')
+  // Esse Discord já tem a própria conta (antiga): não dá para levar para outra.
+  if (own !== uid && (await db.get(`admin/users/${own}`))) throw new HttpError(409, 'discord_in_use')
+  await db.update('', {
+    [`admin/identities/discord/${profile.id}`]: own === uid ? null : uid,
+    [`admin/users/${uid}/links/discord`]: own === uid ? null : { id: profile.id, username: profile.username },
+  })
+  return json({ linked: 'discord', username: profile.username })
 }
 
 // ---- retorno do Discord para o app do celular ------------------------------------------

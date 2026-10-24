@@ -57,7 +57,7 @@ export function Landing() {
           </a>
         </div>
         <p className="lp-note">
-          <DiscordIcon width={16} height={16} /> Entre com o Discord (só nome e avatar) ou como convidado.
+          <DiscordIcon width={16} height={16} /> Entre com o Discord, com seu e-mail ou como convidado.
         </p>
 
         <RoomMock />

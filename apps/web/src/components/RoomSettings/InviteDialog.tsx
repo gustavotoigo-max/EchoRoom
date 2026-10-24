@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { authStore, discordEnabled, startDiscordLogin } from '../../services/discordAuth'
+import { authStore } from '../../services/discordAuth'
+import { LoginButtons } from '../Account/LoginButtons'
 import { searchProfiles, sendInvite, type PublicProfile } from '../../services/firebase/social'
 import { useRoomSession } from '../../services/RoomSessionContext'
 import { useStore } from '../../stores/createStore'
 import { roomStore } from '../../stores/roomStore'
 import { roomLink } from '../../utils/format'
 import { CopyButton } from '../ui/CopyButton'
-import { CheckIcon, DiscordIcon, SendIcon } from '../ui/Icons'
+import { CheckIcon, SendIcon } from '../ui/Icons'
 
 /** Convidar: link da sala ou convite direto para quem já tem perfil. */
 export function InviteDialog() {
@@ -63,12 +64,8 @@ export function InviteDialog() {
         <h3>Convidar pelo EchoRoom</h3>
         {!profile ? (
           <>
-            <p className="hint">Entre com Discord para convidar pessoas direto pelo site, sem precisar da senha.</p>
-            {discordEnabled && (
-              <button type="button" className="btn btn-discord" onClick={startDiscordLogin}>
-                <DiscordIcon width={18} height={18} /> Entrar com Discord
-              </button>
-            )}
+            <p className="hint">Entre na sua conta para convidar pessoas direto pelo site, sem precisar da senha.</p>
+            <LoginButtons compact />
           </>
         ) : (
           <>
@@ -86,7 +83,7 @@ export function InviteDialog() {
             />
             <ul className="people-list">
               {searching && results === null && <li className="hint">Buscando…</li>}
-              {results?.length === 0 && <li className="hint">Ninguém encontrado. A pessoa precisa ter entrado com Discord no EchoRoom pelo menos uma vez.</li>}
+              {results?.length === 0 && <li className="hint">Ninguém encontrado. A pessoa precisa ter entrado na conta do EchoRoom pelo menos uma vez.</li>}
               {results?.map((p) => {
                 const state = sent[p.uid]
                 const isMe = p.uid === profile.uid
