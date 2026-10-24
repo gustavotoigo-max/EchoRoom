@@ -112,6 +112,19 @@ describe('roomLogic', () => {
     expect(applyCommand(r, { type: 'TRACK_META', itemId: id, title: 'Outro', duration: 99 }, 2)).toBe(null)
   })
 
+  it('ao vivo: TRACK_META marca a transmissão, descarta duração e bloqueia avançar', () => {
+    let r = must(emptyRoom('ABCDE'), { type: 'TRACK_ADD', item: item('lllllllllll', { duration: 5000 }) }, 0)
+    const id = r.currentTrack!.id
+    r = must(r, { type: 'TRACK_META', itemId: id, title: null, duration: null, live: true }, 1)
+    expect(r.currentTrack!.live).toBe(true)
+    expect(r.currentTrack!.duration).toBeUndefined()
+    expect(applyCommand(r, { type: 'TRACK_META', itemId: id, title: null, duration: 7200 }, 2)).toBe(null)
+    expect(() => applyCommand(r, { type: 'SEEK', position: 10 }, 3)).toThrow(CommandError)
+    // Horas depois a sala não encerra sozinha; o fim vem do player.
+    r = must(r, { type: 'TRACK_ENDED', itemId: id }, 4 * 3600)
+    expect(r.currentTrack).toBe(null)
+  })
+
   it('playlist: primeira música toca e o resto vai para a fila', () => {
     const items = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc'].map((v) => item(v))
     const r = must(emptyRoom('ABCDE'), { type: 'TRACK_ADD_MANY', items }, 10)

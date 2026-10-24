@@ -30,7 +30,7 @@ export interface SyncStatus {
 export interface SyncEngineDeps {
   clock: ClockSync
   onTrackEnded: (itemId: string) => void
-  onTrackMeta: (itemId: string, title: string | null, duration: number | null) => void
+  onTrackMeta: (itemId: string, title: string | null, duration: number | null, live: boolean) => void
   onStatus: (status: SyncStatus) => void
   onPlayerError?: (code: number) => void
   /** True se o usuário deixou o som mudo (o engine não desmuta por conta própria). */
@@ -174,7 +174,8 @@ export class SyncEngine {
       // Vídeo carregado e com buffer: posiciona e aguarda o instante agendado.
       this.prerolling = false
       player.pause()
-      player.seek(state.position)
+      // Ao vivo não tem posição: voltar para state.position levaria ao início do DVR.
+      if (!this.isLive()) player.seek(state.position)
       this.restoreMute()
       this.log('preroll pronto', { position: state.position })
       return
@@ -215,6 +216,16 @@ export class SyncEngine {
     this.restoreMute()
 
     const serverNow = this.clock.serverNowSec()
+    if (track.live) {
+      // Ao vivo: todos entram direto no ao vivo, sem preroll nem posição.
+      if (state.playbackState === 'playing') player.load(track.videoId, 0)
+      else player.cue(track.videoId, 0)
+      this.cuedPosition = null
+      this.forceNext = true
+      this.setUi(state.playbackState === 'playing' ? 'syncing' : 'synced')
+      this.log('carregando ao vivo', { videoId: track.videoId, state: state.playbackState })
+      return
+    }
     if (state.playbackState === 'playing') {
       if (isStartPending(state, serverNow)) {
         // Carrega mudo para formar buffer; pausa assim que tocar; inicia no instante agendado.
@@ -255,6 +266,7 @@ export class SyncEngine {
     const local = player.getState()
     if (local === 'playing' || local === 'paused' || local === 'buffering') {
       player.pause()
+      if (this.isLive()) return
       if (Math.abs(player.getCurrentTime() - position) * 1000 > this.cfg.ignoreDriftMs / 3) player.seek(position)
     } else if (this.state?.currentTrack) {
       // cued/unstarted/ended: seekTo faria tocar; usa preroll mudo.
@@ -305,6 +317,11 @@ export class SyncEngine {
     if (state.playbackState === 'stopped') {
       if (local === 'playing') player.pause()
       this.setUi('waiting')
+      return
+    }
+
+    if (this.isLive()) {
+      this.reconcileLive(state, local, nowMs)
       return
     }
 
@@ -409,12 +426,70 @@ export class SyncEngine {
     }
   }
 
+  /**
+   * Transmissão ao vivo: não há timeline para comparar (cada um recebe o
+   * ao vivo com a latência da própria conexão). A sala só decide tocando
+   * ou pausado; ao voltar a tocar, todos pulam para o ao vivo.
+   */
+  private reconcileLive(state: RoomState, local: LocalPlayerState, nowMs: number): void {
+    const player = this.player!
+    this.drift = 0
+    this.forceNext = false
+    this.wasBuffering = false
+    this.lastCorrection = 'none'
+    if (this.correction.currentRate !== 1) {
+      player.setPlaybackRate(1)
+      this.correction.currentRate = 1
+    }
+    this.correction.reset()
+
+    if (state.playbackState !== 'playing') {
+      if (local === 'playing' || local === 'buffering') player.pause()
+      this.setUi('synced')
+      return
+    }
+    if (local === 'buffering') {
+      this.setUi('buffering')
+      return
+    }
+    if (local === 'ended') {
+      // A transmissão acabou.
+      this.sendEnded(state.currentTrack!.id)
+      this.setUi('synced')
+      return
+    }
+    if (local !== 'playing') {
+      this.seekLiveEdge()
+      player.play()
+      this.notPlayingSince ??= nowMs
+      if (nowMs - this.notPlayingSince > this.cfg.autoplayBlockedAfterMs) this.setNeedsGesture(true)
+      this.setUi('syncing')
+      return
+    }
+    this.notPlayingSince = null
+    this.setNeedsGesture(false)
+    this.setUi(this.isUnstable() ? 'unstable' : 'synced')
+  }
+
+  /** Pula para o ponto mais recente da transmissão (getDuration cresce com o ao vivo). */
+  private seekLiveEdge(): void {
+    const player = this.player!
+    if (player.getState() !== 'paused') return // cued/unstarted: play() já começa no ao vivo
+    const edge = player.getDuration()
+    if (edge > 0) player.seek(edge)
+  }
+
+  private isLive(): boolean {
+    return !!this.state?.currentTrack?.live || !!this.player?.isLive?.()
+  }
+
   /** Chamado após um clique do usuário (libera o autoplay). */
   unlockAudio(): void {
     this.notPlayingSince = null
     this.setNeedsGesture(false)
     if (this.player && this.state?.playbackState === 'playing') {
-      this.player.seek(this.getExpectedPosition())
+      if (this.isLive()) this.seekLiveEdge()
+      else this.player.seek(this.getExpectedPosition())
       this.player.play()
     }
     this.forceNext = true
@@ -441,11 +516,16 @@ export class SyncEngine {
   private sendMetaOnce(): void {
     const track = this.state?.currentTrack
     if (!track || !this.player || this.metaSentFor.has(track.id)) return
+    if (this.player.isLive?.()) {
+      this.metaSentFor.add(track.id)
+      if (!track.live) this.deps.onTrackMeta(track.id, this.player.getTitle(), null, true)
+      return
+    }
     const duration = this.player.getDuration()
     if (!duration) return
     this.metaSentFor.add(track.id)
     if (!track.duration || track.title.startsWith('youtu.be/')) {
-      this.deps.onTrackMeta(track.id, this.player.getTitle(), duration)
+      this.deps.onTrackMeta(track.id, this.player.getTitle(), duration, false)
     }
   }
 

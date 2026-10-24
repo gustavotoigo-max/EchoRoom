@@ -176,7 +176,7 @@ export function PlayerPanel() {
     </section>
     {/* Tempo da música logo abaixo do vídeo */}
     <div className="video-bar">
-      <ProgressBar duration={track?.duration ?? null} trackId={track?.id ?? null} disabled={!track || playback.disabled} />
+      <ProgressBar duration={track?.duration ?? null} live={!!track?.live} trackId={track?.id ?? null} disabled={!track || playback.disabled} />
     </div>
     </div>
   )

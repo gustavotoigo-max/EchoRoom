@@ -246,7 +246,7 @@ function QueueRow({ item, index, total, canMove, dragging, offset, onGrip, onMov
           {note ?? (
             <>
               {item.addedBy}
-              {item.duration ? ` · ${formatTime(item.duration)}` : ''}
+              {item.live ? ' · ao vivo' : item.duration ? ` · ${formatTime(item.duration)}` : ''}
             </>
           )}
         </span>
