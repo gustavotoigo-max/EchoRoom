@@ -68,6 +68,8 @@ function setAt(parts: string[], v: unknown) {
   tree = (prune(tree) as Record<string, unknown>) ?? {}
 }
 let pushN = 0
+/** uids que o Worker mandou apagar do Firebase Authentication. */
+let authDeleted: string[] = []
 const discordUser = { id: '222222222222222222', username: 'ana.lima', global_name: 'Ana', avatar: null }
 
 globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -78,6 +80,10 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     return body.get('code') === 'ok' ? Response.json({ access_token: 'dtok', token_type: 'Bearer' }) : new Response('no', { status: 400 })
   }
   if (url.hostname === 'discord.com' && url.pathname.endsWith('/users/@me')) return Response.json(discordUser)
+  if (url.hostname === 'identitytoolkit.googleapis.com' && url.pathname.endsWith('/accounts:batchDelete')) {
+    authDeleted.push(...(JSON.parse(String(init?.body)) as { localIds: string[] }).localIds)
+    return Response.json({})
+  }
   if (url.hostname === 'oauth2.googleapis.com') return Response.json({ access_token: 'gtok', expires_in: 3600 })
   if (url.hostname === 'www.googleapis.com') {
     const jwk = firebaseKeys.publicKey.export({ format: 'jwk' })
@@ -265,6 +271,18 @@ describe('admin', () => {
     expect(getAt(['profiles', ana])).toBe(null)
     expect(getAt(['rooms', 'a'.repeat(64), 'members', ana])).toBe(null)
     expect(!!getAt(['rooms', 'a'.repeat(64), 'members', ADMIN])).toBe(true)
+  })
+
+  it('apagar cadastro solta as formas de entrar e apaga do Authentication', async () => {
+    const acct = 'acct_Ezzzzzzzzzzzzzzzzzzzzzzzzzz1'
+    setAt(['admin', 'users', acct], { name: 'Teste', username: 'teste', links: { discord: { id: '333333333333333333', username: 'x' }, email: false } })
+    setAt(['admin', 'identities', 'discord', '333333333333333333'], acct)
+    setAt(['admin', 'identities', 'email', 'Ezzzzzzzzzzzzzzzzzzzzzzzzzz1'], false)
+    authDeleted = []
+    expect((await call('POST', `/admin/users/${acct}/delete`, { token: idToken(ADMIN) })).status).toBe(200)
+    expect(getAt(['admin', 'users', acct])).toBe(null)
+    expect(getAt(['admin', 'identities'])).toBe(null)
+    expect(authDeleted.sort()).toEqual(['Ezzzzzzzzzzzzzzzzzzzzzzzzzz1', acct])
   })
 
   it('salas: lista (sem fila), trocar dono, encerrar', async () => {
