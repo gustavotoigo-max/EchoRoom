@@ -32,7 +32,7 @@ export function PlaylistDetail() {
 
   async function queue(tracks: TrackInput[]) {
     try {
-      const res = await session.addKnownTracks(tracks)
+      const res = await session.addKnownTracks(tracks, pl!.id)
       showToast(tracks.length === 1 ? `"${tracks[0].title}" na fila.` : `${res.added} músicas na fila${res.repeated ? ` (${res.repeated} já estavam)` : ''}.`, 'ok', 3500)
     } catch (err) {
       showToast((err as Error).message || 'Não foi possível pôr na fila.', 'error')

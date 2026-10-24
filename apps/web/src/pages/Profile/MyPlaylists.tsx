@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { tracksFromLink } from '../../components/Playlists/linkTracks'
+import { ImportPlaylistForm } from '../../components/Playlists/ImportPlaylistForm'
 import { CloseIcon, ListIcon } from '../../components/ui/Icons'
 import type { DiscordProfile } from '../../services/discordAuth'
 import {
@@ -50,9 +51,10 @@ export function MyPlaylists({ profile, rooms }: { profile: DiscordProfile; rooms
           Criar playlist
         </button>
       </form>
+      <ImportPlaylistForm onImported={setOpenId} />
       {lists && lists.length === 0 && (
         <p className="sugg-empty">
-          Playlists suas ficam aqui e você pode sugerir em qualquer sala. Dentro de uma sala, o botão de marcador salva a
+          Playlists suas ficam aqui e você pode levar para qualquer sala. Importe uma playlist do YouTube pelo link ou crie uma do zero. Dentro de uma sala, o botão de marcador salva a
           música que está tocando.
         </p>
       )}

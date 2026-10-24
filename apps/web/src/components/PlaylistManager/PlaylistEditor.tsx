@@ -77,7 +77,7 @@ export function PlaylistEditor({ pl }: { pl: Playlist }) {
 
   const queue = (tracks: TrackInput[], label = 'queue') =>
     run(label, async () => {
-      const res = await session.addKnownTracks(tracks)
+      const res = await session.addKnownTracks(tracks, pl.id)
       const extra = [res.repeated ? `${res.repeated} já estavam` : '', res.skipped ? `${res.skipped} não couberam` : ''].filter(Boolean).join('; ')
       showToast(tracks.length === 1 ? `"${tracks[0].title}" na fila.` : `${res.added} músicas na fila${extra ? ` (${extra})` : ''}.`, 'ok', 3500)
     })

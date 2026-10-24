@@ -400,3 +400,59 @@ describe('aleatório, ciclar e repetir', () => {
     )
   })
 })
+
+describe('tocar playlist: parar e substituir a fila', () => {
+  const actor = (patch: Partial<RoomSettings> = {}, isOwner = false): CommandActor => ({
+    uid: 'ana',
+    isOwner,
+    settings: { ...DEFAULT_SETTINGS, ...patch },
+  })
+  const err = (fn: () => unknown) => {
+    try {
+      fn()
+      return ''
+    } catch (e) {
+      return (e as Error).message
+    }
+  }
+
+  it('parar pausa no início da música e play recomeça do zero', () => {
+    let r = must(emptyRoom('ABCDE'), { type: 'TRACK_ADD', item: item() }, 0)
+    r = must(r, { type: 'STOP' }, 50)
+    expect(r.playbackState).toBe('paused')
+    expect(r.position).toBe(0)
+    expect(r.startedAt).toBe(null)
+    expect(applyCommand(r, { type: 'STOP' }, 60)).toBe(null)
+    r = must(r, { type: 'PLAY' }, 80)
+    expect(r.position).toBe(0)
+    expect(r.playbackState).toBe('playing')
+  })
+
+  it('substituir a fila começa pela primeira música e descarta a fila antiga', () => {
+    let r = must(emptyRoom('ABCDE'), { type: 'TRACK_ADD_MANY', items: [item(), item(), item()] }, 0)
+    const novas = [item('nnnnnnnnnn1'), item('nnnnnnnnnn2'), item('nnnnnnnnnn1')]
+    r = must(r, { type: 'QUEUE_REPLACE', items: novas }, 100)
+    expect(r.currentTrack!.videoId).toBe('nnnnnnnnnn1')
+    expect(r.queue.map((q) => q.videoId)).toEqual(['nnnnnnnnnn2'])
+    expect(r.playbackState).toBe('playing')
+    expect(r.startedAt).toBeCloseTo(100 + TRACK_LEAD)
+  })
+
+  it('substituir a fila só vale no modo escolhido pelo dono', () => {
+    const r = must(emptyRoom('ABCDE'), { type: 'TRACK_ADD', item: item() }, 0)
+    const cmd = { type: 'QUEUE_REPLACE' as const, items: [item()] }
+    expect(err(() => applyCommand(r, cmd, 1, actor()))).toBe('Nesta sala, a playlist entra no fim da fila.')
+    expect(err(() => applyCommand(r, cmd, 1, actor({ playlistPlay: 'replace', controls: 'owner' })))).toBe(
+      'Nesta sala, só o dono controla a reprodução.',
+    )
+    expect(applyCommand(r, cmd, 1, actor({ playlistPlay: 'replace' }))!.currentTrack!.videoId).toBe(cmd.items[0].videoId)
+    expect(err(() => applyCommand(r, { type: 'STOP' }, 1, actor({ controls: 'owner' })))).toBe(
+      'Nesta sala, só o dono controla a reprodução.',
+    )
+  })
+
+  it('configuração antiga sem o campo toca no fim da fila', () => {
+    expect(normalizeSettings({}).playlistPlay).toBe('append')
+    expect(normalizeSettings({ playlistPlay: 'replace' }).playlistPlay).toBe('replace')
+  })
+})

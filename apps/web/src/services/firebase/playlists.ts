@@ -35,6 +35,15 @@ export interface Playlist {
   updatedAt: number
   /** Só nas pessoais: salas em que está sugerida (roomId → chave). */
   sharedIn: Record<string, string>
+  /** De onde foi importada (ausente nas criadas no EchoRoom). */
+  source: PlaylistSource | null
+}
+
+/** Origem de uma playlist importada. */
+export interface PlaylistSource {
+  kind: 'youtube' | 'youtubeMusic'
+  /** Id da playlist na origem (?list=…). */
+  listId: string
 }
 
 type RawTrack = Partial<Omit<PlaylistTrack, 'id'>>
@@ -61,7 +70,14 @@ function readPlaylist(id: string, p: RawPlaylist, kind?: Playlist['kind']): Play
     tracks,
     updatedAt: Number(p.updatedAt) || 0,
     sharedIn: (p.sharedIn as Record<string, string>) ?? {},
+    source: readSource(p.source),
   }
+}
+
+function readSource(raw: unknown): PlaylistSource | null {
+  const r = raw as Partial<PlaylistSource> | null | undefined
+  if (!r || typeof r.listId !== 'string') return null
+  return { kind: r.kind === 'youtubeMusic' ? 'youtubeMusic' : 'youtube', listId: r.listId }
 }
 
 const cleanName = (name: string) => {
@@ -207,6 +223,33 @@ export async function createMyPlaylist(name: string, first?: TrackInput): Promis
   return r.key!
 }
 
+/**
+ * Importa uma playlist do YouTube (ou do YouTube Music) para a biblioteca:
+ * vira uma playlist pessoal, na mesma ordem, com a origem guardada.
+ */
+export async function importMyPlaylist(
+  name: string,
+  tracks: TrackInput[],
+  source: PlaylistSource,
+): Promise<{ id: string; added: number; skipped: number }> {
+  const uid = await ensureSignedIn()
+  const seen = new Set<string>()
+  const unique = tracks.filter((t) => !seen.has(t.videoId) && seen.add(t.videoId))
+  const take = unique.slice(0, MAX_PLAYLIST_TRACKS)
+  if (!take.length) throw new Error('A playlist está vazia, é privada ou não existe.')
+  const r = push(ref(getDb(), `users/${uid}/playlists`))
+  await set(
+    r,
+    toFirebase({
+      name: cleanName(name.slice(0, MAX_PLAYLIST_NAME)),
+      updatedAt: serverTimestamp(),
+      source,
+      tracks: Object.fromEntries(take.map((t, i) => [`t${i}`, { ...trackRecord(t), at: i + 1 }])),
+    }),
+  )
+  return { id: r.key!, added: take.length, skipped: unique.length - take.length }
+}
+
 /** Cópia que vai para as salas onde a playlist está sugerida. */
 function roomCopy(pl: Playlist, me: DiscordProfile) {
   return {
@@ -216,6 +259,7 @@ function roomCopy(pl: Playlist, me: DiscordProfile) {
     createdByName: me.name,
     createdByAvatar: me.avatarUrl,
     updatedAt: serverTimestamp(),
+    source: pl.source ?? undefined,
     tracks: Object.fromEntries(
       pl.tracks.map((t) => [t.id, { videoId: t.videoId, title: t.title, author: t.author, at: t.at || 0 }]),
     ),

@@ -162,6 +162,16 @@ export function SettingsBody() {
           onChange={(v) => save({ adding: v as RoomSettings['adding'] })}
         />
         <Choice
+          label="Tocar uma playlist"
+          value={settings.playlistPlay}
+          options={[
+            ['append', 'Entra no fim da fila'],
+            ['replace', 'Substitui a fila'],
+          ]}
+          disabled={locked}
+          onChange={(v) => save({ playlistPlay: v as RoomSettings['playlistPlay'] })}
+        />
+        <Choice
           label="Músicas de cada pessoa na fila"
           value={String(settings.maxPerUser)}
           options={[

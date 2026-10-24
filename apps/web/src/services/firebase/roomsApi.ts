@@ -56,7 +56,7 @@ export async function createRoom(name: string, password: string, ownerName: stri
         ref(db, `rooms/${roomKey}`),
         toFirebase({
           meta: { roomId, name: roomName, ownerUid: uid, ownerName: ownerName.slice(0, 32), createdAt: serverTimestamp() },
-          settings: DEFAULT_SETTINGS,
+          settings: initialSettings(),
           state: emptyRoom(roomId),
         }),
       )
@@ -178,4 +178,14 @@ export async function deleteRoom(roomId: string, roomKey: string): Promise<void>
   const db = getDb()
   await set(ref(db, `roomIndex/${roomId}`), null)
   await set(ref(db, roomPath(roomKey)), null)
+}
+
+/**
+ * Configurações gravadas na criação da sala. Opções novas ficam de fora (valem
+ * pelo padrão até o dono mudar): assim criar sala não depende de as regras
+ * novas do banco já estarem publicadas.
+ */
+function initialSettings() {
+  const { playlistPlay: _, ...rest } = DEFAULT_SETTINGS
+  return rest
 }
