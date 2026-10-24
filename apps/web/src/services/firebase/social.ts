@@ -16,16 +16,16 @@ import {
 import { createStore } from '../../stores/createStore'
 import { storage } from '../../utils/storage'
 import type { DiscordProfile } from '../discordAuth'
-import { ensureSignedIn, getDb, isDiscordUid } from './app'
+import { ensureSignedIn, getDb, isAccountUid } from './app'
 
 /**
- * Perfis, "Minhas salas" e convites (só para quem entrou com Discord).
+ * Perfis, "Minhas salas" e convites (só para quem tem conta).
  *
  *   /profiles/{uid}              { name, u (usuário em minúsculas), avatar }  — busca de pessoas
  *   /users/{uid}/rooms/{roomId}  { key, name, role, lastAt }                  — privado
  *   /invites/{paraUid}/{id}      { fromUid, fromName, fromAvatar, roomId, roomKey, roomName, createdAt, expiresAt }
  *
- * As regras do banco garantem que o perfil bate com o login do Discord,
+ * As regras do banco garantem que o perfil bate com o login da conta,
  * que só quem é da sala convida e que só o convidado lê o convite.
  */
 
@@ -89,7 +89,7 @@ export async function publishProfile(p: DiscordProfile): Promise<void> {
   }
 }
 
-/** Busca por nome de usuário do Discord (começo do nome, mínimo 2 letras). */
+/** Busca por nome de usuário (começo do nome, mínimo 2 letras). */
 export async function searchProfiles(text: string): Promise<PublicProfile[]> {
   const q = text.trim().replace(/^@/, '').toLowerCase()
   if (q.length < 2) return []
@@ -127,7 +127,7 @@ export function subscribeMyRooms(uid: string, cb: (rooms: MyRoom[]) => void, onE
 /** Tira a sala da lista do perfil (sem mexer na sala). */
 export async function forgetMyRoom(roomId: string): Promise<void> {
   const uid = await ensureSignedIn()
-  if (!isDiscordUid(uid)) return
+  if (!isAccountUid(uid)) return
   await remove(ref(getDb(), `users/${uid}/rooms/${roomId}`))
 }
 

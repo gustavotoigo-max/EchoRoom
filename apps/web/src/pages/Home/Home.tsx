@@ -32,7 +32,7 @@ export function Home() {
 
   async function create(e: FormEvent) {
     e.preventDefault()
-    if (!profile) return setCreateError('Entre com Discord para criar uma sala.')
+    if (!profile) return setCreateError('Entre na sua conta para criar uma sala.')
     if (!roomName.trim()) return setCreateError('Dê um nome para a sala.')
     if (password.length < MIN_PASSWORD) return setCreateError(`A senha precisa ter pelo menos ${MIN_PASSWORD} caracteres.`)
     setCreating(true)

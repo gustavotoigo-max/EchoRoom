@@ -21,7 +21,7 @@ export function SharePanel() {
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState<string | null>(null)
 
-  if (!profile) return <p className="hint">Entre com Discord para levar playlists suas para a sala.</p>
+  if (!profile) return <p className="hint">Entre na sua conta para levar playlists suas para a sala.</p>
 
   const inRoom = (pl: Playlist) => !!pl.sharedIn[session.roomId]
   const toggle = (id: string) =>

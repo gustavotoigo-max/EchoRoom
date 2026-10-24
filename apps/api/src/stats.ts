@@ -1,10 +1,11 @@
-import { dayKey, type AccessMode, type AdminDay, type AdminOverview } from '@echoroom/shared'
+import { dayKey, isAccountUid, type AccessMode, type AdminDay, type AdminOverview } from '@echoroom/shared'
 import { mapLimit, type Db } from './db'
 
 /** Estatísticas de uso a partir do que já existe no banco (sem ler o conteúdo das salas). */
 
 export const DAY_MS = 86_400_000
-export const isDiscord = (uid: string) => uid.startsWith('discord_')
+/** Quem tem conta (Discord ou e-mail); o resto é convidado. */
+export const isAccount = isAccountUid
 
 export interface UserRecord {
   name?: string
@@ -40,7 +41,7 @@ export async function onlineNow(db: Db): Promise<{ roomsActive: number; peopleOn
     const online = Object.entries(parts).filter(([, p]) => p?.conns && Object.keys(p.conns).length > 0)
     perRoom.set(k, online.length)
     people += online.length
-    guests += online.filter(([uid]) => !isDiscord(uid)).length
+    guests += online.filter(([uid]) => !isAccount(uid)).length
   })
   return { roomsActive: [...perRoom.values()].filter((n) => n > 0).length, peopleOnline: people, guestsOnline: guests, perRoom }
 }
@@ -75,8 +76,8 @@ export async function overview(db: Db): Promise<AdminOverview> {
     return {
       date,
       newUsers: newUsers.get(date) ?? 0,
-      active: act.filter(isDiscord).length,
-      activeGuests: act.filter((u) => !isDiscord(u)).length,
+      active: act.filter(isAccount).length,
+      activeGuests: act.filter((u) => !isAccount(u)).length,
       roomsCreated: roomsCreated.get(date) ?? 0,
       adds: Number(c.adds) || 0,
       extension: Number(c.extension) || 0,
@@ -85,7 +86,7 @@ export async function overview(db: Db): Promise<AdminOverview> {
       roomsTotal: snap?.roomsTotal ?? null,
     }
   })
-  const distinct = (ds: string[]) => new Set(ds.flatMap((d) => (activity.get(d) ?? []).filter(isDiscord))).size
+  const distinct = (ds: string[]) => new Set(ds.flatMap((d) => (activity.get(d) ?? []).filter(isAccount))).size
 
   return {
     generatedAt: Date.now(),

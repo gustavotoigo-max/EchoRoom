@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { navigate, PROFILE_PATH, START_PATH } from '../../router'
 import { authStore } from '../../services/discordAuth'
-import { isDiscordUid } from '../../services/firebase/app'
+import { isAccountUid } from '../../services/firebase/app'
 import { claimRoom, deleteRoom, MAX_ROOM_NAME, renameRoom, unbanParticipant, updateSettings } from '../../services/firebase/roomsApi'
 import { forgetMyRoom } from '../../services/firebase/social'
 import { useRoomSession } from '../../services/RoomSessionContext'
@@ -44,7 +44,7 @@ export function SettingsBody() {
         <div className="drawer-note">
           <strong>Esta sala ainda não tem dono.</strong>
           <span>Ela foi criada antes de existirem donos. Quem assumir passa a administrar a sala.</span>
-          {isDiscordUid(me) && profile ? (
+          {isAccountUid(me) && profile ? (
             <button
               type="button"
               className="btn btn-primary"
@@ -53,7 +53,7 @@ export function SettingsBody() {
               <CrownIcon width={14} height={14} /> Assumir a sala
             </button>
           ) : (
-            <span>Entre com Discord para assumir.</span>
+            <span>Entre na sua conta para assumir.</span>
           )}
         </div>
       ) : (
@@ -189,7 +189,7 @@ export function SettingsBody() {
       <Section title="Acesso">
         <Toggle
           label="Permitir convidados"
-          hint="Quem não entra com Discord pode participar usando o link e a senha."
+          hint="Quem não tem conta pode participar usando o link e a senha."
           checked={settings.allowGuests}
           disabled={locked}
           onChange={(v) => save({ allowGuests: v })}

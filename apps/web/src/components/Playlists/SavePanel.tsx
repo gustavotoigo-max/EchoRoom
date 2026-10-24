@@ -77,7 +77,7 @@ export function SavePanel() {
       <section className="drawer-section">
         <h3>Minhas playlists</h3>
         {!profile ? (
-          <p className="hint">Entre com Discord para ter playlists suas, que você leva para qualquer sala.</p>
+          <p className="hint">Entre na sua conta para ter playlists suas, que você leva para qualquer sala.</p>
         ) : (
           <ul className="save-list">
             {(mine ?? []).map((pl) => (

@@ -23,7 +23,7 @@ export function JoinGate({ roomId, needsPassword, notice, onJoined }: Props) {
   async function submit(e: FormEvent) {
     e.preventDefault()
     const trimmed = currentIdentity(name).name
-    if (!trimmed) return setError('Entre com Discord ou digite um nome.')
+    if (!trimmed) return setError('Entre na sua conta ou digite um nome.')
     setBusy(true)
     setError(null)
     try {

@@ -14,9 +14,10 @@ import { firebaseConfig } from '../../config/firebase'
 /**
  * Inicialização única do Firebase e sessão do usuário.
  *
- * - Quem entra com Discord recebe um token do serviço de login (Cloudflare)
- *   e vira o usuário "discord_<id>" — o mesmo em qualquer computador.
- * - Quem não entra com Discord usa login anônimo (convidado, vale só neste navegador).
+ * - Quem entra na conta (Discord ou e-mail) recebe um token do serviço de login
+ *   (Cloudflare) e vira o usuário da conta ("discord_<id>" ou "acct_<id>") — o
+ *   mesmo em qualquer computador.
+ * - Quem não entra usa login anônimo (convidado, vale só neste navegador).
  */
 
 let app: FirebaseApp | null = null
@@ -51,8 +52,8 @@ export function getFirebaseAuth(): Auth {
   return auth!
 }
 
-/** true para usuários que entraram com Discord (uid "discord_…"). */
-export const isDiscordUid = (uid: string | null | undefined) => !!uid && uid.startsWith('discord_')
+/** true para quem tem conta (uid "discord_…" das contas antigas ou "acct_…" das por e-mail). */
+export { isAccountUid } from '@echoroom/shared'
 
 /** Garante um usuário autenticado (Discord salvo ou convidado anônimo). Retorna o uid. */
 export function ensureSignedIn(): Promise<string> {

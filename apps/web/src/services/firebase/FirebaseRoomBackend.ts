@@ -22,12 +22,12 @@ import {
   type RoomMeta,
   type RoomState,
 } from '../../types/room'
-import { describeDbError, ensureSignedIn, getDb, isDiscordUid, isPermissionDenied } from './app'
+import { describeDbError, ensureSignedIn, getDb, isAccountUid, isPermissionDenied } from './app'
 import { explainAccessDenied } from './roomsApi'
 
-/** Só aceita avatares do CDN do Discord. */
+/** Só aceita avatares do CDN do Discord ou o avatar de inicial das contas por e-mail (SVG embutido). */
 function safeAvatar(url: unknown): string | null {
-  return typeof url === 'string' && /^https:\/\/cdn\.discordapp\.com\//.test(url) ? url : null
+  return typeof url === 'string' && (/^https:\/\/cdn\.discordapp\.com\//.test(url) || /^data:image\/svg\+xml,/.test(url)) ? url : null
 }
 
 /** Presença e inatividade (tempos em ms). */
@@ -135,13 +135,13 @@ export class FirebaseRoomBackend {
     const base = `rooms/${this.roomKey}`
     this.stateRef = ref(db, `${base}/state`)
 
-    // Cadastro na sala (antes de tudo: falha aqui = bloqueado ou sala só para Discord).
+    // Cadastro na sala (antes de tudo: falha aqui = bloqueado ou sala só para quem tem conta).
     this.joinedAt = Date.now()
     try {
       await update(ref(db, `${base}/members/${uid}`), {
         name: this.name.slice(0, 32),
         avatar: this.avatar,
-        guest: !isDiscordUid(uid),
+        guest: !isAccountUid(uid),
         lastAt: serverTimestamp(),
       })
     } catch (err) {
@@ -452,9 +452,9 @@ export class FirebaseRoomBackend {
 
   // ---- internos ---------------------------------------------------------------
 
-  /** Guarda a sala no perfil de quem entrou com Discord (lista "Minhas salas"). */
+  /** Guarda a sala no perfil de quem tem conta (lista "Minhas salas"). */
   private recordMembership(meta: RoomMeta): void {
-    if (!isDiscordUid(this.participantId)) return
+    if (!isAccountUid(this.participantId)) return
     const db = getDb()
     const entry = {
       key: this.roomKey,
@@ -503,7 +503,7 @@ export class FirebaseRoomBackend {
         name: p?.name || m?.name || 'Convidado',
         connected,
         avatar: safeAvatar(p?.avatar ?? m?.avatar),
-        guest: !isDiscordUid(id),
+        guest: !isAccountUid(id),
         lastSeen: seen || undefined,
       })
     }

@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { InviteCard } from '../../components/Invites/InviteCard'
 import { UserChip } from '../../components/Invites/UserChip'
 import { Brand } from '../../components/ui/Brand'
-import { CrownIcon, DiscordIcon } from '../../components/ui/Icons'
+import { CrownIcon } from '../../components/ui/Icons'
 import { ADMIN_PATH, appPath, navigate, START_PATH } from '../../router'
-import { authStore, discordEnabled, logoutDiscord, startDiscordLogin } from '../../services/discordAuth'
+import { authStore, logoutDiscord } from '../../services/discordAuth'
+import { LoginButtons } from '../../components/Account/LoginButtons'
+import { LoginMethods } from '../../components/Account/LoginMethods'
 import { inviteStore, leaveRoom, subscribeMyRooms, type MyRoom } from '../../services/firebase/social'
 import { useStore } from '../../stores/createStore'
 import { showToast } from '../../stores/toastStore'
@@ -42,7 +44,7 @@ export function Profile() {
  * ganha "Você está aqui" no lugar de "Abrir sala".
  */
 export function ProfileContent({ currentRoomId, onBackToRoom }: { currentRoomId?: string; onBackToRoom?: () => void } = {}) {
-  const { profile, ready, busy } = useStore(authStore, (s) => s)
+  const { profile, ready } = useStore(authStore, (s) => s)
   const invites = useStore(inviteStore, (s) => s.invites)
   const [rooms, setRooms] = useState<MyRoom[] | null>(null)
   const [error, setError] = useState(false)
@@ -76,15 +78,10 @@ export function ProfileContent({ currentRoomId, onBackToRoom }: { currentRoomId?
           <h2>Seu perfil</h2>
           <p className="hint">
             {ready
-              ? 'O perfil guarda as salas das quais você faz parte e os convites que recebe. Entre com Discord para ver.'
+              ? 'O perfil guarda as salas das quais você faz parte e os convites que recebe. Entre na sua conta para ver.'
               : 'Carregando…'}
           </p>
-          {discordEnabled && ready && (
-            <button type="button" className="btn btn-discord" onClick={startDiscordLogin} disabled={busy}>
-              <DiscordIcon width={20} height={20} />
-              <span>Entrar com Discord</span>
-            </button>
-          )}
+          {ready && <LoginButtons />}
         </div>
       ) : (
         <>
@@ -92,7 +89,7 @@ export function ProfileContent({ currentRoomId, onBackToRoom }: { currentRoomId?
             <img className="avatar" src={profile.avatarUrl} alt="" width={88} height={88} />
             <div>
               <h1>{profile.name}</h1>
-              <p>@{profile.username} · conectado com Discord</p>
+              <p>@{profile.username}</p>
             </div>
             <div className="profile-actions">
               {profile.admin && (
@@ -125,9 +122,16 @@ export function ProfileContent({ currentRoomId, onBackToRoom }: { currentRoomId?
                   navigate('/')
                 }}
               >
-                Sair do Discord
+                Sair
               </button>
             </div>
+          </section>
+
+          <section className="profile-block">
+            <header className="side-head">
+              <h3>Formas de entrar</h3>
+            </header>
+            <LoginMethods />
           </section>
 
           {invites.length > 0 && (

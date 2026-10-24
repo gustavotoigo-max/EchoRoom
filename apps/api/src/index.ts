@@ -3,6 +3,7 @@ import { adminUids, allowedOrigins, readServiceAccount, type Env } from './env'
 import { verifyIdToken } from './google'
 import { corsHeaders, HttpError, json } from './http'
 import { adminRoute } from './routes/admin'
+import { accountInfo, emailAppCallback, emailLogin, linkEmail, unlink } from './routes/email'
 import { APP_CALLBACK_PATH, appCallback, login } from './routes/login'
 import { dailyRoutine } from './stats'
 
@@ -10,7 +11,12 @@ import { dailyRoutine } from './stats'
  * Backend do EchoRoom (Cloudflare Worker).
  *
  *   GET  /              diagnóstico (o que falta configurar)
- *   POST /discord       login com Discord → token do Firebase (site e app)
+ *   POST /discord       login com Discord → token do Firebase (site e app); link:true vincula
+ *   POST /email         login por e-mail (token do usuário de e-mail) → token da conta
+ *   GET  /email/app     link do e-mail aberto no celular → app (echoroom://email)
+ *   POST /link/email    vincula um e-mail à conta de quem está logado
+ *   GET  /account       formas de entrar da conta
+ *   POST /unlink        tira uma forma de entrar
  *   GET  /discord/app   retorno do Discord para o app do celular (echoroom://auth)
  *   *    /admin/...     administração (exige login de um admin)
  *   cron (diário)       fotografia dos totais e limpeza de dados antigos
@@ -25,6 +31,11 @@ export default {
       if (request.method === 'GET' && path === '/') res = diagnostics(env)
       else if (request.method === 'POST' && (path === '/discord' || path === '/auth/discord')) res = await login(request, env)
       else if (request.method === 'GET' && path === APP_CALLBACK_PATH) return appCallback(request)
+      else if (request.method === 'POST' && path === '/email') res = await emailLogin(request, env)
+      else if (request.method === 'GET' && path === '/email/app') return emailAppCallback(request)
+      else if (request.method === 'POST' && path === '/link/email') res = await linkEmail(request, env)
+      else if (request.method === 'GET' && path === '/account') res = await accountInfo(request, env)
+      else if (request.method === 'POST' && path === '/unlink') res = await unlink(request, env)
       else if (path.startsWith('/admin/')) res = await admin(request, path, env)
       else throw new HttpError(404, 'not_found')
       for (const [k, v] of Object.entries(cors)) res.headers.set(k, v)
