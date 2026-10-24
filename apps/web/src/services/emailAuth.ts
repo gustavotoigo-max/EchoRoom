@@ -35,13 +35,15 @@ export const emailStore = createStore<{
   /** sent: link enviado · askEmail: link aberto em outro aparelho · profile: conta nova pede nome e usuário. */
   step: 'idle' | 'sent' | 'askEmail' | 'working' | 'profile'
   email: string
+  /** Nome sugerido no passo "Criar sua conta" (o nome da conta Google). */
+  suggestName?: string
   error: string | null
 }>({ step: 'idle', email: '', error: null })
 
 let app: FirebaseApp | null = null
 let auth: Auth | null = null
-/** Token do usuário de e-mail enquanto a conta nova escolhe nome e usuário. */
-let pendingToken: string | null = null
+/** Login à espera do nome e usuário da conta nova (por e-mail ou Google). */
+let pending: { path: '/email' | '/google'; body: Record<string, string> } | null = null
 
 function emailAuth(): Auth {
   if (!firebaseConfig) throw new Error('O Firebase não está configurado neste site.')
@@ -121,7 +123,7 @@ async function finishEmailLink(email: string, href: string, pending: Pending | n
     const idToken = await cred.user.getIdToken()
     savePending(null)
     if (pending?.purpose === 'link') await linkToAccount(idToken)
-    else await loginWith(idToken)
+    else await accountLogin('/email', { idToken }, email)
   } catch (err) {
     emailStore.set({ step: 'idle', error: describe(err) })
   } finally {
@@ -129,20 +131,31 @@ async function finishEmailLink(email: string, href: string, pending: Pending | n
   }
 }
 
-async function loginWith(idToken: string, extra: { name?: string; username?: string } = {}): Promise<void> {
-  const res = await fetch(`${AUTH_URL}/email`, {
+/**
+ * Entra na conta pelo serviço de login (POST /email ou /google). Conta nova
+ * abre o passo "Criar sua conta"; `who` aparece nele (e-mail ou nome do Google).
+ */
+export async function accountLogin(
+  path: '/email' | '/google',
+  body: Record<string, string>,
+  who = '',
+  extra: { name?: string; username?: string; suggestName?: string } = {},
+): Promise<void> {
+  const { suggestName, ...fields } = extra
+  const res = await fetch(`${AUTH_URL}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idToken, ...extra }),
+    body: JSON.stringify({ ...body, ...fields }),
   })
   const data = (await res.json().catch(() => ({}))) as { firebaseToken?: string; error?: string }
   if (['needs_profile', 'username_taken', 'bad_profile'].includes(data.error ?? '')) {
-    pendingToken = idToken
+    if (!pending || pending.path !== path) emailStore.set({ email: who, suggestName: suggestName ?? '' })
+    pending = { path, body }
     emailStore.set({ step: 'profile', error: data.error === 'needs_profile' ? null : loginErrorMessage(data.error) })
     return
   }
   if (!res.ok || !data.firebaseToken) throw new Error(loginErrorMessage(data.error))
-  pendingToken = null
+  pending = null
   const profile = await completeLogin(data.firebaseToken)
   emailStore.set({ step: 'idle', error: null })
   showToast(`Bem-vindo, ${profile.name}!`, 'ok', 3000)
@@ -150,10 +163,10 @@ async function loginWith(idToken: string, extra: { name?: string; username?: str
 
 /** Conta nova: nome e usuário escolhidos. */
 export async function submitNewAccount(name: string, username: string): Promise<void> {
-  if (!pendingToken) return emailStore.set({ step: 'idle', error: 'O link expirou. Peça um novo.' })
+  if (!pending) return emailStore.set({ step: 'idle', error: 'O login expirou. Entre de novo.' })
   emailStore.set({ step: 'working', error: null })
   try {
-    await loginWith(pendingToken, { name, username })
+    await accountLogin(pending.path, pending.body, emailStore.get().email, { name, username })
   } catch (err) {
     emailStore.set({ step: 'profile', error: describe(err) })
   }
@@ -175,7 +188,7 @@ async function linkToAccount(emailToken: string): Promise<void> {
 }
 
 export const cancelEmail = () => {
-  pendingToken = null
+  pending = null
   emailStore.set({ step: 'idle', error: null })
 }
 

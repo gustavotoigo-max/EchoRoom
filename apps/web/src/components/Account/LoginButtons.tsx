@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { authStore, discordEnabled, emailEnabled, startDiscordLogin } from '../../services/discordAuth'
 import { emailStore, sendEmailLink } from '../../services/emailAuth'
 import { useStore } from '../../stores/createStore'
+import { googleEnabled } from '../../services/googleAuth'
 import { DiscordIcon } from '../ui/Icons'
+import { GoogleButton } from './GoogleButton'
 
-/** Entrar na conta: Discord ou link por e-mail. Nada aparece se nenhum estiver configurado. */
+/** Entrar na conta: Google, Discord ou link por e-mail. Nada aparece se nenhum estiver configurado. */
 export function LoginButtons({ compact }: { compact?: boolean }) {
   const { busy, error } = useStore(authStore, (s) => s)
   const email = useStore(emailStore, (s) => s)
@@ -19,6 +21,7 @@ export function LoginButtons({ compact }: { compact?: boolean }) {
 
   return (
     <div className={`login-buttons ${compact ? 'is-compact' : ''}`}>
+      {googleEnabled && <GoogleButton />}
       {discordEnabled && (
         <button type="button" className="btn btn-discord" onClick={() => startDiscordLogin()} disabled={busy}>
           <DiscordIcon width={20} height={20} />
@@ -61,7 +64,7 @@ export function LoginButtons({ compact }: { compact?: boolean }) {
           </button>
         ))}
       {(error || email.error) && <p className="form-error">{email.error || error}</p>}
-      {!discordEnabled && !emailEnabled && <p className="form-error">O login ainda não foi configurado neste site.</p>}
+      {!discordEnabled && !emailEnabled && !googleEnabled && <p className="form-error">O login ainda não foi configurado neste site.</p>}
     </div>
   )
 }

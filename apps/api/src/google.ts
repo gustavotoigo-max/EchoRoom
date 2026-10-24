@@ -70,3 +70,43 @@ export async function verifyIdToken(token: string, projectId: string): Promise<{
     return null
   }
 }
+
+// ---- login com Google (ID token do "Fazer login com o Google") -----------------------
+
+const GOOGLE_JWKS = 'https://www.googleapis.com/oauth2/v3/certs'
+const GOOGLE_ISSUERS = ['accounts.google.com', 'https://accounts.google.com']
+let googleJwks: { keys: Jwk[]; exp: number } | null = null
+
+async function googleKeys(): Promise<Jwk[]> {
+  if (googleJwks && googleJwks.exp > Date.now()) return googleJwks.keys
+  const res = await fetch(GOOGLE_JWKS)
+  if (!res.ok) throw new Error('Não foi possível obter as chaves públicas do Google.')
+  const maxAge = Number(/max-age=(\d+)/.exec(res.headers.get('Cache-Control') ?? '')?.[1] ?? 3600)
+  googleJwks = { keys: ((await res.json()) as { keys: Jwk[] }).keys, exp: Date.now() + maxAge * 1000 }
+  return googleJwks.keys
+}
+
+export interface GoogleUser {
+  /** ID fixo da conta Google (o e-mail nunca é usado para vincular). */
+  sub: string
+  name: string
+  picture: string
+}
+
+/** Confere o ID token do Google emitido para o nosso Client ID. */
+export async function verifyGoogleIdToken(token: string, clientId: string): Promise<GoogleUser | null> {
+  try {
+    const { header, payload } = decodeJwt(token)
+    if (header.alg !== 'RS256') return null
+    const key = (await googleKeys()).find((k) => k.kid === header.kid)
+    if (!key || !(await verifyJwtSignature(token, key))) return null
+    const t = nowSec()
+    if (payload.aud !== clientId || !GOOGLE_ISSUERS.includes(String(payload.iss))) return null
+    if (typeof payload.exp !== 'number' || payload.exp < t) return null
+    if (typeof payload.sub !== 'string' || !/^\d{1,40}$/.test(payload.sub)) return null
+    const picture = typeof payload.picture === 'string' && /^https:\/\/lh3\.googleusercontent\.com\/[^\s"'<>]{1,400}$/.test(payload.picture) ? payload.picture : ''
+    return { sub: payload.sub, name: typeof payload.name === 'string' ? payload.name : '', picture }
+  } catch {
+    return null
+  }
+}

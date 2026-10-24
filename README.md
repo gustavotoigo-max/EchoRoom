@@ -47,6 +47,13 @@ Endereço: `https://<usuário>.github.io/EchoRoom/`
   serviço de login em `apps/api/` (Cloudflare Workers, grátis). Guia completo:
   [`apps/api/README.md`](apps/api/README.md). Variáveis no GitHub:
   `DISCORD_CLIENT_ID` e `AUTH_URL`.
+- **Contas EchoRoom** (até 90): entrar com Google, Discord ou link por e-mail,
+  todos na mesma conta (perfil → "Formas de entrar"). Nunca junta contas pelo
+  e-mail igual. O login com Google pede só nome e foto (variável
+  `GOOGLE_CLIENT_ID` no GitHub e no Cloudflare).
+- **Playlists da conta Google:** no perfil, "Importar da minha conta Google"
+  lista as playlists do YouTube/YouTube Music (inclusive privadas) e importa as
+  marcadas. O acesso ao YouTube (só leitura) é pedido na hora e não é guardado.
 - **Dono da sala:** criar sala exige Discord e pede nome + senha. Só o dono
   altera as configurações, remove/bloqueia pessoas e apaga sugestões.
 - **Configurações da sala** (engrenagem no topo): quem controla a reprodução,

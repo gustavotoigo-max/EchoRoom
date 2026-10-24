@@ -19,5 +19,5 @@ async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown): Pr
 
 export const fetchMethods = () => call<{ methods: AccountMethods }>('GET', '/account').then((r) => r.methods)
 
-export const unlinkMethod = (provider: 'discord' | 'email') =>
+export const unlinkMethod = (provider: 'discord' | 'email' | 'google') =>
   call<{ methods: AccountMethods }>('POST', '/unlink', { provider }).then((r) => r.methods)

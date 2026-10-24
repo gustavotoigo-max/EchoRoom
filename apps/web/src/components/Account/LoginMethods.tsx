@@ -5,9 +5,11 @@ import { accountVersion, discordEnabled, emailEnabled, startDiscordLink } from '
 import { emailStore, sendEmailLink } from '../../services/emailAuth'
 import { useStore } from '../../stores/createStore'
 import { showToast } from '../../stores/toastStore'
+import { googleEnabled } from '../../services/googleAuth'
 import { DiscordIcon } from '../ui/Icons'
+import { GoogleButton } from './GoogleButton'
 
-/** Perfil: Discord e e-mail ligados à conta, com vincular e desvincular. */
+/** Perfil: Discord, e-mail e Google ligados à conta, com vincular e desvincular. */
 export function LoginMethods() {
   const version = useStore(accountVersion, (s) => s.n)
   const email = useStore(emailStore, (s) => s)
@@ -27,11 +29,11 @@ export function LoginMethods() {
     }
   }, [version])
 
-  async function unlink(provider: 'discord' | 'email') {
+  async function unlink(provider: 'discord' | 'email' | 'google') {
     setBusy(true)
     try {
       setMethods(await unlinkMethod(provider))
-      showToast(provider === 'discord' ? 'Discord desvinculado.' : 'E-mail desvinculado.', 'ok', 3000)
+      showToast(provider === 'discord' ? 'Discord desvinculado.' : provider === 'google' ? 'Google desvinculado.' : 'E-mail desvinculado.', 'ok', 3000)
     } catch (err) {
       showToast((err as Error).message, 'error')
     } finally {
@@ -46,10 +48,25 @@ export function LoginMethods() {
 
   if (failed) return <p className="hint">Não foi possível carregar as formas de entrar agora.</p>
   if (!methods) return <div className="skeleton skeleton-line" />
-  const both = !!methods.discord && methods.email
+  // Sempre sobra pelo menos uma forma de entrar.
+  const both = [!!methods.discord, methods.email, !!methods.google].filter(Boolean).length > 1
 
   return (
     <ul className="login-methods">
+      <li>
+        <span className="lm-icon" aria-hidden="true">G</span>
+        <span className="lm-text">
+          <strong>Google</strong>
+          <small>{methods.google ? methods.google.name || 'vinculado' : 'não vinculado'}</small>
+        </span>
+        {methods.google ? (
+          <button type="button" className="btn btn-secondary" disabled={busy || !both} title={both ? undefined : 'É a única forma de entrar'} onClick={() => unlink('google')}>
+            Desvincular
+          </button>
+        ) : (
+          googleEnabled && <GoogleButton mode="link" />
+        )}
+      </li>
       <li>
         <DiscordIcon width={18} height={18} />
         <span className="lm-text">

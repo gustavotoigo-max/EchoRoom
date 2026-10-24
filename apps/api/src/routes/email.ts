@@ -1,16 +1,5 @@
-import { isAccountUid, USERNAME_RE } from '@echoroom/shared'
-import {
-  accountFor,
-  accountToken,
-  caller,
-  checkAccess,
-  defaultUid,
-  initialAvatar,
-  methodsOf,
-  recordLogin,
-  type AccountProfile,
-  type AccountRecord,
-} from '../accounts'
+import { isAccountUid } from '@echoroom/shared'
+import { accountFor, caller, defaultUid, enterAccount, methodsOf, ownMethod, type AccountRecord, type Provider } from '../accounts'
 import { Db } from '../db'
 import { allowedOrigins, readServiceAccount, type Env, type ServiceAccount } from '../env'
 import { verifyIdToken } from '../google'
@@ -36,13 +25,10 @@ async function emailUser(token: unknown, sa: ServiceAccount): Promise<string> {
 }
 
 /** O app do celular não tem origem; o site precisa ser um dos permitidos. */
-function checkOrigin(request: Request, env: Env): void {
+export function checkOrigin(request: Request, env: Env): void {
   const origin = request.headers.get('Origin')
   if (origin && !allowedOrigins(env).includes(origin)) throw new HttpError(403, 'origin_not_allowed')
 }
-
-const cleanName = (v: unknown) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ').slice(0, 32) : '')
-const cleanUsername = (v: unknown) => (typeof v === 'string' ? v.trim().toLowerCase().replace(/^@/, '') : '')
 
 /** POST /email { idToken, name?, username? } — entra (ou cria a conta) com o e-mail. */
 export async function emailLogin(request: Request, env: Env): Promise<Response> {
@@ -52,26 +38,8 @@ export async function emailLogin(request: Request, env: Env): Promise<Response> 
   const body = await readJson<{ idToken?: unknown; name?: unknown; username?: unknown }>(request)
   const emailUid = await emailUser(body.idToken, sa)
   const db = new Db(sa, env)
-
   const uid = (await accountFor(db, 'email', emailUid)) ?? defaultUid('email', emailUid)
-  const prev = await db.get<AccountRecord>(`admin/users/${uid}`)
-  let profile: AccountProfile
-  if (prev) {
-    profile = { name: prev.name || 'EchoRoom', username: prev.username || '', avatar: prev.avatar || initialAvatar(prev.name || '?', uid) }
-  } else {
-    // Conta nova: precisa de nome e usuário (únicos entre as contas).
-    const name = cleanName(body.name)
-    const username = cleanUsername(body.username)
-    if (!name && !username) throw new HttpError(400, 'needs_profile')
-    if (!name || !USERNAME_RE.test(username)) throw new HttpError(400, 'bad_profile')
-    const users = (await db.get<Record<string, AccountRecord>>('admin/users')) ?? {}
-    if (Object.values(users).some((u) => (u.username ?? '').toLowerCase() === username)) throw new HttpError(409, 'username_taken')
-    profile = { name, username, avatar: initialAvatar(name, uid) }
-  }
-  await checkAccess(db, env, uid, !prev, profile)
-  await recordLogin(db, uid, prev, profile)
-  const firebaseToken = await accountToken(env, sa, uid, profile)
-  return json({ firebaseToken, profile: { uid, name: profile.name, username: profile.username, avatarUrl: profile.avatar } })
+  return enterAccount(db, env, sa, uid, body)
 }
 
 /** POST /link/email { idToken } — vincula o e-mail à conta de quem está logado. */
@@ -101,24 +69,33 @@ export async function accountInfo(request: Request, env: Env): Promise<Response>
   return json({ methods: methodsOf(uid, rec) })
 }
 
+const PROVIDERS: Provider[] = ['discord', 'email', 'google']
+
 /** POST /unlink { provider } — tira uma forma de entrar (sempre sobra pelo menos uma). */
 export async function unlink(request: Request, env: Env): Promise<Response> {
   checkOrigin(request, env)
   const { uid, sa } = await caller(request, env)
   const body = await readJson<{ provider?: unknown }>(request)
-  const provider = body.provider === 'discord' || body.provider === 'email' ? body.provider : null
+  const provider = PROVIDERS.find((p) => p === body.provider)
   if (!provider) throw new HttpError(400, 'bad_request')
   const db = new Db(sa, env)
   const rec = await db.get<AccountRecord>(`admin/users/${uid}`)
   const methods = methodsOf(uid, rec)
-  const has = { discord: !!methods.discord, email: methods.email }
+  const has = { discord: !!methods.discord, email: methods.email, google: !!methods.google }
   if (!has[provider]) return json({ methods })
-  if (!has[provider === 'discord' ? 'email' : 'discord']) throw new HttpError(409, 'last_method')
+  if (PROVIDERS.filter((p) => has[p]).length < 2) throw new HttpError(409, 'last_method')
 
   const link = rec?.links?.[provider]
   // Vinculado de outra conta: some o vínculo. Próprio da conta (o Discord da conta
-  // antiga, o e-mail da conta por e-mail): fica marcado como desvinculado.
-  const id = link ? (provider === 'discord' ? (link as { id: string }).id : (link as { uid: string }).uid) : uid.slice(uid.indexOf('_') + 1)
+  // antiga, o e-mail da conta por e-mail, o Google da conta pelo Google): fica
+  // marcado como desvinculado.
+  const id = !link
+    ? ownMethod(uid).id
+    : 'id' in link
+      ? link.id
+      : 'sub' in link
+        ? link.sub
+        : link.uid
   await db.update('', {
     [`admin/identities/${provider}/${id}`]: link ? null : false,
     [`admin/users/${uid}/links/${provider}`]: link ? null : false,
