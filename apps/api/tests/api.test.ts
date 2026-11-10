@@ -488,3 +488,28 @@ describe('login com Google', () => {
     expect(await errorOf(await google('100000000000000000005'))).toBe('unlinked')
   })
 })
+
+describe('handoff (app do Windows entra com a conta do navegador)', () => {
+  beforeEach(() => {
+    tree = {}
+  })
+  const UID = 'discord_222222222222222222'
+
+  it('devolve um token da mesma conta para quem já está logado', async () => {
+    await loginAs()
+    const res = await call('POST', '/handoff', { token: idToken(UID) })
+    expect(res.status).toBe(200)
+    const data = (await res.json()) as { firebaseToken: string; profile: { uid: string; name: string } }
+    expect(data.profile.uid).toBe(UID)
+    expect(claimsOf(data.firebaseToken).dn).toBe('Ana')
+  })
+
+  it('exige login, conta existente, origem do site e respeita a suspensão', async () => {
+    expect((await call('POST', '/handoff')).status).toBe(401)
+    expect((await call('POST', '/handoff', { token: idToken(UID) })).status).toBe(404)
+    await loginAs()
+    expect((await call('POST', '/handoff', { token: idToken(UID), origin: 'https://evil.example' })).status).toBe(403)
+    tree = { ...tree, admin: { ...(tree.admin as object), suspended: { [UID]: true } } }
+    expect((await call('POST', '/handoff', { token: idToken(UID) })).status).toBe(403)
+  })
+})
