@@ -1,7 +1,6 @@
-# Publica o front-end no GitHub Pages a cada push na branch main.
-# Requer: Settings → Pages → Source = "GitHub Actions"
-#         Settings → Secrets and variables → Actions → Variables → FIREBASE_CONFIG, DISCORD_CLIENT_ID, AUTH_URL
-name: Deploy GitHub Pages
+# GitHub Pages do EchoRoom (gustavotoigo-max.github.io/EchoRoom): só redireciona para o
+# site novo, https://www.spectracast.com.br/sala/ (publicado pelo repo Spectra).
+name: Redirecionar GitHub Pages para o SpectraCast
 
 on:
   push:
@@ -23,40 +22,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Instalar dependências do site
-        run: npm install --workspace apps/web --no-audit --no-fund
-
-      - name: Testes do site (sala, sincronização, permissões)
-        run: npm test --workspace apps/web
-
-      - name: Build
-        env:
-          VITE_BASE: /${{ github.event.repository.name }}/
-          VITE_FIREBASE_CONFIG: ${{ vars.FIREBASE_CONFIG }}
-          VITE_DISCORD_CLIENT_ID: ${{ vars.DISCORD_CLIENT_ID }}
-          VITE_AUTH_URL: ${{ vars.AUTH_URL }}
-          VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+      # O site do EchoRoom mudou para https://www.spectracast.com.br/sala/ (repo Spectra).
+      # Aqui só fica um redirecionamento: qualquer link antigo (inclusive /room/CODIGO)
+      # leva para o mesmo caminho no endereço novo.
+      - name: Página de redirecionamento
         run: |
-          if [ -z "$VITE_FIREBASE_CONFIG" ]; then
-            echo "::warning::Variável FIREBASE_CONFIG não definida. O site vai mostrar a tela de configuração."
-          fi
-          npm run build --workspace apps/web
-          cd apps/web
-          # Links diretos como /EchoRoom/room/ABX72 caem no 404 do Pages: servimos o app nele também.
-          cp dist/index.html dist/404.html
-          touch dist/.nojekyll
-          # Extensão do Chrome para download no próprio site.
-          (cd ../extension && zip -qr ../web/dist/echoroom-chrome.zip .)
+          mkdir -p out
+          cp redirect/index.html out/index.html
+          cp redirect/index.html out/404.html
+          touch out/.nojekyll
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/web/dist
+          path: out
 
   deploy:
     needs: build
