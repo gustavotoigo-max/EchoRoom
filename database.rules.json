@@ -118,6 +118,9 @@
           "playlistPlay": {
             ".validate": "newData.val() == 'append' || newData.val() == 'replace'"
           },
+          "queueEdit": {
+            ".validate": "newData.val() == 'all' || newData.val() == 'owner'"
+          },
           "$other": {
             ".validate": false
           }
@@ -204,6 +207,37 @@
                 ".write": "auth != null && !root.child('admin').child('suspended').child(auth.uid).exists() && !root.child('rooms').child($roomKey).child('banned').child(auth.uid).exists() && ((auth.uid.beginsWith('discord_') || auth.uid.beginsWith('acct_')) || root.child('rooms').child($roomKey).child('settings').child('allowGuests').val() != false) && !data.exists() && newData.exists() && root.child('rooms').child($roomKey).child('playlists').child($pid).child('kind').val() == 'room'",
                 ".validate": "newData.child('videoId').isString() && newData.child('videoId').val().matches(/^[A-Za-z0-9_-]{11}$/) && newData.child('title').isString()"
               }
+            }
+          }
+        },
+        "chat": {
+          ".write": "auth != null && !root.child('admin').child('suspended').child(auth.uid).exists() && root.child('rooms').child($roomKey).child('meta').child('ownerUid').val() == auth.uid && !newData.exists()",
+          ".indexOn": [
+            "at"
+          ],
+          "$msgId": {
+            ".write": "auth != null && !root.child('admin').child('suspended').child(auth.uid).exists() && !root.child('rooms').child($roomKey).child('banned').child(auth.uid).exists() && ((auth.uid.beginsWith('discord_') || auth.uid.beginsWith('acct_')) || root.child('rooms').child($roomKey).child('settings').child('allowGuests').val() != false) && ((!data.exists() && newData.child('uid').val() == auth.uid) || (data.exists() && data.child('uid').val() == auth.uid && (!newData.exists() || newData.child('uid').val() == auth.uid)) || (data.exists() && !newData.exists() && root.child('rooms').child($roomKey).child('meta').child('ownerUid').val() == auth.uid))",
+            ".validate": "$msgId.matches(/^[A-Za-z0-9_-]{10,40}$/) && newData.hasChildren(['uid', 'name', 'text', 'at']) && (!data.exists() || newData.child('at').val() == data.child('at').val())",
+            "uid": {
+              ".validate": "newData.isString()"
+            },
+            "name": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 64"
+            },
+            "avatar": {
+              ".validate": "newData.isString() && newData.val().length <= 500 && newData.val().beginsWith('https://')"
+            },
+            "text": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 1000"
+            },
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+            },
+            "editedAt": {
+              ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+            },
+            "$other": {
+              ".validate": false
             }
           }
         },
