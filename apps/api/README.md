@@ -8,7 +8,9 @@ fica aqui, num Worker gratuito do Cloudflare:
 | `GET /` | Diagnóstico: mostra o que falta configurar (sem revelar segredos) |
 | `POST /discord` | Login: troca o `code` do Discord por um token do Firebase; confere suspensão e modo de acesso; registra o cadastro |
 | `/admin/...` | Administração (só para quem está em `ADMIN_UIDS`): visão geral, pessoas, salas, acesso, registro |
-| rotina diária | Totais do dia e limpeza de atividade antiga |
+| `GET /yt/video?id=<id>` | Título e autor de um vídeo do YouTube (oEmbed, sem chave); 404 se não existir |
+| `GET /yt/playlist?list=<id>` | Título e músicas (até 200) de uma playlist do YouTube; precisa de `YOUTUBE_API_KEY` (sem ela, 503) |
+| rotina diária | Totais do dia, limpeza de atividade antiga, títulos do YouTube com mais de 30 dias (atualiza ou apaga) e bate-papo (últimas 200 mensagens por sala, nada com mais de 30 dias) |
 
 O backend usa a conta de serviço do Firebase para ler e escrever no banco como
 administrador. O site nunca recebe o Client Secret, a conta de serviço nem o
@@ -24,6 +26,9 @@ src/
   crypto.ts       JWT RS256 com WebCrypto
   db.ts           Realtime Database via REST
   stats.ts        estatísticas de uso
+  routes/youtube.ts  rotas /yt/video e /yt/playlist
+  youtube.ts      oEmbed e YouTube Data API
+  maintenance.ts  rotina diária: títulos do YouTube e bate-papo
   env.ts, http.ts configuração e respostas
 tests/            testes com Discord, Google e banco simulados
 ```
@@ -38,6 +43,7 @@ tests/            testes com Discord, Google e banco simulados
 | `GOOGLE_CLIENT_ID` | Text | Client ID do Google (OAuth "Aplicativo da Web"), o mesmo da variável do GitHub. Sem ele, o login com Google fica desligado |
 | `DISCORD_CLIENT_SECRET` | **Secret** | Client Secret do Discord |
 | `FIREBASE_SERVICE_ACCOUNT` | **Secret** | conteúdo inteiro do JSON da conta de serviço |
+| `YOUTUBE_API_KEY` | **Secret** (opcional) | chave da YouTube Data API v3 (Google Cloud → APIs e serviços → Credenciais). Sem ela, a importação de playlists fica desligada e os títulos são atualizados pelo oEmbed, poucos por dia |
 
 ## Publicação automática (GitHub Actions)
 
