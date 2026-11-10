@@ -222,16 +222,16 @@
               ".validate": "newData.isString()"
             },
             "name": {
-              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 64"
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 64 && (((auth.uid.beginsWith('discord_') || auth.uid.beginsWith('acct_')) && newData.val() == auth.token.dn) || (!(auth.uid.beginsWith('discord_') || auth.uid.beginsWith('acct_')) && newData.val() == root.child('rooms').child($roomKey).child('members').child(auth.uid).child('name').val()))"
             },
             "avatar": {
-              ".validate": "newData.isString() && newData.val().length <= 500 && newData.val().beginsWith('https://')"
+              ".validate": "newData.isString() && (auth.uid.beginsWith('discord_') || auth.uid.beginsWith('acct_')) && newData.val() == auth.token.av"
             },
             "text": {
               ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 1000"
             },
             "at": {
-              ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+              ".validate": "newData.isNumber() && (data.exists() || newData.val() == now)"
             },
             "editedAt": {
               ".validate": "newData.isNumber() && newData.val() <= now + 60000"
