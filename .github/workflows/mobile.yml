@@ -31,7 +31,7 @@ jobs:
       EXPO_PUBLIC_FIREBASE_CONFIG: ${{ vars.FIREBASE_CONFIG }}
       EXPO_PUBLIC_DISCORD_CLIENT_ID: ${{ vars.DISCORD_CLIENT_ID }}
       EXPO_PUBLIC_AUTH_URL: ${{ vars.AUTH_URL }}
-      EXPO_PUBLIC_SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+      EXPO_PUBLIC_SITE_URL: https://www.spectracast.com.br/sala
       EXPO_NO_TELEMETRY: 1
       CI: 1
     steps:

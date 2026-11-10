@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>O EchoRoom agora é SpectraCast</title>
+<link rel="canonical" href="https://www.spectracast.com.br/sala/">
+<script>
+  // O EchoRoom virou o SpectraCast: leva para o mesmo caminho em www.spectracast.com.br/sala/
+  // (ex.: /EchoRoom/room/ABX72 → /sala/room/ABX72), mantendo ?… e #….
+  (function () {
+    var base = '/EchoRoom'
+    var path = location.pathname
+    if (path.toLowerCase().indexOf(base.toLowerCase()) === 0) path = path.slice(base.length)
+    path = path.replace(/^\/+/, '')
+    location.replace('https://www.spectracast.com.br/sala/' + path + location.search + location.hash)
+  })()
+</script>
+<noscript><meta http-equiv="refresh" content="0; url=https://www.spectracast.com.br/sala/"></noscript>
+<style>body{font-family:system-ui,sans-serif;background:#0B0A12;color:#eee;display:grid;place-items:center;min-height:100vh;margin:0}a{color:#2EE6C5}</style>
+</head>
+<body>
+<p>O EchoRoom agora é <a href="https://www.spectracast.com.br/sala/">SpectraCast</a>. Redirecionando…</p>
+</body>
+</html>

@@ -22,7 +22,8 @@ Pages a cada push na `main`. Ele precisa de:
 3. No Firebase: Realtime Database criado, **login anônimo ativado** e as
    regras de `database.rules.json` publicadas.
 
-Endereço: `https://<usuário>.github.io/EchoRoom/`
+Endereço: o site agora é o SpectraCast, em https://www.spectracast.com.br/sala/ (repo Spectra).
+O antigo `https://gustavotoigo-max.github.io/EchoRoom/` só redireciona para lá.
 
 ## Recursos
 
