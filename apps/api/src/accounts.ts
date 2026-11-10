@@ -151,13 +151,18 @@ export async function enterAccount(
 }
 
 /** Token do Firebase para a conta, com nome, usuário e avatar visíveis nas regras. */
-export function accountToken(env: Env, sa: ServiceAccount, uid: string, profile: AccountProfile): Promise<string> {
-  return createCustomToken(sa, uid, {
-    [CLAIMS.displayName]: profile.name,
-    [CLAIMS.username]: profile.username.toLowerCase(),
-    [CLAIMS.avatar]: profile.avatar,
-    ...(adminUids(env).includes(uid) ? { [CLAIMS.admin]: true } : {}),
-  })
+export function accountToken(env: Env, sa: ServiceAccount, uid: string, profile: AccountProfile, ttlSec?: number): Promise<string> {
+  return createCustomToken(
+    sa,
+    uid,
+    {
+      [CLAIMS.displayName]: profile.name,
+      [CLAIMS.username]: profile.username.toLowerCase(),
+      [CLAIMS.avatar]: profile.avatar,
+      ...(adminUids(env).includes(uid) ? { [CLAIMS.admin]: true } : {}),
+    },
+    ttlSec,
+  )
 }
 
 /** Quem está chamando (token de login do Firebase no cabeçalho Authorization), já com conta. */

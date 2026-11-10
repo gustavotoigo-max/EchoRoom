@@ -17,9 +17,9 @@ const DB_SCOPES = 'https://www.googleapis.com/auth/firebase.database https://www
 const nowSec = () => Math.floor(Date.now() / 1000)
 
 /** Token para o site entrar no Firebase como `uid`, com claims visíveis nas regras. */
-export function createCustomToken(sa: ServiceAccount, uid: string, claims: Record<string, unknown>): Promise<string> {
+export function createCustomToken(sa: ServiceAccount, uid: string, claims: Record<string, unknown>, ttlSec = 3600): Promise<string> {
   const iat = nowSec()
-  return signJwt({ iss: sa.client_email, sub: sa.client_email, aud: IDENTITY_AUD, iat, exp: iat + 3600, uid, claims }, sa.private_key)
+  return signJwt({ iss: sa.client_email, sub: sa.client_email, aud: IDENTITY_AUD, iat, exp: iat + ttlSec, uid, claims }, sa.private_key)
 }
 
 let access: { token: string; exp: number; email: string } | null = null
