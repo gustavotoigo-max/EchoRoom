@@ -98,14 +98,17 @@ export async function overview(db: Db): Promise<AdminOverview> {
   }
 }
 
-/** Rotina diária: guarda os totais do dia e apaga atividade antiga (mais de 90 dias). */
+/** Rotina diária: guarda os totais do dia e apaga atividade antiga (mais de 90 dias)
+ * e os contadores de sugestões dos dias anteriores. */
 export async function dailyRoutine(db: Db, now = Date.now()): Promise<void> {
   const [users, rooms] = await Promise.all([db.keys('admin/users'), db.keys('roomIndex')])
   await db.set(`admin/stats/daily/${dayKey(now)}`, { usersTotal: users.length, roomsTotal: rooms.length, at: now })
   const limit = dayKey(now - 90 * DAY_MS)
   const oldActivity = (await db.keys('activity')).filter((d) => d < limit)
   const oldCounters = (await db.keys('stats/daily')).filter((d) => d < dayKey(now - 400 * DAY_MS))
+  const oldFeedbackCounts = (await db.keys('admin/feedbackCount')).filter((d) => d < dayKey(now - 2 * DAY_MS))
   const patch: Record<string, null> = {}
+  for (const d of oldFeedbackCounts) patch[`admin/feedbackCount/${d}`] = null
   for (const d of oldActivity) patch[`activity/${d}`] = null
   for (const d of oldCounters) patch[`stats/daily/${d}`] = null
   if (Object.keys(patch).length) await db.update('', patch)
