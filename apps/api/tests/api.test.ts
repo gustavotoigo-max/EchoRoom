@@ -72,6 +72,9 @@ function setAt(parts: string[], v: unknown) {
 let pushN = 0
 /** uids que o Worker mandou apagar do Firebase Authentication. */
 let authDeleted: string[] = []
+/** E-mails que o Worker mandou para o Resend. */
+let mails: { from: string; to: string[]; subject: string; text: string }[] = []
+let resendStatus = 200
 const discordUser = { id: '222222222222222222', username: 'ana.lima', global_name: 'Ana', avatar: null }
 
 // ---- YouTube falso (oEmbed e Data API v3) ------------------------------------------------
@@ -150,6 +153,11 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       return Response.json({ name: id })
     }
     return Response.json(body ?? null)
+  }
+  if (url.hostname === 'api.resend.com') {
+    if (init?.headers && (init.headers as Record<string, string>).Authorization !== 'Bearer re_test') return new Response('401', { status: 401 })
+    mails.push(JSON.parse(String(init?.body)))
+    return Response.json({ id: 'mail1' }, { status: resendStatus })
   }
   throw new Error('fetch inesperado: ' + url)
 }) as typeof fetch
@@ -726,5 +734,79 @@ describe('rotina diária: títulos do YouTube e bate-papo', () => {
     await worker.scheduled({}, { ...env, YOUTUBE_API_KEY: 'ytkey' })
     expect((tree.users as any).discord_1.playlists.q1.tracks.t0.title).toBe('Título novo A')
     expect(getAt(['admin', 'maintenance', 'lastRun'])).toMatchObject({ refreshed: 1 })
+  })
+})
+
+describe('sugestões do app', () => {
+  const UID = 'discord_222222222222222222'
+  const mailEnv: Env = { ...env, RESEND_API_KEY: 're_test', FEEDBACK_TO: 'dono@example.com' }
+  const send = (body: unknown, opts: { token?: string; origin?: string; e?: Env } = {}) =>
+    worker.fetch(
+      new Request('https://api.test/feedback', {
+        method: 'POST',
+        headers: {
+          Origin: opts.origin ?? ORIGIN,
+          'Content-Type': 'application/json',
+          ...(opts.token === '' ? {} : { Authorization: `Bearer ${opts.token ?? idToken(UID)}` }),
+        },
+        body: JSON.stringify(body),
+      }),
+      opts.e ?? mailEnv,
+    )
+  const errorOf = async (res: Response) => ((await res.json()) as { error: string }).error
+  beforeEach(async () => {
+    tree = {}
+    mails = []
+    resendStatus = 200
+    await loginAs()
+  })
+
+  it('manda por e-mail (texto puro) com nome, sala e versão, e guarda uma cópia', async () => {
+    const res = await send({ text: '  Coloca tema claro <b>pf</b>  ', room: 'ABC123', version: '0.7.0' })
+    expect(res.status).toBe(200)
+    expect(((await res.json()) as { left: number }).left).toBe(2)
+    expect(mails).toHaveLength(1)
+    expect(mails[0].to).toEqual(['dono@example.com'])
+    expect(mails[0].subject).toBe('Sugestão de Ana')
+    expect(mails[0].text.startsWith('Coloca tema claro <b>pf</b>\n')).toBe(true)
+    expect(mails[0].text).toContain('De: Ana (@ana.lima)')
+    expect(mails[0].text).toContain('Sala: ABC123')
+    expect(mails[0].text).toContain('App: 0.7.0')
+    const saved = Object.values((tree.admin as { feedback: Record<string, { text: string; uid: string; emailed?: boolean }> }).feedback)
+    expect(saved).toEqual([expect.objectContaining({ text: 'Coloca tema claro <b>pf</b>', uid: UID, emailed: true })])
+  })
+
+  it('aceita até 300 caracteres e recusa vazio ou maior', async () => {
+    expect((await send({ text: 'é'.repeat(300) })).status).toBe(200)
+    const long = await send({ text: 'a'.repeat(301) })
+    expect(long.status).toBe(400)
+    expect(await errorOf(long)).toBe('feedback_too_long')
+    expect(await errorOf(await send({ text: '   ' }))).toBe('feedback_empty')
+    expect(await errorOf(await send({ text: 42 }))).toBe('feedback_empty')
+  })
+
+  it('no máximo 3 por pessoa por dia', async () => {
+    for (let i = 0; i < 3; i++) expect((await send({ text: `ideia ${i}` })).status).toBe(200)
+    const res = await send({ text: 'mais uma' })
+    expect(res.status).toBe(429)
+    expect(await errorOf(res)).toBe('feedback_limit')
+    expect(mails).toHaveLength(3)
+  })
+
+  it('exige login, origem do site e conta não suspensa', async () => {
+    expect((await send({ text: 'oi' }, { token: '' })).status).toBe(401)
+    expect((await send({ text: 'oi' }, { token: idToken('guestAAAAAAAAAAAAAAAAAAAAAAAAAA') })).status).toBe(401)
+    expect((await send({ text: 'oi' }, { origin: 'https://evil.example' })).status).toBe(403)
+    tree = { ...tree, admin: { ...(tree.admin as object), suspended: { [UID]: true } } }
+    expect((await send({ text: 'oi' })).status).toBe(403)
+    expect(mails).toHaveLength(0)
+  })
+
+  it('sem Resend configurado (ou se ele falhar) a sugestão fica guardada', async () => {
+    expect((await send({ text: 'sem e-mail' }, { e: env })).status).toBe(200)
+    resendStatus = 500
+    expect((await send({ text: 'resend fora' })).status).toBe(200)
+    const saved = Object.values((tree.admin as { feedback: Record<string, { emailed?: boolean }> }).feedback)
+    expect(saved.map((f) => f.emailed ?? false)).toEqual([false, false])
   })
 })

@@ -18,6 +18,12 @@ export interface Env {
   YOUTUBE_API_KEY?: string
   /** Opcional: endereço do Realtime Database (padrão: https://<projeto>-default-rtdb.firebaseio.com). */
   FIREBASE_DATABASE_URL?: string
+  /** Secreto: chave da API do Resend (envio das sugestões por e-mail). */
+  RESEND_API_KEY?: string
+  /** Secreto: e-mail que recebe as sugestões (vários separados por vírgula). Nunca vai para o site/app. */
+  FEEDBACK_TO?: string
+  /** Opcional: remetente das sugestões (padrão: SpectraCast <onboarding@resend.dev>). */
+  FEEDBACK_FROM?: string
 }
 
 export interface ServiceAccount {

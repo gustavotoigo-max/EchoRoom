@@ -41,6 +41,9 @@ tests/            testes com Discord, Google e banco simulados
 | `ALLOWED_ORIGIN` | Text | `https://gustavotoigo-max.github.io` |
 | `ADMIN_UIDS` | Text | seu ID no EchoRoom (aparece na página `/admin`), ex.: `discord_123…` — vários separados por vírgula |
 | `GOOGLE_CLIENT_ID` | Text | Client ID do Google (OAuth "Aplicativo da Web"), o mesmo da variável do GitHub. Sem ele, o login com Google fica desligado |
+| `RESEND_API_KEY` | Secret | Chave do Resend (resend.com) para mandar as sugestões do app por e-mail. Sem ela, as sugestões só ficam guardadas em `/admin/feedback` |
+| `FEEDBACK_TO` | Secret | E-mail que recebe as sugestões (só fica no Worker, nunca no site/app) |
+| `FEEDBACK_FROM` | Text (opcional) | Remetente. Padrão `SpectraCast <onboarding@resend.dev>`, que só entrega para o e-mail dono da conta do Resend |
 | `DISCORD_CLIENT_SECRET` | **Secret** | Client Secret do Discord |
 | `FIREBASE_SERVICE_ACCOUNT` | **Secret** | conteúdo inteiro do JSON da conta de serviço |
 | `YOUTUBE_API_KEY` | **Secret** (opcional) | chave da YouTube Data API v3 (Google Cloud → APIs e serviços → Credenciais). Sem ela, a importação de playlists fica desligada e os títulos são atualizados pelo oEmbed, poucos por dia |

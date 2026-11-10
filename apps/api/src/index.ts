@@ -4,6 +4,7 @@ import { verifyIdToken } from './google'
 import { corsHeaders, HttpError, json } from './http'
 import { adminRoute } from './routes/admin'
 import { accountInfo, emailAppCallback, emailLogin, linkEmail, unlink } from './routes/email'
+import { sendFeedback } from './routes/feedback'
 import { googleLogin } from './routes/google'
 import { handoff } from './routes/handoff'
 import { APP_CALLBACK_PATH, appCallback, login } from './routes/login'
@@ -23,6 +24,7 @@ import { dailyRoutine } from './stats'
  *   GET  /account       formas de entrar da conta
  *   POST /unlink        tira uma forma de entrar
  *   POST /handoff       app do Windows entra com a conta já logada no navegador
+ *   POST /feedback      sugestão enviada pelo app (vai por e-mail para o dono)
  *   GET  /discord/app   retorno do Discord para o app do celular (echoroom://auth)
  *   GET  /yt/video      título e autor de um vídeo do YouTube (oEmbed)
  *   GET  /yt/playlist   título e músicas de uma playlist do YouTube (Data API)
@@ -49,6 +51,7 @@ export default {
       else if (request.method === 'POST' && path === '/handoff') res = await handoff(request, env)
       else if (request.method === 'GET' && path === '/yt/video') res = await ytVideo(request)
       else if (request.method === 'GET' && path === '/yt/playlist') res = await ytPlaylist(request, env)
+      else if (request.method === 'POST' && path === '/feedback') res = await sendFeedback(request, env)
       else if (path.startsWith('/admin/')) res = await admin(request, path, env)
       else throw new HttpError(404, 'not_found')
       for (const [k, v] of Object.entries(cors)) res.headers.set(k, v)
@@ -83,6 +86,8 @@ function diagnostics(env: Env): Response {
       ADMIN_UIDS: adminUids(env).length > 0,
       GOOGLE_CLIENT_ID: !!env.GOOGLE_CLIENT_ID,
       YOUTUBE_API_KEY: !!env.YOUTUBE_API_KEY,
+      RESEND_API_KEY: !!env.RESEND_API_KEY,
+      FEEDBACK_TO: !!env.FEEDBACK_TO,
     },
   })
 }
