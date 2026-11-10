@@ -2,6 +2,8 @@ import { describe, expect, it, beforeEach } from 'vitest'
 import { generateKeyPairSync, createSign } from 'node:crypto'
 import worker from '../src/index'
 import type { Env } from '../src/env'
+import { Db } from '../src/db'
+import { chatDeletes, youtubeMaintenance } from '../src/maintenance'
 
 // ---- chaves de teste ---------------------------------------------------------------
 const sa = generateKeyPairSync('rsa', { modulusLength: 2048 })
@@ -72,6 +74,42 @@ let pushN = 0
 let authDeleted: string[] = []
 const discordUser = { id: '222222222222222222', username: 'ana.lima', global_name: 'Ana', avatar: null }
 
+// ---- YouTube falso (oEmbed e Data API v3) ------------------------------------------------
+type YtItem = { videoId: string; title: string; author?: string }
+let ytVideos: Record<string, { title: string; author: string }> = {}
+let ytPlaylists: Record<string, { title: string; items: YtItem[] }> = {}
+/** Chamadas feitas ao YouTube (caminho + parâmetros principais). */
+let ytCalls: string[] = []
+let ytDown = false
+
+function fakeYoutube(url: URL): Response {
+  if (ytDown) return new Response('erro', { status: 500 })
+  if (url.hostname === 'www.youtube.com') {
+    const target = new URL(url.searchParams.get('url')!)
+    const id = target.searchParams.get('v') ?? target.searchParams.get('list')!
+    ytCalls.push(`oembed:${id}`)
+    const v = ytVideos[id] ?? (ytPlaylists[id] && { title: ytPlaylists[id].title, author: 'Canal' })
+    return v ? Response.json({ title: v.title, author_name: v.author, type: 'video' }) : new Response('Not Found', { status: 404 })
+  }
+  const what = url.pathname.split('/').pop()!
+  if (url.searchParams.get('key') !== 'ytkey') return Response.json({ error: { code: 400 } }, { status: 400 })
+  ytCalls.push(`${what}:${url.searchParams.get('id') ?? url.searchParams.get('playlistId')}`)
+  const ids = (url.searchParams.get('id') ?? '').split(',')
+  if (what === 'videos') return Response.json({ items: ids.filter((id) => ytVideos[id]).map((id) => ({ id, snippet: { title: ytVideos[id].title, channelTitle: ytVideos[id].author } })) })
+  if (what === 'playlists') return Response.json({ items: ids.filter((id) => ytPlaylists[id]).map((id) => ({ id, snippet: { title: ytPlaylists[id].title, channelTitle: 'Canal' } })) })
+  const pl = ytPlaylists[url.searchParams.get('playlistId')!]
+  if (!pl) return Response.json({ error: { code: 404, errors: [{ reason: 'playlistNotFound' }] } }, { status: 404 })
+  const from = Number(url.searchParams.get('pageToken') || 0)
+  const page = pl.items.slice(from, from + 50)
+  return Response.json({
+    ...(from + 50 < pl.items.length ? { nextPageToken: String(from + 50) } : {}),
+    items: page.map((it) => ({
+      snippet: { title: it.title, resourceId: { videoId: it.videoId }, ...(it.author ? { videoOwnerChannelTitle: it.author } : {}) },
+      contentDetails: { videoId: it.videoId },
+    })),
+  })
+}
+
 globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = new URL(String(input))
   const method = init?.method ?? 'GET'
@@ -84,6 +122,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     authDeleted.push(...(JSON.parse(String(init?.body)) as { localIds: string[] }).localIds)
     return Response.json({})
   }
+  if (url.hostname === 'www.youtube.com' || (url.hostname === 'www.googleapis.com' && url.pathname.startsWith('/youtube/v3/'))) return fakeYoutube(url)
   if (url.hostname === 'oauth2.googleapis.com') return Response.json({ access_token: 'gtok', expires_in: 3600 })
   if (url.hostname === 'www.googleapis.com') {
     const jwk = firebaseKeys.publicKey.export({ format: 'jwk' })
@@ -515,5 +554,177 @@ describe('handoff (app do Windows entra com a conta do navegador)', () => {
     expect((await call('POST', '/handoff', { token: idToken(UID), origin: 'https://evil.example' })).status).toBe(403)
     tree = { ...tree, admin: { ...(tree.admin as object), suspended: { [UID]: true } } }
     expect((await call('POST', '/handoff', { token: idToken(UID) })).status).toBe(403)
+  })
+})
+
+describe('metadados do YouTube', () => {
+  const keyEnv: Env = { ...env, YOUTUBE_API_KEY: 'ytkey' }
+  const get = (path: string, e: Env = env) => worker.fetch(new Request(`https://api.test${path}`, { headers: { Origin: ORIGIN } }), e)
+  beforeEach(() => {
+    ytVideos = { dQw4w9WgXcQ: { title: 'Never Gonna Give You Up', author: 'Rick Astley' } }
+    ytPlaylists = {}
+    ytCalls = []
+    ytDown = false
+  })
+
+  it('/yt/video devolve título e autor pelo oEmbed, com CORS', async () => {
+    const res = await get('/yt/video?id=dQw4w9WgXcQ')
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ title: 'Never Gonna Give You Up', author: 'Rick Astley' })
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN)
+    expect(ytCalls).toEqual(['oembed:dQw4w9WgXcQ'])
+  })
+
+  it('/yt/video: id inválido 400, inexistente 404, YouTube fora 502', async () => {
+    expect((await get('/yt/video?id=curto')).status).toBe(400)
+    expect((await get('/yt/video?id=dQw4w9WgXc%22')).status).toBe(400)
+    expect((await get('/yt/video?id=aaaaaaaaaaa')).status).toBe(404)
+    ytDown = true
+    expect((await get('/yt/video?id=dQw4w9WgXcQ')).status).toBe(502)
+  })
+
+  it('/yt/playlist sem chave responde 503 not_configured', async () => {
+    const res = await get('/yt/playlist?list=PLabcdefghij')
+    expect(res.status).toBe(503)
+    expect(await res.json()).toEqual({ error: 'not_configured' })
+  })
+
+  it('/yt/playlist lê até 4 páginas (200 itens) e pula privadas e apagadas', async () => {
+    const items: YtItem[] = Array.from({ length: 260 }, (_, i) => ({ videoId: `v${String(i).padStart(10, '0')}`, title: `Música ${i}`, author: 'Banda' }))
+    items[1] = { videoId: 'priv0000000', title: 'Private video' }
+    items[2] = { videoId: 'dele0000000', title: 'Deleted video' }
+    ytPlaylists = { PLabcdefghij: { title: 'Minha lista', items } }
+    const res = await get('/yt/playlist?list=PLabcdefghij', keyEnv)
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { title: string; items: YtItem[] }
+    expect(body.title).toBe('Minha lista')
+    expect(body.items.length).toBe(198) // 200 lidos menos a privada e a apagada
+    expect(body.items[0]).toEqual({ videoId: 'v0000000000', title: 'Música 0', author: 'Banda' })
+    expect(body.items.some((it) => it.videoId.startsWith('priv') || it.videoId.startsWith('dele'))).toBe(false)
+    // playlists.list + 4 páginas de 50 (cota limitada a 5 unidades).
+    expect(ytCalls.filter((c) => c.startsWith('playlistItems')).length).toBe(4)
+  })
+
+  it('/yt/playlist: id inválido 400, inexistente 404, erro da API 502', async () => {
+    expect((await get('/yt/playlist?list=curto', keyEnv)).status).toBe(400)
+    expect((await get('/yt/playlist?list=PLnaoexiste1', keyEnv)).status).toBe(404)
+    ytDown = true
+    expect((await get('/yt/playlist?list=PLnaoexiste1', keyEnv)).status).toBe(502)
+  })
+})
+
+describe('rotina diária: títulos do YouTube e bate-papo', () => {
+  const NOW = Date.UTC(2026, 10, 10)
+  const DAY = 86_400_000
+  const ROOM = 'a'.repeat(64)
+  const db = () => new Db(SA, env)
+  beforeEach(() => {
+    tree = {}
+    ytCalls = []
+    ytDown = false
+    ytVideos = {
+      AAAAAAAAAAA: { title: 'Título novo A', author: 'Autor A' },
+      BBBBBBBBBBB: { title: 'Título B', author: 'Autor B' },
+      DDDDDDDDDDD: { title: 'Título novo D', author: 'Autor D' },
+    }
+    ytPlaylists = { PLlista0001: { title: 'Lista nova', items: [] } }
+  })
+
+  it('chatDeletes guarda as 200 mais recentes e nada com mais de 30 dias', () => {
+    const chat: Record<string, { at: number }> = {}
+    for (let i = 0; i < 205; i++) chat[`m${String(i).padStart(4, '0')}`] = { at: NOW - i * 1000 }
+    chat.velha = { at: NOW - 31 * DAY }
+    chat.semData = {} as { at: number }
+    const del = chatDeletes(chat, NOW)
+    expect(del.length).toBe(7) // 5 além das 200 + velha + semData
+    expect(del).toContain('velha')
+    expect(del).toContain('semData')
+    expect(del).toContain('m0204')
+    expect(del).not.toContain('m0000')
+    expect(chatDeletes({ a: { at: NOW - 40 * DAY }, b: { at: NOW } }, NOW)).toEqual(['a'])
+  })
+
+  it('atualiza títulos vencidos pela Data API, apaga sumidos e poda o chat', async () => {
+    const chat: Record<string, unknown> = {}
+    for (let i = 0; i < 203; i++) chat[`msg${String(i).padStart(8, '0')}`] = { uid: 'u', name: 'n', text: 't', at: NOW - i * 1000 }
+    chat.msgantiga00 = { uid: 'u', name: 'n', text: 't', at: NOW - 31 * DAY }
+    setAt(['rooms', ROOM], {
+      meta: { roomId: 'ABCDE', createdAt: 1 },
+      chat,
+      library: {
+        tracks: {
+          AAAAAAAAAAA: { title: 'Título velho A', author: 'x', count: 2, lastAt: NOW - 40 * DAY },
+          BBBBBBBBBBB: { title: 'Título B', author: 'Autor B', count: 1, lastAt: NOW - 2 * DAY },
+          CCCCCCCCCCC: { title: 'Sumiu', author: 'y', count: 1, lastAt: NOW - 40 * DAY },
+        },
+        playlists: { PLlista0001: { title: 'Lista velha', size: 3, count: 1, lastAt: NOW - 50 * DAY } },
+      },
+      playlists: {
+        p1: { kind: 'room', name: 'Sala', createdBy: 'u', tracks: { t0: { videoId: 'DDDDDDDDDDD', title: 'Velho D', author: 'z', at: 1 } } },
+      },
+    })
+    setAt(['users', 'discord_1', 'playlists', 'q1'], {
+      name: 'Minha',
+      tracks: {
+        t0: { videoId: 'CCCCCCCCCCC', title: 'Sumiu', author: 'y', at: NOW - 60 * DAY },
+        t1: { videoId: 'BBBBBBBBBBB', title: 'Título B', author: 'Autor B', at: NOW - DAY, titledAt: NOW - DAY },
+      },
+    })
+    const report = await youtubeMaintenance(db(), { apiKey: 'ytkey', now: NOW })
+    expect(report).toMatchObject({ entities: 2, refreshed: 3, gone: 2, pending: 0, chatDeleted: 4 })
+
+    const room = (tree.rooms as any)[ROOM]
+    expect(Object.keys(room.chat).length).toBe(200)
+    expect(room.chat.msgantiga00).toBeUndefined()
+    expect(room.library.tracks.AAAAAAAAAAA).toMatchObject({ title: 'Título novo A', author: 'Autor A', count: 2, titledAt: NOW })
+    expect(room.library.tracks.BBBBBBBBBBB.titledAt).toBe(NOW - 2 * DAY) // ainda vale: só ganha a data
+    expect(room.library.tracks.BBBBBBBBBBB.title).toBe('Título B')
+    expect(room.library.tracks.CCCCCCCCCCC).toBeUndefined() // vídeo sumiu: sai das sugestões
+    expect(room.library.playlists.PLlista0001).toMatchObject({ title: 'Lista nova', titledAt: NOW })
+    expect(room.playlists.p1.tracks.t0).toMatchObject({ videoId: 'DDDDDDDDDDD', title: 'Título novo D', author: 'Autor D', at: 1, titledAt: NOW })
+    const mine = (tree.users as any).discord_1.playlists.q1.tracks
+    expect(mine.t0).toEqual({ videoId: 'CCCCCCCCCCC', at: NOW - 60 * DAY }) // fica só o id
+    expect(mine.t1.title).toBe('Título B')
+    // Uma chamada de videos.list para os 3 vídeos vencidos e uma de playlists.list.
+    expect(ytCalls.filter((c) => c.startsWith('videos')).length).toBe(1)
+    expect(ytCalls.filter((c) => c.startsWith('playlists')).length).toBe(1)
+  })
+
+  it('sem chave usa o oEmbed com limite; erro do YouTube não apaga nada', async () => {
+    setAt(['users', 'discord_1', 'playlists', 'q1', 'tracks'], {
+      t0: { videoId: 'AAAAAAAAAAA', title: 'Velho A', at: NOW - 40 * DAY },
+      t1: { videoId: 'CCCCCCCCCCC', title: 'Velho C', at: NOW - 50 * DAY },
+    })
+    ytDown = true
+    let report = await youtubeMaintenance(db(), { now: NOW })
+    expect(report).toMatchObject({ refreshed: 0, gone: 0, pending: 2 })
+    expect((tree.users as any).discord_1.playlists.q1.tracks.t1.title).toBe('Velho C')
+
+    ytDown = false
+    ytCalls = []
+    report = await youtubeMaintenance(db(), { now: NOW, oembedPerRun: 1 })
+    expect(ytCalls).toEqual(['oembed:CCCCCCCCCCC']) // o mais antigo primeiro
+    expect(report).toMatchObject({ refreshed: 0, gone: 1, pending: 1 })
+    report = await youtubeMaintenance(db(), { now: NOW, oembedPerRun: 1 })
+    expect(report).toMatchObject({ refreshed: 1, gone: 0, pending: 0 })
+    expect((tree.users as any).discord_1.playlists.q1.tracks.t0).toMatchObject({ title: 'Título novo A', author: 'Autor A', titledAt: NOW })
+  })
+
+  it('continua de onde parou a cada execução', async () => {
+    for (const u of ['discord_1', 'discord_2', 'discord_3']) setAt(['users', u, 'rooms', 'x'], { key: 'k', name: 'n' })
+    setAt(['rooms', ROOM, 'meta'], { roomId: 'ABCDE', createdAt: 1 })
+    const seen: unknown[] = []
+    for (let i = 0; i < 5; i++) {
+      await youtubeMaintenance(db(), { now: NOW, entitiesPerRun: 2 })
+      seen.push(getAt(['admin', 'maintenance', 'cursor']))
+    }
+    expect(seen).toEqual([`users/discord_1`, `users/discord_3`, `users/discord_1`, `users/discord_3`, `users/discord_1`])
+  })
+
+  it('o cron roda a manutenção junto com os totais', async () => {
+    setAt(['users', 'discord_1', 'playlists', 'q1', 'tracks', 't0'], { videoId: 'AAAAAAAAAAA', title: 'Velho', at: 5 })
+    await worker.scheduled({}, { ...env, YOUTUBE_API_KEY: 'ytkey' })
+    expect((tree.users as any).discord_1.playlists.q1.tracks.t0.title).toBe('Título novo A')
+    expect(getAt(['admin', 'maintenance', 'lastRun'])).toMatchObject({ refreshed: 1 })
   })
 })

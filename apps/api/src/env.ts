@@ -11,6 +11,11 @@ export interface Env {
   ADMIN_UIDS?: string
   /** Client ID do Google (OAuth, tipo "Aplicativo da Web"); sem ele o login com Google fica desligado. */
   GOOGLE_CLIENT_ID?: string
+  /**
+   * Secreto, opcional: chave da YouTube Data API v3. Sem ela, /yt/playlist responde
+   * 503 e a rotina diária atualiza os títulos pelo oEmbed (poucos por dia).
+   */
+  YOUTUBE_API_KEY?: string
   /** Opcional: endereço do Realtime Database (padrão: https://<projeto>-default-rtdb.firebaseio.com). */
   FIREBASE_DATABASE_URL?: string
 }

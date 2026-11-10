@@ -7,6 +7,8 @@ import { accountInfo, emailAppCallback, emailLogin, linkEmail, unlink } from './
 import { googleLogin } from './routes/google'
 import { handoff } from './routes/handoff'
 import { APP_CALLBACK_PATH, appCallback, login } from './routes/login'
+import { youtubeMaintenance } from './maintenance'
+import { ytPlaylist, ytVideo } from './routes/youtube'
 import { dailyRoutine } from './stats'
 
 /**
@@ -22,8 +24,11 @@ import { dailyRoutine } from './stats'
  *   POST /unlink        tira uma forma de entrar
  *   POST /handoff       app do Windows entra com a conta já logada no navegador
  *   GET  /discord/app   retorno do Discord para o app do celular (echoroom://auth)
+ *   GET  /yt/video      título e autor de um vídeo do YouTube (oEmbed)
+ *   GET  /yt/playlist   título e músicas de uma playlist do YouTube (Data API)
  *   *    /admin/...     administração (exige login de um admin)
- *   cron (diário)       fotografia dos totais e limpeza de dados antigos
+ *   cron (diário)       fotografia dos totais, limpeza de dados antigos, títulos do
+ *                       YouTube com mais de 30 dias e bate-papo antigo
  */
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -42,6 +47,8 @@ export default {
       else if (request.method === 'GET' && path === '/account') res = await accountInfo(request, env)
       else if (request.method === 'POST' && path === '/unlink') res = await unlink(request, env)
       else if (request.method === 'POST' && path === '/handoff') res = await handoff(request, env)
+      else if (request.method === 'GET' && path === '/yt/video') res = await ytVideo(request)
+      else if (request.method === 'GET' && path === '/yt/playlist') res = await ytPlaylist(request, env)
       else if (path.startsWith('/admin/')) res = await admin(request, path, env)
       else throw new HttpError(404, 'not_found')
       for (const [k, v] of Object.entries(cors)) res.headers.set(k, v)
@@ -55,7 +62,12 @@ export default {
 
   async scheduled(_event: unknown, env: Env): Promise<void> {
     const sa = readServiceAccount(env)
-    if (sa) await dailyRoutine(new Db(sa, env))
+    if (!sa) return
+    const db = new Db(sa, env)
+    // Uma parte não impede a outra; o erro aparece no registro do cron no fim.
+    const results = await Promise.allSettled([dailyRoutine(db), youtubeMaintenance(db, { apiKey: env.YOUTUBE_API_KEY })])
+    const failed = results.find((r): r is PromiseRejectedResult => r.status === 'rejected')
+    if (failed) throw failed.reason
   },
 }
 
@@ -70,6 +82,7 @@ function diagnostics(env: Env): Response {
       ALLOWED_ORIGIN: allowedOrigins(env).length > 0,
       ADMIN_UIDS: adminUids(env).length > 0,
       GOOGLE_CLIENT_ID: !!env.GOOGLE_CLIENT_ID,
+      YOUTUBE_API_KEY: !!env.YOUTUBE_API_KEY,
     },
   })
 }
