@@ -502,6 +502,10 @@ describe('handoff (app do Windows entra com a conta do navegador)', () => {
     const data = (await res.json()) as { firebaseToken: string; profile: { uid: string; name: string } }
     expect(data.profile.uid).toBe(UID)
     expect(claimsOf(data.firebaseToken).dn).toBe('Ana')
+    // Token curto (5 min) e login registrado no painel do admin.
+    const payload = JSON.parse(Buffer.from(data.firebaseToken.split('.')[1], 'base64url').toString()) as { iat: number; exp: number }
+    expect(payload.exp - payload.iat).toBe(300)
+    expect((tree.admin as { users: Record<string, { logins: number }> }).users[UID].logins).toBe(2)
   })
 
   it('exige login, conta existente, origem do site e respeita a suspensão', async () => {

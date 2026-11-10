@@ -1,8 +1,11 @@
 import { Db } from '../db'
-import { accountToken, checkAccess, caller, type AccountRecord } from '../accounts'
+import { accountToken, checkAccess, caller, recordLogin, type AccountRecord } from '../accounts'
 import { HttpError, json } from '../http'
 import type { Env } from '../env'
 import { checkOrigin } from './email'
+
+/** Validade do token entregue ao app. */
+export const HANDOFF_TTL_SEC = 300
 
 /**
  * POST /handoff — "Continuar com a conta do navegador" do app SpectraCast para Windows.
@@ -22,6 +25,9 @@ export async function handoff(request: Request, env: Env): Promise<Response> {
   if (!rec) throw new HttpError(404, 'no_account')
   const profile = { name: rec.name || 'SpectraCast', username: rec.username || '', avatar: rec.avatar || '' }
   await checkAccess(db, env, uid, false, profile)
-  const firebaseToken = await accountToken(env, sa, uid, profile)
+  // Aparece no painel do admin como um login normal.
+  await recordLogin(db, uid, rec, profile)
+  // O app usa o token na hora: vale só 5 minutos (um token esquecido em algum lugar não abre a conta depois).
+  const firebaseToken = await accountToken(env, sa, uid, profile, HANDOFF_TTL_SEC)
   return json({ firebaseToken, profile: { uid, name: profile.name, username: profile.username, avatarUrl: profile.avatar } })
 }
