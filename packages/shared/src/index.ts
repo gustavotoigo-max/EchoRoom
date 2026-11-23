@@ -116,6 +116,65 @@ export interface AdminUser {
 export interface AdminUserDetail extends AdminUser {
   rooms: { roomId: string; name: string; role: 'owner' | 'member' }[]
   playlists: number
+  /** Como a pessoa chegou (vazio para contas de antes do registro de origem). */
+  origin?: AdminUserOrigin
+}
+
+// ---- origem das pessoas (links pessoais, convites, primeira visita) ---------------
+
+/** Validade de um link pessoal de sala. */
+export const REF_LINK_TTL_MS = 24 * 60 * 60 * 1000
+
+/** Respostas de "Como você conheceu o SpectraCast?". */
+export const HEARD_OPTIONS = ['amigo', 'google', 'redes', 'youtube', 'outro'] as const
+export type HeardAnswer = (typeof HEARD_OPTIONS)[number]
+export const HEARD_LABELS: Record<HeardAnswer, string> = {
+  amigo: 'Um amigo me falou ou mandou o link',
+  google: 'Pesquisa no Google',
+  redes: 'Redes sociais',
+  youtube: 'YouTube',
+  outro: 'Outro',
+}
+
+/** Primeira visita registrada no navegador (antes de criar a conta). */
+export interface FirstVisit {
+  at: number
+  /** Página onde chegou (ex.: "/", "/sala/room/ABX72"). */
+  landing: string
+  /** Site de onde veio (só o domínio, ex.: "www.google.com"); vazio = digitou ou abriu direto. */
+  referrer: string
+  /** ?origem= ou utm_source */
+  source: string
+  medium: string
+  campaign: string
+}
+
+/** Por onde a pessoa entrou numa sala pela primeira vez. */
+export type ArrivalVia = 'owner' | 'link' | 'invite' | 'code'
+
+export interface AdminArrival {
+  roomId: string
+  roomName: string
+  at: number
+  via: ArrivalVia
+  /** Quem gerou o link ou mandou o convite. */
+  fromUid: string | null
+  fromName: string
+  /** Quando o link foi gerado ou o convite enviado. */
+  sentAt: number | null
+  /** Quem estava na sala nessa hora. */
+  present: { uid: string; name: string }[]
+}
+
+export interface AdminUserOrigin {
+  firstVisit: FirstVisit | null
+  heard: HeardAnswer | null
+  heardDetail: string
+  /** Fechou a pergunta sem responder. */
+  heardSkipped: boolean
+  /** Quem trouxe a pessoa (link ou convite antes/na primeira sala). */
+  invitedBy: { uid: string; name: string; via: 'link' | 'invite'; roomId: string; sentAt: number | null; at: number } | null
+  arrivals: AdminArrival[]
 }
 
 export interface AdminRoom {

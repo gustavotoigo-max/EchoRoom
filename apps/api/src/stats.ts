@@ -125,8 +125,13 @@ export async function dailyRoutine(db: Db, now = Date.now()): Promise<void> {
   const oldActivity = (await db.keys('activity')).filter((d) => d < limit)
   const oldCounters = (await db.keys('stats/daily')).filter((d) => d < dayKey(now - 400 * DAY_MS))
   const oldFeedbackCounts = (await db.keys('admin/feedbackCount')).filter((d) => d < dayKey(now - 2 * DAY_MS))
+  const oldRefCounts = (await db.keys('admin/refCount')).filter((d) => d < dayKey(now - 2 * DAY_MS))
+  // Links pessoais vencidos há mais de 30 dias (a entrada de cada pessoa já guarda uma cópia de quem convidou).
+  const refLinks = (await db.get<Record<string, { expiresAt?: number }>>('admin/refLinks')) ?? {}
   const patch: Record<string, null> = {}
+  for (const [t, l] of Object.entries(refLinks)) if ((l?.expiresAt ?? 0) < now - 30 * DAY_MS) patch[`admin/refLinks/${t}`] = null
   for (const d of oldFeedbackCounts) patch[`admin/feedbackCount/${d}`] = null
+  for (const d of oldRefCounts) patch[`admin/refCount/${d}`] = null
   for (const d of oldActivity) patch[`activity/${d}`] = null
   for (const d of oldCounters) patch[`stats/daily/${d}`] = null
   if (Object.keys(patch).length) await db.update('', patch)

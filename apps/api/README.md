@@ -7,6 +7,8 @@ fica aqui, num Worker gratuito do Cloudflare:
 |---|---|
 | `GET /` | Diagnóstico: mostra o que falta configurar (sem revelar segredos) |
 | `POST /discord` | Login: troca o `code` do Discord por um token do Firebase; confere suspensão e modo de acesso; registra o cadastro |
+| `POST /ref/link`, `GET /ref/link?t=` | Link pessoal de sala (24 h) de quem é da sala, e conferência do link (sala, quem gerou ou vencido) |
+| `POST /ref/arrival`, `/ref/origin`, `/ref/heard` | De onde vêm as pessoas: primeira entrada em cada sala (link, convite, quem estava), primeira visita da conta nova e a resposta de "Como você conheceu?". Fica em `/admin/arrivals`, `/admin/origins` e aparece no admin em Pessoas |
 | `/admin/...` | Administração (só para quem está em `ADMIN_UIDS`): visão geral, pessoas, salas, acesso, registro |
 | `GET /yt/video?id=<id>` | Título e autor de um vídeo do YouTube (oEmbed, sem chave); 404 se não existir |
 | `GET /yt/playlist?list=<id>` | Título e músicas (até 200) de uma playlist do YouTube; precisa de `YOUTUBE_API_KEY` (sem ela, 503) |
@@ -21,6 +23,7 @@ src/
   index.ts        rotas e rotina diária
   routes/login.ts login com Discord
   routes/admin.ts administração
+  routes/origin.ts links pessoais e origem das pessoas
   discord.ts      OAuth do Discord
   google.ts       tokens do Firebase/Google (assinar, verificar)
   crypto.ts       JWT RS256 com WebCrypto
