@@ -810,3 +810,90 @@ describe('sugestões do app', () => {
     expect(saved.map((f) => f.emailed ?? false)).toEqual([false, false])
   })
 })
+
+describe('origem das pessoas (links pessoais, chegada, primeira visita)', () => {
+  const KEY = 'a'.repeat(64)
+  const OWNER = 'discord_333333333333333333'
+  const ANA = 'discord_222222222222222222'
+  const GUEST = 'guestBBBBBBBBBBBBBBBBBBBBBBBBBB'
+  const post = (path: string, uid: string, body: unknown) => call('POST', path, { token: idToken(uid), body })
+  const room = () => ({
+    roomIndex: { ABX72: { ownerUid: OWNER, createdAt: 1 } },
+    rooms: {
+      [KEY]: {
+        meta: { roomId: 'ABX72', name: 'Sala da galera', ownerUid: OWNER, createdAt: 1 },
+        members: { [OWNER]: { name: 'Dono' } },
+        participants: { [OWNER]: { name: 'Dono', conns: { c1: true } } },
+      },
+    },
+  })
+  const rooms = () => (tree.rooms as Record<string, { members: Record<string, unknown> }>)[KEY]
+  const admin = () => tree.admin as Record<string, Record<string, unknown>>
+  beforeEach(() => {
+    tree = room()
+  })
+
+  it('só quem é da sala gera link; o link vale 24 h e diz quem gerou', async () => {
+    expect((await post('/ref/link', ANA, { roomId: 'ABX72', roomKey: KEY })).status).toBe(403)
+    expect((await post('/ref/link', OWNER, { roomId: 'ZZZZZ', roomKey: KEY })).status).toBe(404)
+    const res = await post('/ref/link', OWNER, { roomId: 'abx72', roomKey: KEY })
+    expect(res.status).toBe(200)
+    const { token, expiresAt } = (await res.json()) as { token: string; expiresAt: number }
+    expect(expiresAt - Date.now()).toBeGreaterThan(23.9 * 3600_000)
+    const check = await call('GET', `/ref/link?t=${token}`)
+    expect(await check.json()).toEqual({ ok: true, roomId: 'ABX72', fromName: 'Dono', expiresAt })
+    expect((await call('GET', '/ref/link?t=naoexiste12')).status).toBe(404)
+    ;(admin().refLinks[token] as { expiresAt: number }).expiresAt = Date.now() - 1
+    const old = await call('GET', `/ref/link?t=${token}`)
+    expect(old.status).toBe(410)
+    expect(((await old.json()) as { error: string }).error).toBe('link_expired')
+  })
+
+  it('primeira entrada pelo link registra quem gerou, quando e quem estava na sala (só uma vez)', async () => {
+    const { token } = (await (await post('/ref/link', OWNER, { roomId: 'ABX72', roomKey: KEY })).json()) as { token: string }
+    rooms().members[GUEST] = { name: 'Bia' }
+    const res = await post('/ref/arrival', GUEST, { roomId: 'ABX72', roomKey: KEY, ref: token })
+    expect(await res.json()).toEqual({ ok: true, recorded: true, via: 'link' })
+    const a = (admin().arrivals[GUEST] as Record<string, Record<string, unknown>>).ABX72
+    expect(a).toMatchObject({ via: 'link', fromUid: OWNER, fromName: 'Dono', roomName: 'Sala da galera' })
+    expect(Object.values(a.present as object)).toEqual([{ uid: OWNER, name: 'Dono' }])
+    expect(typeof a.sentAt).toBe('number')
+    const again = await post('/ref/arrival', GUEST, { roomId: 'ABX72', roomKey: KEY })
+    expect(((await again.json()) as { recorded: boolean }).recorded).toBe(false)
+  })
+
+  it('sem link: dono, convite pelo site ou sem origem', async () => {
+    expect(((await (await post('/ref/arrival', OWNER, { roomId: 'ABX72', roomKey: KEY })).json()) as { via: string }).via).toBe('owner')
+    rooms().members[ANA] = { name: 'Ana' }
+    const inv = await post('/ref/arrival', ANA, { roomId: 'ABX72', roomKey: KEY, invite: { fromUid: OWNER, sentAt: Date.now() - 1000 } })
+    expect(((await inv.json()) as { via: string }).via).toBe('invite')
+    rooms().members[GUEST] = { name: 'Bia' }
+    const fake = await post('/ref/arrival', GUEST, { roomId: 'ABX72', roomKey: KEY, invite: { fromUid: 'discord_999999999999999999' }, ref: 'qualquer1234' })
+    expect(((await fake.json()) as { via: string }).via).toBe('code')
+  })
+
+  it('conta nova guarda a primeira visita e quem trouxe; a pergunta é opcional e aparece uma vez', async () => {
+    const { token } = (await (await post('/ref/link', OWNER, { roomId: 'ABX72', roomKey: KEY })).json()) as { token: string }
+    await loginAs()
+    const visit = { at: Date.now() - 5000, landing: '/', referrer: 'www.google.com', source: 'instagram', medium: '', campaign: 'natal' }
+    const res = await post('/ref/origin', ANA, { firstVisit: visit, ref: token })
+    expect(await res.json()).toEqual({ ok: true, ask: true })
+    expect(admin().origins[ANA]).toMatchObject({ firstVisit: visit, invitedBy: { uid: OWNER, name: 'Dono', via: 'link', roomId: 'ABX72' } })
+    expect((await post('/ref/heard', ANA, { answer: 'tiktok' })).status).toBe(400)
+    expect((await post('/ref/heard', ANA, { answer: 'redes', detail: 'Instagram do Gustavo' })).status).toBe(200)
+    expect(admin().origins[ANA]).toMatchObject({ heard: 'redes', heardDetail: 'Instagram do Gustavo', heardSkipped: false })
+    expect(await (await post('/ref/origin', ANA, {})).json()).toEqual({ ok: true, ask: false })
+    // Aparece na tela da pessoa no admin.
+    const detail = (await (await call('GET', `/admin/users/${ANA}`, { token: idToken(ADMIN) })).json()) as { origin: { invitedBy: { name: string }; heard: string } }
+    expect(detail.origin.invitedBy.name).toBe('Dono')
+    expect(detail.origin.heard).toBe('redes')
+  })
+
+  it('conta antiga e convidado não ganham origem', async () => {
+    await loginAs()
+    ;(admin().users[ANA] as { firstAt: number }).firstAt = Date.now() - 30 * 86400_000
+    expect(await (await post('/ref/origin', ANA, { firstVisit: { at: 1, landing: '/' } })).json()).toEqual({ ok: true, ask: false })
+    expect(admin().origins).toBeUndefined()
+    expect((await post('/ref/origin', GUEST, {})).status).toBe(401)
+  })
+})

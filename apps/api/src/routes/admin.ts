@@ -11,6 +11,7 @@ import { mapLimit, type Db } from '../db'
 import { adminUids, readServiceAccount, type Env } from '../env'
 import { deleteAuthUsers } from '../google'
 import { HttpError, json, readJson } from '../http'
+import { originFor } from './origin'
 import { activityByDay, lastDays, onlineNow, overview, type UserRecord } from '../stats'
 
 /**
@@ -65,14 +66,16 @@ async function userDetail(ctx: Ctx, uid: string): Promise<AdminUserDetail> {
   const all = await listUsers(ctx)
   const base = all.find((u) => u.uid === uid)
   if (!base) throw new HttpError(404, 'not_found')
-  const [rooms, playlists] = await Promise.all([
+  const [rooms, playlists, origin] = await Promise.all([
     ctx.db.get<Record<string, { name?: string; role?: string }>>(`users/${uid}/rooms`),
     ctx.db.keys(`users/${uid}/playlists`),
+    originFor(ctx.db, uid),
   ])
   return {
     ...base,
     rooms: Object.entries(rooms ?? {}).map(([roomId, r]) => ({ roomId, name: r.name ?? roomId, role: r.role === 'owner' ? 'owner' : 'member' })),
     playlists: playlists.length,
+    ...(origin ? { origin } : {}),
   }
 }
 
@@ -106,6 +109,8 @@ async function deleteUser(ctx: Ctx, uid: string): Promise<void> {
     [`admin/users/${uid}`]: null,
     [`admin/requests/${uid}`]: null,
     [`admin/approved/${uid}`]: null,
+    [`admin/origins/${uid}`]: null,
+    [`admin/arrivals/${uid}`]: null,
   }
   // Formas de entrar: soltam para poderem criar ou entrar em outra conta depois.
   const own = ownMethod(uid)

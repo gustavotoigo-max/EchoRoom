@@ -7,6 +7,7 @@ import { accountInfo, emailAppCallback, emailLogin, linkEmail, unlink } from './
 import { sendFeedback } from './routes/feedback'
 import { googleLogin } from './routes/google'
 import { handoff } from './routes/handoff'
+import { checkRefLink, createRefLink, recordArrival, recordHeard, recordOrigin } from './routes/origin'
 import { APP_CALLBACK_PATH, appCallback, login } from './routes/login'
 import { youtubeMaintenance } from './maintenance'
 import { ytPlaylist, ytVideo } from './routes/youtube'
@@ -25,6 +26,10 @@ import { dailyRoutine } from './stats'
  *   POST /unlink        tira uma forma de entrar
  *   POST /handoff       app do Windows entra com a conta já logada no navegador
  *   POST /feedback      sugestão enviada pelo app (vai por e-mail para o dono)
+ *   POST /ref/link      link pessoal de sala (24 h); GET /ref/link?t= confere
+ *   POST /ref/arrival   primeira entrada numa sala (por onde veio, quem estava)
+ *   POST /ref/origin    conta nova: primeira visita e quem trouxe
+ *   POST /ref/heard     resposta de "Como você conheceu?"
  *   GET  /discord/app   retorno do Discord para o app do celular (echoroom://auth)
  *   GET  /yt/video      título e autor de um vídeo do YouTube (oEmbed)
  *   GET  /yt/playlist   título e músicas de uma playlist do YouTube (Data API)
@@ -52,6 +57,11 @@ export default {
       else if (request.method === 'GET' && path === '/yt/video') res = await ytVideo(request)
       else if (request.method === 'GET' && path === '/yt/playlist') res = await ytPlaylist(request, env)
       else if (request.method === 'POST' && path === '/feedback') res = await sendFeedback(request, env)
+      else if (request.method === 'POST' && path === '/ref/link') res = await createRefLink(request, env)
+      else if (request.method === 'GET' && path === '/ref/link') res = await checkRefLink(request, env)
+      else if (request.method === 'POST' && path === '/ref/arrival') res = await recordArrival(request, env)
+      else if (request.method === 'POST' && path === '/ref/origin') res = await recordOrigin(request, env)
+      else if (request.method === 'POST' && path === '/ref/heard') res = await recordHeard(request, env)
       else if (path.startsWith('/admin/')) res = await admin(request, path, env)
       else throw new HttpError(404, 'not_found')
       for (const [k, v] of Object.entries(cors)) res.headers.set(k, v)
