@@ -111,6 +111,8 @@ export interface AdminUser {
   lastActiveDay: string | null
   suspended: { at: number; reason: string } | null
   admin: boolean
+  /** Marcado como apoiador (Pix) pelo admin. */
+  supporter: boolean
 }
 
 export interface AdminUserDetail extends AdminUser {
@@ -204,4 +206,50 @@ export interface AuditEntry {
   action: string
   target: string
   detail: string
+}
+
+// ---- apoio (Pix), selo de apoiador e medidor ------------------------------------
+
+/** Chave Pix aleatória (pública de propósito) e nome mostrado no site e no app. */
+export const PIX_KEY = '1ea677f3-7167-4645-8faf-200ece0c6b23'
+export const PIX_NAME = 'Apoio SpectraCast'
+/** Meta mensal inicial do medidor (R$), até o admin mudar. */
+export const SUPPORT_DEFAULT_GOAL = 100
+
+/** Medidor do mês: meta (custo do servidor) e quanto entrou, em reais. */
+export interface SupportMeter {
+  goal: number
+  raised: number
+  /** Mês de referência (AAAA-MM, horário de Brasília). */
+  month: string
+}
+
+/** Apoiador que aceitou aparecer na página pública. */
+export interface PublicSupporter {
+  name: string
+  avatar: string
+  since: number
+}
+
+/** GET /support: medidor e apoiadores públicos; com login, também quem tem selo e a situação da pessoa. */
+export interface SupportInfo {
+  /** null = medidor desligado (meta zero). */
+  meter: SupportMeter | null
+  supporters: PublicSupporter[]
+  /** uids com selo de apoiador (só com login). */
+  uids?: string[]
+  me?: { supporter: boolean; public: boolean }
+}
+
+export interface AdminSupporter {
+  uid: string
+  name: string
+  avatar: string
+  since: number
+  public: boolean
+}
+
+export interface AdminSupport {
+  meter: SupportMeter
+  supporters: AdminSupporter[]
 }

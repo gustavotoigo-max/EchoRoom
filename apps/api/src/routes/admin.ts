@@ -12,6 +12,7 @@ import { adminUids, readServiceAccount, type Env } from '../env'
 import { deleteAuthUsers } from '../google'
 import { HttpError, json, readJson } from '../http'
 import { originFor } from './origin'
+import { adminSupport, setMeter, setSupporter } from './support'
 import { activityByDay, allRooms, lastDays, onlineNow, overview, type UserRecord } from '../stats'
 
 /**
@@ -38,11 +39,13 @@ async function audit(ctx: Ctx, action: string, target: string, detail = ''): Pro
 // ---- pessoas --------------------------------------------------------------------
 
 async function listUsers(ctx: Ctx): Promise<AdminUser[]> {
-  const [users, suspended, activity] = await Promise.all([
+  const [users, suspended, activity, supporters] = await Promise.all([
     ctx.db.get<Record<string, UserRecord>>('admin/users'),
     ctx.db.get<Record<string, { at?: number; reason?: string }>>('admin/suspended'),
     activityByDay(ctx.db, lastDays(30)),
+    ctx.db.keys('admin/support/supporters'),
   ])
+  const supporterSet = new Set(supporters)
   const lastActive = new Map<string, string>()
   for (const [day, uids] of activity) for (const u of uids) lastActive.set(u, day) // dias em ordem: fica o último
   const admins = adminUids(ctx.env)
@@ -58,6 +61,7 @@ async function listUsers(ctx: Ctx): Promise<AdminUser[]> {
       lastActiveDay: lastActive.get(uid) ?? null,
       suspended: suspended?.[uid] ? { at: suspended[uid].at ?? 0, reason: suspended[uid].reason ?? '' } : null,
       admin: admins.includes(uid),
+      supporter: supporterSet.has(uid),
     }))
     .sort((a, b) => b.lastLoginAt - a.lastLoginAt)
 }
@@ -111,6 +115,7 @@ async function deleteUser(ctx: Ctx, uid: string): Promise<void> {
     [`admin/approved/${uid}`]: null,
     [`admin/origins/${uid}`]: null,
     [`admin/arrivals/${uid}`]: null,
+    [`admin/support/supporters/${uid}`]: null,
   }
   // Formas de entrar: soltam para poderem criar ou entrar em outra conta depois.
   const own = ownMethod(uid)
@@ -272,5 +277,20 @@ export async function adminRoute(request: Request, path: string, ctx: Ctx): Prom
     return json({ ok: true })
   }
   if (m === 'GET' && path === '/admin/audit') return json(await listAudit(ctx))
+  if (m === 'GET' && path === '/admin/support') return json(await adminSupport(ctx.db))
+  if (m === 'POST' && path === '/admin/support/meter') {
+    const meter = await setMeter(ctx.db, await readJson<{ goal?: unknown; raised?: unknown }>(request))
+    await audit(ctx, 'medidor de apoio', meter.month, `meta R$ ${meter.goal} · arrecadado R$ ${meter.raised}`)
+    return json(meter)
+  }
+  if (m === 'POST' && path === '/admin/support/supporter') {
+    const body = await readJson<{ uid?: unknown; on?: unknown }>(request)
+    const uid = String(body.uid ?? '')
+    if (!uidRe.test(uid)) throw new HttpError(400, 'bad_request')
+    const on = body.on === true
+    const name = await setSupporter(ctx.db, uid, on)
+    await audit(ctx, on ? 'marcar apoiador' : 'tirar apoiador', uid, name)
+    return json({ ok: true })
+  }
   throw new HttpError(404, 'not_found')
 }

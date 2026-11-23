@@ -923,3 +923,84 @@ describe('origem das pessoas (links pessoais, chegada, primeira visita)', () => 
     expect((await post('/ref/origin', GUEST, {})).status).toBe(401)
   })
 })
+
+describe('apoio (Pix): selo de apoiador e medidor', () => {
+  const ANA = 'discord_222222222222222222'
+  const BIA = 'acct_bbbbbbbbbbbbbbbbbbbb'
+  const admin = () => tree.admin as Record<string, Record<string, unknown>>
+  beforeEach(() => {
+    tree = {
+      admin: {
+        users: {
+          [ANA]: { name: 'Ana', avatar: 'https://cdn/ana.png', firstAt: 1, lastLoginAt: 2 },
+          [BIA]: { name: 'Bia', firstAt: 1, lastLoginAt: 3 },
+        },
+      },
+    }
+  })
+
+  it('sem nada configurado, o medidor começa com meta de R$ 100 e nada arrecadado', async () => {
+    const res = await call('GET', '/support')
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Cache-Control')).toContain('public')
+    const body = (await res.json()) as { meter: { goal: number; raised: number; month: string }; supporters: unknown[]; uids?: unknown }
+    expect(body.meter.goal).toBe(100)
+    expect(body.meter.raised).toBe(0)
+    expect(body.meter.month).toMatch(/^\d{4}-\d{2}$/)
+    expect(body.supporters).toEqual([])
+    expect(body.uids).toBeUndefined()
+  })
+
+  it('só admin marca apoiador e muda o medidor; aparece em Pessoas e no registro', async () => {
+    const asAdmin = { token: idToken(ADMIN) }
+    expect((await call('POST', '/admin/support/supporter', { token: idToken(ANA), body: { uid: ANA, on: true } })).status).toBe(403)
+    expect((await call('POST', '/admin/support/supporter', { ...asAdmin, body: { uid: 'discord_999999999999999999', on: true } })).status).toBe(404)
+    expect((await call('POST', '/admin/support/supporter', { ...asAdmin, body: { uid: ANA, on: true } })).status).toBe(200)
+    expect((await call('POST', '/admin/support/meter', { ...asAdmin, body: { goal: 100, raised: -1 } })).status).toBe(400)
+    const meter = await call('POST', '/admin/support/meter', { ...asAdmin, body: { goal: '120,50', raised: 30 } })
+    expect(await meter.json()).toMatchObject({ goal: 120.5, raised: 30 })
+
+    const users = (await (await call('GET', '/admin/users', asAdmin)).json()) as { uid: string; supporter: boolean }[]
+    expect(users.find((u) => u.uid === ANA)?.supporter).toBe(true)
+    expect(users.find((u) => u.uid === BIA)?.supporter).toBe(false)
+    const all = (await (await call('GET', '/admin/support', asAdmin)).json()) as { supporters: { uid: string; name: string; public: boolean }[] }
+    expect(all.supporters).toEqual([expect.objectContaining({ uid: ANA, name: 'Ana', public: false })])
+    const audit = Object.values(admin().audit as Record<string, { action: string }>).map((a) => a.action)
+    expect(audit).toEqual(expect.arrayContaining(['marcar apoiador', 'medidor de apoio']))
+
+    // Público: medidor novo; Ana ainda não aceitou aparecer.
+    const pub = (await (await call('GET', '/support')).json()) as { meter: { goal: number; raised: number }; supporters: unknown[] }
+    expect(pub.meter).toMatchObject({ goal: 120.5, raised: 30 })
+    expect(pub.supporters).toEqual([])
+  })
+
+  it('com login vê os selos; o apoiador escolhe aparecer na página pública', async () => {
+    await call('POST', '/admin/support/supporter', { token: idToken(ADMIN), body: { uid: ANA, on: true } })
+    const asBia = (await (await call('GET', '/support', { token: idToken(BIA) })).json()) as { uids: string[]; me: unknown }
+    expect(asBia.uids).toEqual([ANA])
+    expect(asBia.me).toEqual({ supporter: false, public: false })
+    expect((await call('POST', '/support/public', { token: idToken(BIA), body: { show: true } })).status).toBe(403)
+    expect((await call('POST', '/support/public', { body: { show: true } })).status).toBe(401)
+
+    expect((await call('POST', '/support/public', { token: idToken(ANA), body: { show: true } })).status).toBe(200)
+    const pub = (await (await call('GET', '/support')).json()) as { supporters: { name: string; avatar: string }[] }
+    expect(pub.supporters).toEqual([expect.objectContaining({ name: 'Ana', avatar: 'https://cdn/ana.png' })])
+    const asAna = (await (await call('GET', '/support', { token: idToken(ANA) })).json()) as { me: unknown }
+    expect(asAna.me).toEqual({ supporter: true, public: true })
+
+    // Tirar o selo tira da página também.
+    await call('POST', '/admin/support/supporter', { token: idToken(ADMIN), body: { uid: ANA, on: false } })
+    expect(((await (await call('GET', '/support')).json()) as { supporters: unknown[] }).supporters).toEqual([])
+  })
+
+  it('o valor arrecadado volta a zero quando o mês vira', async () => {
+    ;(tree.admin as Record<string, unknown>).support = { meter: { goal: 100, raised: 80, month: '2000-01' } }
+    const pub = (await (await call('GET', '/support')).json()) as { meter: { goal: number; raised: number } }
+    expect(pub.meter).toMatchObject({ goal: 100, raised: 0 })
+  })
+
+  it('meta zero desliga o medidor', async () => {
+    await call('POST', '/admin/support/meter', { token: idToken(ADMIN), body: { goal: 0, raised: 0 } })
+    expect(((await (await call('GET', '/support')).json()) as { meter: unknown }).meter).toBeNull()
+  })
+})

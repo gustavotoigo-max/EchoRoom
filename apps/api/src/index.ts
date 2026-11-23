@@ -10,6 +10,7 @@ import { handoff } from './routes/handoff'
 import { checkRefLink, createRefLink, recordArrival, recordHeard, recordOrigin } from './routes/origin'
 import { APP_CALLBACK_PATH, appCallback, login } from './routes/login'
 import { youtubeMaintenance } from './maintenance'
+import { setSupportPublic, supportInfo } from './routes/support'
 import { ytPlaylist, ytVideo } from './routes/youtube'
 import { dailyRoutine } from './stats'
 
@@ -30,6 +31,8 @@ import { dailyRoutine } from './stats'
  *   POST /ref/arrival   primeira entrada numa sala (por onde veio, quem estava)
  *   POST /ref/origin    conta nova: primeira visita e quem trouxe
  *   POST /ref/heard     resposta de "Como você conheceu?"
+ *   GET  /support       apoio (Pix): medidor do mês, apoiadores públicos e selos
+ *   POST /support/public apoiador escolhe aparecer na página de apoiadores
  *   GET  /discord/app   retorno do Discord para o app do celular (echoroom://auth)
  *   GET  /yt/video      título e autor de um vídeo do YouTube (oEmbed)
  *   GET  /yt/playlist   título e músicas de uma playlist do YouTube (Data API)
@@ -62,6 +65,8 @@ export default {
       else if (request.method === 'POST' && path === '/ref/arrival') res = await recordArrival(request, env)
       else if (request.method === 'POST' && path === '/ref/origin') res = await recordOrigin(request, env)
       else if (request.method === 'POST' && path === '/ref/heard') res = await recordHeard(request, env)
+      else if (request.method === 'GET' && path === '/support') res = await supportInfo(request, env)
+      else if (request.method === 'POST' && path === '/support/public') res = await setSupportPublic(request, env)
       else if (path.startsWith('/admin/')) res = await admin(request, path, env)
       else throw new HttpError(404, 'not_found')
       for (const [k, v] of Object.entries(cors)) res.headers.set(k, v)
