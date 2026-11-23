@@ -1,5 +1,5 @@
 import { dayKey, isAccountUid, type AccessMode, type AdminDay, type AdminOverview } from '@echoroom/shared'
-import { mapLimit, type Db } from './db'
+import type { Db } from './db'
 
 /** Estatísticas de uso a partir do que já existe no banco (sem ler o conteúdo das salas). */
 
@@ -20,35 +20,52 @@ export function lastDays(n: number, now = Date.now()): string[] {
   return Array.from({ length: n }, (_, i) => dayKey(now - (n - 1 - i) * DAY_MS))
 }
 
-/** Quem usou o site em cada dia (/activity/{dia}/{uid}). */
+/**
+ * Quem usou o site em cada dia (/activity/{dia}/{uid}), numa leitura só.
+ * (Uma leitura por dia gastava 30 das 50 subrequisições que o Worker grátis permite.)
+ */
 export async function activityByDay(db: Db, days: string[]): Promise<Map<string, string[]>> {
-  const lists = await mapLimit(days, 6, (d) => db.keys(`activity/${d}`))
-  return new Map(days.map((d, i) => [d, lists[i]]))
+  const all = days.length ? ((await db.rangeByKey<Record<string, unknown>>('activity', days[0], days[days.length - 1])) ?? {}) : {}
+  return new Map(days.map((d) => [d, all[d] && typeof all[d] === 'object' ? Object.keys(all[d]) : []]))
 }
 
-interface ParticipantRecord {
-  conns?: Record<string, boolean>
+/** O que o painel usa de cada sala. */
+export interface RoomRecord {
+  meta?: { roomId?: string; name?: string; ownerUid?: string; ownerName?: string; createdAt?: number }
+  members?: Record<string, unknown>
+  participants?: Record<string, { conns?: Record<string, boolean> } | null>
+  settings?: { allowGuests?: boolean }
+}
+
+/**
+ * Todas as salas numa leitura só. Ler sala por sala fazia uma subrequisição por sala
+ * (quatro na aba Salas) e, passando de ~10 salas, o Worker estourava o limite e
+ * respondia "internal". O conteúdo (fila, bate-papo) é lido, mas nunca devolvido.
+ */
+export async function allRooms(db: Db): Promise<Record<string, RoomRecord>> {
+  const v = await db.get<Record<string, RoomRecord | null>>('rooms')
+  const out: Record<string, RoomRecord> = {}
+  for (const [k, r] of Object.entries(v ?? {})) if (r && typeof r === 'object') out[k] = r
+  return out
 }
 
 /** Salas com alguém conectado agora e quantas pessoas (e convidados) estão online. */
-export async function onlineNow(db: Db): Promise<{ roomsActive: number; peopleOnline: number; guestsOnline: number; perRoom: Map<string, number> }> {
-  const keys = await db.keys('rooms')
+export function onlineNow(rooms: Record<string, RoomRecord>): { roomsActive: number; peopleOnline: number; guestsOnline: number; perRoom: Map<string, number> } {
   const perRoom = new Map<string, number>()
   let people = 0
   let guests = 0
-  await mapLimit(keys, 8, async (k) => {
-    const parts = (await db.get<Record<string, ParticipantRecord>>(`rooms/${k}/participants`)) ?? {}
-    const online = Object.entries(parts).filter(([, p]) => p?.conns && Object.keys(p.conns).length > 0)
+  for (const [k, r] of Object.entries(rooms)) {
+    const online = Object.entries(r.participants ?? {}).filter(([, p]) => p?.conns && Object.keys(p.conns).length > 0)
     perRoom.set(k, online.length)
     people += online.length
     guests += online.filter(([uid]) => !isAccount(uid)).length
-  })
+  }
   return { roomsActive: [...perRoom.values()].filter((n) => n > 0).length, peopleOnline: people, guestsOnline: guests, perRoom }
 }
 
 export async function overview(db: Db): Promise<AdminOverview> {
   const days = lastDays(30)
-  const [users, suspended, requests, roomIndex, counters, snapshots, config, activity, now] = await Promise.all([
+  const [users, suspended, requests, roomIndex, counters, snapshots, config, activity, rooms_] = await Promise.all([
     db.get<Record<string, UserRecord>>('admin/users'),
     db.keys('admin/suspended'),
     db.keys('admin/requests'),
@@ -57,8 +74,9 @@ export async function overview(db: Db): Promise<AdminOverview> {
     db.get<Record<string, { usersTotal?: number; roomsTotal?: number }>>('admin/stats/daily'),
     db.get<{ access?: AccessMode }>('admin/config'),
     activityByDay(db, days),
-    onlineNow(db),
+    allRooms(db),
   ])
+  const now = onlineNow(rooms_)
   const userList = Object.values(users ?? {})
   const rooms = Object.values(roomIndex ?? {})
   const countBy = (times: (number | undefined)[]) => {
