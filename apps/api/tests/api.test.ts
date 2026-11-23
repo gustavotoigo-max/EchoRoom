@@ -113,7 +113,9 @@ function fakeYoutube(url: URL): Response {
   })
 }
 
+let fetchCount = 0
 globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+  fetchCount++
   const url = new URL(String(input))
   const method = init?.method ?? 'GET'
   if (url.hostname === 'discord.com' && url.pathname.endsWith('/oauth2/token')) {
@@ -141,6 +143,11 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       if (url.searchParams.get('limitToLast') && v && typeof v === 'object') {
         const n = Number(url.searchParams.get('limitToLast'))
         return Response.json(Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b)).slice(-n)))
+      }
+      if (url.searchParams.get('startAt') && v && typeof v === 'object') {
+        const from = JSON.parse(url.searchParams.get('startAt')!)
+        const to = JSON.parse(url.searchParams.get('endAt') ?? '"\uf8ff"')
+        return Response.json(Object.fromEntries(Object.entries(v).filter(([k]) => k >= from && k <= to)))
       }
       return Response.json(v)
     }
@@ -343,6 +350,25 @@ describe('admin', () => {
     await call('POST', '/admin/rooms/ABCDE/close', { token: t })
     expect(getAt(['rooms', 'a'.repeat(64)])).toBe(null)
     expect(getAt(['roomIndex', 'ABCDE'])).toBe(null)
+  })
+
+  it('muitas salas cabem no limite de 50 subrequisições do Worker grátis', async () => {
+    for (let i = 0; i < 40; i++) {
+      const key = i.toString(16).padStart(64, 'b')
+      setAt(['rooms', key], { meta: { roomId: `R${i}`, createdAt: i }, members: { x: true }, participants: { y: { conns: { c: true } } } })
+    }
+    setAt(['activity', '2020-01-01'], { velho: true })
+    const t = idToken(ADMIN)
+    for (const path of ['/admin/overview', '/admin/rooms', '/admin/users']) {
+      fetchCount = 0
+      const res = await call('GET', path, { token: t })
+      expect(res.status).toBe(200)
+      expect(fetchCount).toBeLessThan(20)
+    }
+    fetchCount = 0
+    const o = (await (await call('GET', '/admin/overview', { token: t })).json()) as any
+    expect(o.now.peopleOnline).toBe(42)
+    expect(o.active.month).toBe(1)
   })
 
   it('acesso por aprovação e registro de ações', async () => {
