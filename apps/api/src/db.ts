@@ -39,6 +39,15 @@ export class Db {
     return this.call<Record<string, T> | null>('GET', path, undefined, { orderBy: '"$key"', limitToLast: String(n) })
   }
 
+  /** Filhos com chave entre `start` e `end` (inclusive), numa leitura só. */
+  rangeByKey<T>(path: string, start: string, end: string): Promise<Record<string, T> | null> {
+    return this.call<Record<string, T> | null>('GET', path, undefined, {
+      orderBy: '"$key"',
+      startAt: JSON.stringify(start),
+      endAt: JSON.stringify(end),
+    })
+  }
+
   /** Só as chaves do nó (sem baixar o conteúdo). */
   async keys(path: string): Promise<string[]> {
     const v = await this.call<Record<string, unknown> | null>('GET', path, undefined, { shallow: 'true' })

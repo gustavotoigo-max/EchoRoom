@@ -59,7 +59,9 @@ export default {
     } catch (err) {
       if (err instanceof HttpError) return json({ error: err.code }, err.status, cors)
       console.error(err)
-      return json({ error: 'internal' }, 500, cors)
+      // No painel de admin, mostra o motivo (ajuda a descobrir o problema sem abrir os logs).
+      const detail = path.startsWith('/admin/') && err instanceof Error ? { detail: err.message.slice(0, 200) } : {}
+      return json({ error: 'internal', ...detail }, 500, cors)
     }
   },
 

@@ -7,11 +7,11 @@ import type {
   AuditEntry,
 } from '@echoroom/shared'
 import { ownMethod, type AccountRecord } from '../accounts'
-import { mapLimit, type Db } from '../db'
+import type { Db } from '../db'
 import { adminUids, readServiceAccount, type Env } from '../env'
 import { deleteAuthUsers } from '../google'
 import { HttpError, json, readJson } from '../http'
-import { activityByDay, lastDays, onlineNow, overview, type UserRecord } from '../stats'
+import { activityByDay, allRooms, lastDays, onlineNow, overview, type UserRecord } from '../stats'
 
 /**
  * API de administração. Toda chamada exige o token de login do Firebase de
@@ -151,47 +151,31 @@ async function deleteUser(ctx: Ctx, uid: string): Promise<void> {
 
 // ---- salas ------------------------------------------------------------------------
 
-interface MetaRecord {
-  roomId?: string
-  name?: string
-  ownerUid?: string
-  ownerName?: string
-  createdAt?: number
-}
-
-async function roomMetas(ctx: Ctx): Promise<{ key: string; meta: MetaRecord }[]> {
-  const keys = await ctx.db.keys('rooms')
-  const metas = await mapLimit(keys, 8, (k) => ctx.db.get<MetaRecord>(`rooms/${k}/meta`))
-  return keys.map((key, i) => ({ key, meta: metas[i] ?? {} })).filter((r) => r.meta.roomId)
-}
-
 async function listRooms(ctx: Ctx): Promise<AdminRoom[]> {
-  const [metas, online] = await Promise.all([roomMetas(ctx), onlineNow(ctx.db)])
-  const extra = await mapLimit(metas, 8, async ({ key }) => {
-    const [members, guests] = await Promise.all([
-      ctx.db.keys(`rooms/${key}/members`),
-      ctx.db.get<boolean>(`rooms/${key}/settings/allowGuests`),
-    ])
-    return { members: members.length, allowGuests: guests !== false }
-  })
-  return metas
-    .map(({ key, meta }, i) => ({
-      roomId: meta.roomId!,
-      name: meta.name ?? `Sala ${meta.roomId}`,
-      ownerUid: meta.ownerUid ?? null,
-      ownerName: meta.ownerName ?? '',
-      createdAt: meta.createdAt ?? 0,
-      members: extra[i].members,
-      online: online.perRoom.get(key) ?? 0,
-      allowGuests: extra[i].allowGuests,
-    }))
+  const rooms = await allRooms(ctx.db)
+  const online = onlineNow(rooms)
+  return Object.entries(rooms)
+    .filter(([, r]) => r.meta?.roomId)
+    .map(([key, r]) => {
+      const meta = r.meta!
+      return {
+        roomId: meta.roomId!,
+        name: meta.name ?? `Sala ${meta.roomId}`,
+        ownerUid: meta.ownerUid ?? null,
+        ownerName: meta.ownerName ?? '',
+        createdAt: meta.createdAt ?? 0,
+        members: Object.keys(r.members ?? {}).length,
+        online: online.perRoom.get(key) ?? 0,
+        allowGuests: r.settings?.allowGuests !== false,
+      }
+    })
     .sort((a, b) => b.online - a.online || b.createdAt - a.createdAt)
 }
 
 async function roomKeyOf(ctx: Ctx, roomId: string): Promise<string> {
-  const found = (await roomMetas(ctx)).find((r) => r.meta.roomId === roomId)
+  const found = Object.entries(await allRooms(ctx.db)).find(([, r]) => r.meta?.roomId === roomId)
   if (!found) throw new HttpError(404, 'not_found')
-  return found.key
+  return found[0]
 }
 
 async function closeRoom(ctx: Ctx, roomId: string): Promise<void> {

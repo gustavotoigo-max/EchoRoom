@@ -24,9 +24,20 @@ export function createCustomToken(sa: ServiceAccount, uid: string, claims: Recor
 
 let access: { token: string; exp: number; email: string } | null = null
 
-/** Token OAuth da conta de serviço (acesso total ao banco). Fica em cache até perto de expirar. */
+let pending: Promise<string> | null = null
+
+/**
+ * Token OAuth da conta de serviço (acesso total ao banco). Fica em cache até perto de expirar.
+ * Pedidos ao mesmo tempo esperam o mesmo token (senão cada leitura em paralelo pediria um
+ * token novo e gastaria o limite de subrequisições do Worker).
+ */
 export async function serviceAccessToken(sa: ServiceAccount): Promise<string> {
   if (access && access.email === sa.client_email && access.exp - 120 > nowSec()) return access.token
+  if (!pending) pending = fetchServiceToken(sa).finally(() => (pending = null))
+  return pending
+}
+
+async function fetchServiceToken(sa: ServiceAccount): Promise<string> {
   const iat = nowSec()
   const assertion = await signJwt(
     { iss: sa.client_email, scope: DB_SCOPES, aud: OAUTH_TOKEN_URL, iat, exp: iat + 3600 },
